@@ -3,8 +3,6 @@ import "./App.css";
 import Timelapse from "./components/Timelapse";
 import TimelapsePlayer from "./components/TimelapsePlayer";
 import Calendar from "./components/Calendar";
-import AppTitleBar from "./components/AppTitleBar";
-import { FaHome, FaVideo, FaCalendarAlt } from "react-icons/fa";
 
 // 네비게이션 페이지 정의
 type Page = "timelapseRecorder" | "timelapsePlayer" | "calendar";
@@ -28,47 +26,44 @@ function App() {
 
   return (
     <div className="App">
-      <AppTitleBar />
-
-      <div className="app-content">
-        {/* 사이드바 네비게이션 */}
-        <div className="app-sidebar">
+      <div className="simple-layout">
+        {/* 심플한 아이콘 사이드바 */}
+        <div className="icon-sidebar">
           <div
-            className={`sidebar-item ${
+            className={`icon-button ${
               currentPage === "timelapseRecorder" ? "active" : ""
             }`}
             onClick={() => setCurrentPage("timelapseRecorder")}
           >
-            <FaHome className="sidebar-icon" />
-            <span className="sidebar-text">타임랩스 기록</span>
+            <div className="icon">📷</div>
           </div>
           <div
-            className={`sidebar-item ${
+            className={`icon-button ${
               currentPage === "timelapsePlayer" ? "active" : ""
             }`}
             onClick={() => setCurrentPage("timelapsePlayer")}
           >
-            <FaVideo className="sidebar-icon" />
-            <span className="sidebar-text">타임랩스 플레이어</span>
+            <div className="icon">🎬</div>
           </div>
           <div
-            className={`sidebar-item ${
+            className={`icon-button ${
               currentPage === "calendar" ? "active" : ""
             }`}
             onClick={() => setCurrentPage("calendar")}
           >
-            <FaCalendarAlt className="sidebar-icon" />
-            <span className="sidebar-text">작업 캘린더</span>
+            <div className="icon">📅</div>
+          </div>
+          <div className="icon-button">
+            <div className="icon">📈</div>
+          </div>
+          <div className="icon-button">
+            <div className="icon">⚙️</div>
           </div>
         </div>
 
-        {/* 메인 콘텐츠 영역 */}
-        <main className="App-main">{renderPageContent()}</main>
+        {/* 메인 컨텐츠 영역 */}
+        <main className="main-content">{renderPageContent()}</main>
       </div>
-
-      <footer className="App-footer">
-        <p>&copy; 2023 담비 - 작업 기록 및 타임랩스 앱</p>
-      </footer>
     </div>
   );
 }
