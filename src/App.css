@@ -405,13 +405,14 @@
 /* 타이틀바 스타일 */
 .app-title-bar {
   -webkit-app-region: drag;
-  height: 32px;
+  height: 38px;
   background-color: var(--bg-tertiary);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
   border-bottom: 1px solid var(--border-color);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .title-bar-buttons {
@@ -421,13 +422,25 @@
 }
 
 .title-bar-button {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   color: var(--text-muted);
-  transition: color 0.2s;
+  transition: all 0.2s;
+  border-radius: 4px;
 }
 
 .title-bar-button:hover {
   color: var(--text-normal);
+  background-color: var(--bg-modifier-hover);
+}
+
+.title-bar-button:last-child:hover {
+  background-color: var(--danger-color);
+  color: white;
 }
 
 /* 앱 로고 스타일 */
@@ -438,6 +451,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  user-select: none;
 }
 
 /* 스크롤바 스타일링 */
@@ -987,34 +1001,55 @@
   flex-direction: column;
   align-items: center;
   padding: 12px 0;
-  gap: 8px;
+  gap: 12px;
   border-right: 1px solid var(--border-color);
 }
 
 .icon-button {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s;
   margin-bottom: 4px;
-  background-color: var(--bg-accent);
+  background-color: var(--bg-secondary);
+  color: var(--text-muted);
+  position: relative;
+  overflow: hidden;
 }
 
 .icon-button:hover {
-  background-color: var(--bg-modifier-hover);
+  background-color: var(--bg-accent);
+  color: var(--text-normal);
   transform: translateY(-2px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 .icon-button.active {
   background-color: var(--primary-color);
+  color: white;
+}
+
+.icon-button.active::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 20px;
+  background-color: white;
+  border-radius: 0 2px 2px 0;
 }
 
 .icon {
   font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* 메인 컨텐츠 영역 */

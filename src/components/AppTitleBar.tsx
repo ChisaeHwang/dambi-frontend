@@ -1,45 +1,54 @@
-import React from "react";
-
-// Electron 환경인지 확인
-const isElectron = () => {
-  return window && window.process && window.process.type;
-};
+import React, { useState, useEffect } from "react";
 
 const AppTitleBar: React.FC = () => {
-  const [isMaximized, setIsMaximized] = React.useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
 
-  React.useEffect(() => {
+  // 일렉트론 환경인지 확인
+  const isElectron = window.electron !== undefined;
+
+  useEffect(() => {
     const checkMaximized = async () => {
-      if (isElectron() && window.electron?.isMaximized) {
-        const maximized = await window.electron.isMaximized();
-        setIsMaximized(maximized);
+      if (isElectron && window.electron?.isMaximized) {
+        try {
+          const maximized = await window.electron.isMaximized();
+          setIsMaximized(maximized);
+        } catch (error) {
+          console.error("창 상태 확인 중 오류 발생:", error);
+        }
       }
     };
 
     checkMaximized();
-  }, []);
+
+    // 창 상태 변경 이벤트 리스너 등록
+    const handleResize = () => {
+      checkMaximized();
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [isElectron]);
 
   const handleMinimize = () => {
-    if (isElectron() && window.electron?.minimize) {
+    if (isElectron && window.electron?.minimize) {
       window.electron.minimize();
     }
   };
 
   const handleMaximize = () => {
-    if (isElectron() && window.electron?.maximize) {
+    if (isElectron && window.electron?.maximize) {
       window.electron.maximize();
-      setIsMaximized(!isMaximized);
     }
   };
 
   const handleClose = () => {
-    if (isElectron() && window.electron?.close) {
+    if (isElectron && window.electron?.close) {
       window.electron.close();
     }
   };
 
   // Electron 환경이 아니면 타이틀바를 표시하지 않음
-  if (!isElectron()) {
+  if (!isElectron) {
     return null;
   }
 
