@@ -1,14 +1,18 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./App.css";
 import Timelapse from "./components/Timelapse";
 import TimelapsePlayer from "./components/TimelapsePlayer";
 import Calendar from "./components/Calendar";
+import AppTitleBar from "./components/AppTitleBar";
 
 // 네비게이션 페이지 정의
 type Page = "timelapseRecorder" | "timelapsePlayer" | "calendar";
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>("timelapseRecorder");
+
+  // 일렉트론 환경에서 실행 중인지 확인
+  const isElectron = window.electron !== undefined;
 
   // 페이지 컨텐츠 렌더링
   const renderPageContent = () => {
@@ -26,6 +30,7 @@ function App() {
 
   return (
     <div className="App">
+      {isElectron && <AppTitleBar />}
       <div className="simple-layout">
         {/* 심플한 아이콘 사이드바 */}
         <div className="icon-sidebar">
@@ -52,12 +57,6 @@ function App() {
             onClick={() => setCurrentPage("calendar")}
           >
             <div className="icon">📅</div>
-          </div>
-          <div className="icon-button">
-            <div className="icon">📈</div>
-          </div>
-          <div className="icon-button">
-            <div className="icon">⚙️</div>
           </div>
         </div>
 

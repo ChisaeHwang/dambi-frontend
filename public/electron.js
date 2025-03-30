@@ -26,6 +26,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    frame: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -59,6 +60,37 @@ app.on("window-all-closed", () => {
 app.on("activate", () => {
   if (mainWindow === null) {
     createWindow();
+  }
+});
+
+// 창 제어 이벤트 처리
+ipcMain.on("window:minimize", () => {
+  if (mainWindow) {
+    mainWindow.minimize();
+  }
+});
+
+ipcMain.on("window:maximize", () => {
+  if (mainWindow) {
+    if (mainWindow.isMaximized()) {
+      mainWindow.unmaximize();
+    } else {
+      mainWindow.maximize();
+    }
+  }
+});
+
+ipcMain.on("window:close", () => {
+  if (mainWindow) {
+    mainWindow.close();
+  }
+});
+
+ipcMain.on("window:is-maximized", (event) => {
+  if (mainWindow) {
+    event.sender.send("window:is-maximized-response", mainWindow.isMaximized());
+  } else {
+    event.sender.send("window:is-maximized-response", false);
   }
 });
 

@@ -1025,6 +1025,8 @@
   padding: 20px;
   display: flex;
   justify-content: center;
+  padding-left: 15%;
+  padding-right: 15%;
 }
 
 /* 카드 스타일 */
@@ -1033,7 +1035,7 @@
   border-radius: var(--radius-lg);
   padding: 20px;
   width: 100%;
-  max-width: 500px;
+  max-width: 800px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   text-align: left;
 }

@@ -4,22 +4,25 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("electron", {
   // 스크린샷 캡처 시작
   startCapture: (interval) => {
+    console.log("Preload: startCapture 호출됨", interval);
     ipcRenderer.send("start-capture", { interval });
   },
 
   // 스크린샷 캡처 중지
   stopCapture: () => {
+    console.log("Preload: stopCapture 호출됨");
     ipcRenderer.send("stop-capture");
   },
 
   // 타임랩스 생성
   generateTimelapse: (options) => {
+    console.log("Preload: generateTimelapse 호출됨", options);
     return new Promise((resolve, reject) => {
-      ipcRenderer.once("generate-timelapse-response", (event, result) => {
-        if (result.error) {
-          reject(result.error);
+      ipcRenderer.once("generate-timelapse-response", (event, response) => {
+        if (response.error) {
+          reject(response.error);
         } else {
-          resolve(result.outputPath);
+          resolve(response.outputPath);
         }
       });
 
@@ -39,5 +42,27 @@ contextBridge.exposeInMainWorld("electron", {
     return () => {
       ipcRenderer.removeListener("capture-status", captureStatusListener);
     };
+  },
+
+  // 창 제어 API
+  minimize: () => {
+    ipcRenderer.send("window:minimize");
+  },
+
+  maximize: () => {
+    ipcRenderer.send("window:maximize");
+  },
+
+  close: () => {
+    ipcRenderer.send("window:close");
+  },
+
+  isMaximized: () => {
+    return new Promise((resolve) => {
+      ipcRenderer.once("window:is-maximized-response", (event, isMaximized) => {
+        resolve(isMaximized);
+      });
+      ipcRenderer.send("window:is-maximized");
+    });
   },
 });
