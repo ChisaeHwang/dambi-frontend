@@ -1227,3 +1227,137 @@
   max-width: 500px;
   margin: 0 auto;
 }
+
+/* 워크스페이스 스타일 */
+.workspace-container {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  gap: 1.5rem;
+}
+
+.time-counter {
+  font-size: 3rem;
+  font-weight: bold;
+  text-align: center;
+  margin: 2rem 0;
+  letter-spacing: 0.1em;
+}
+
+.timer-display {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.generate-prompt {
+  background-color: rgba(240, 240, 240, 0.9);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+  text-align: center;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.prompt-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+/* 설정 스타일 */
+.settings-container {
+  padding: 1rem;
+}
+
+.settings-section {
+  margin-bottom: 2rem;
+}
+
+.settings-section h3 {
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.speed-options {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.speed-option {
+  background-color: #f0f0f0;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.speed-option.active {
+  background-color: #4a90e2;
+  color: white;
+  border-color: #2a70c2;
+}
+
+.interval-slider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.interval-value {
+  min-width: 3rem;
+  text-align: right;
+}
+
+.form-slider {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+}
+
+.form-select {
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  margin-top: 0.5rem;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 1rem 0;
+}
+
+.custom-button.primary {
+  background-color: #4a90e2;
+  color: white;
+  padding: 0.5rem 1.5rem;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.custom-button.confirm {
+  background-color: #4caf50;
+  color: white;
+}
+
+.custom-button.cancel {
+  background-color: #f44336;
+  color: white;
+}
