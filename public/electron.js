@@ -122,76 +122,162 @@ function createAppDirectories() {
 async function getActiveWindows() {
   return new Promise(async (resolve) => {
     try {
-      console.log("데스크탑 캡처러를 사용하여 소스 가져오기 시작");
+      console.log("데스크탑 캡처러 API 호출 시작");
 
-      // 데스크탑 캡처러를 사용하여 화면 소스 목록 가져오기
-      const sources = await desktopCapturer.getSources({
-        types: ["window", "screen"],
-        thumbnailSize: { width: 150, height: 150 },
-        fetchWindowIcons: true, // 윈도우 아이콘 가져오기 추가
+      // 창 정보와 썸네일을 각각 별도로 수집하여 중복 방지
+      // 1. 화면 정보 가져오기 - 전체 화면
+      const screenSources = await desktopCapturer.getSources({
+        types: ["screen"],
+        thumbnailSize: { width: 500, height: 500 },
       });
 
-      console.log("가져온 소스 개수:", sources.length);
-      sources.forEach((source) => {
-        console.log("소스 정보:", source.id, source.name, source.display_id);
+      // 2. 창 정보 가져오기 - 개별 창
+      const windowSources = await desktopCapturer.getSources({
+        types: ["window"],
+        thumbnailSize: { width: 500, height: 500 },
+        fetchWindowIcons: true,
       });
 
-      // 전체 화면 항목 추가
-      const windows = [
-        {
-          id: "screen:0",
-          name: "전체 화면",
-          thumbnail: sources.find((s) => s.id.includes("screen:"))?.thumbnail,
-        },
-      ];
-
-      // 개별 창 항목 추가 (전체 소스 사용)
-      const windowSources = sources.filter(
-        (source) =>
-          // 'window:'로 시작하는 ID를 가진 소스만 필터링
-          source.id.includes("window:") ||
-          // 또는 name이 있고 빈 문자열이 아닌 경우
-          (source.name && source.name.trim() !== "")
+      console.log(
+        `전체 화면 소스 개수: ${screenSources.length}, 창 소스 개수: ${windowSources.length}`
       );
 
-      // 창 목록 처리
-      const windowsList = windowSources.map((source) => ({
-        id: source.id,
-        name: source.name,
-        thumbnail: source.thumbnail,
-      }));
+      // 결과 목록 준비
+      const resultWindows = [];
 
-      console.log("처리된 창 목록 개수:", windowsList.length);
+      // 전체 화면 항목 추가
+      if (screenSources.length > 0) {
+        resultWindows.push({
+          id: "screen:0",
+          name: "전체 화면",
+          thumbnail: screenSources[0].thumbnail,
+          appIcon: null,
+          isScreen: true,
+        });
 
-      // 결과 반환
-      resolve([...windows, ...windowsList]);
+        console.log("전체 화면이 추가됨");
+      }
+
+      // 고유한 창 목록 처리
+      const processedWindowIds = new Set();
+
+      // 각 창 처리
+      windowSources.forEach((source) => {
+        // 이미 처리한 ID 건너뛰기
+        if (processedWindowIds.has(source.id)) return;
+
+        // 빈 이름 또는 시스템 창 제외
+        if (
+          !source.name ||
+          source.name.trim() === "" ||
+          source.name.includes("MediaOutput") ||
+          source.name === "Electron"
+        )
+          return;
+
+        // 처리한 ID 기록
+        processedWindowIds.add(source.id);
+
+        console.log(`창 추가: ${source.id} - ${source.name}`);
+
+        // 창 정보 추가
+        resultWindows.push({
+          id: source.id,
+          name: source.name,
+          thumbnail: source.thumbnail,
+          appIcon: source.appIcon,
+          isScreen: false,
+        });
+      });
+
+      // 고정 창 목록 (항상 표시할 앱 목록)
+      const predefinedApps = [
+        { id: "window:chrome", name: "Chrome", appName: "chrome" },
+        { id: "window:edge", name: "Edge", appName: "edge" },
+        { id: "window:firefox", name: "Firefox", appName: "firefox" },
+        { id: "window:vscode", name: "VS Code", appName: "code" },
+        { id: "window:premiere", name: "Premiere Pro", appName: "premiere" },
+        { id: "window:photoshop", name: "Photoshop", appName: "photoshop" },
+        { id: "window:figma", name: "Figma", appName: "figma" },
+      ];
+
+      // 현재 목록에 없는 앱만 추가
+      const existingAppNames = resultWindows.map((w) => w.name.toLowerCase());
+
+      predefinedApps.forEach((app) => {
+        // 이미 유사한 이름이 목록에 있으면 건너뛰기
+        if (
+          existingAppNames.some(
+            (name) =>
+              name.toLowerCase().includes(app.appName) ||
+              app.name.toLowerCase().includes(name)
+          )
+        ) {
+          return;
+        }
+
+        // 앱 추가
+        resultWindows.push({
+          id: app.id,
+          name: app.name,
+          thumbnail: null,
+          appIcon: null,
+          isScreen: false,
+        });
+      });
+
+      // 정렬: 전체 화면이 첫 번째, 나머지는 이름 순
+      const sortedWindows = resultWindows.sort((a, b) => {
+        if (a.isScreen) return -1;
+        if (b.isScreen) return 1;
+        return a.name.localeCompare(b.name);
+      });
+
+      console.log(`최종 처리된 창 목록 개수: ${sortedWindows.length}`);
+      resolve(sortedWindows);
     } catch (error) {
       console.error("창 목록 가져오기 오류:", error);
 
-      // 오류 발생 시 기본 항목 반환
+      // 오류 발생 시 기본 목록 제공
       const fallbackWindows = [
-        { id: "screen:0", name: "전체 화면", thumbnail: null },
+        {
+          id: "screen:0",
+          name: "전체 화면",
+          thumbnail: null,
+          appIcon: null,
+          isScreen: true,
+        },
+        {
+          id: "window:chrome",
+          name: "Chrome",
+          thumbnail: null,
+          appIcon: null,
+          isScreen: false,
+        },
+        {
+          id: "window:edge",
+          name: "Edge",
+          thumbnail: null,
+          appIcon: null,
+          isScreen: false,
+        },
+        {
+          id: "window:premiere",
+          name: "Premiere Pro",
+          thumbnail: null,
+          appIcon: null,
+          isScreen: false,
+        },
+        {
+          id: "window:figma",
+          name: "Figma",
+          thumbnail: null,
+          appIcon: null,
+          isScreen: false,
+        },
       ];
 
-      // 빌트인 애플리케이션 항목 추가
-      if (process.platform === "win32") {
-        const commonApps = [
-          { id: "window:cursor", name: "Cursor", thumbnail: null },
-          {
-            id: "window:premiere",
-            name: "Adobe Premiere Pro",
-            thumbnail: null,
-          },
-          { id: "window:photoshop", name: "Adobe Photoshop", thumbnail: null },
-          { id: "window:chrome", name: "Google Chrome", thumbnail: null },
-          { id: "window:edge", name: "Microsoft Edge", thumbnail: null },
-        ];
-
-        // 일반적인 앱 목록으로 대체
-        resolve([...fallbackWindows, ...commonApps]);
-      } else {
-        resolve(fallbackWindows);
-      }
+      resolve(fallbackWindows);
     }
   });
 }

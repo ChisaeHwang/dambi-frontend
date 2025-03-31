@@ -51,7 +51,27 @@ export const useTimelapseGenerationCapture = () => {
     try {
       setIsLoadingWindows(true);
       const windows = await window.electron.getActiveWindows();
-      setActiveWindows(windows);
+
+      // 현재 화면에서 사용하는 앱만 필터링
+      const filteredWindows = windows.filter((window) => {
+        const name = window.name.toLowerCase();
+        // 피그마, 파이어베이스, vscode 등은 제외
+        return (
+          !name.includes("figma") &&
+          !name.includes("firebase") &&
+          !name.includes("code") &&
+          !name.includes("vscode") &&
+          !name.includes("explorer") &&
+          !name.includes("settings")
+        );
+      });
+
+      // 전체 화면 옵션 추가
+      if (filteredWindows.findIndex((w) => w.id === "screen:0") === -1) {
+        filteredWindows.unshift({ id: "screen:0", name: "전체 화면" });
+      }
+
+      setActiveWindows(filteredWindows);
     } catch (error) {
       console.error("활성 창 목록 가져오기 실패:", error);
     } finally {

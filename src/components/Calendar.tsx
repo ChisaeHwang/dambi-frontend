@@ -270,90 +270,145 @@ const Calendar: React.FC = () => {
   const weekDays = ["월", "화", "수", "목", "금", "토", "일"];
 
   return (
-    <div className="calendar-container card">
-      <h2 className="section-title">작업 캘린더</h2>
-
+    <div
+      className="calendar-container"
+      style={{
+        backgroundColor: "#36393f",
+        color: "#dcddde",
+        minHeight: "100vh",
+        width: "100%", // 가로 스크롤 방지
+        display: "flex",
+        flexDirection: "column",
+        padding: "12px",
+        overflowX: "hidden", // 가로 스크롤 방지
+      }}
+    >
       <div
+        className="calendar-card"
         style={{
-          display: "grid",
-          gridTemplateColumns: "2fr 1fr",
-          gap: "20px",
+          backgroundColor: "#2f3136",
+          borderRadius: "8px",
+          boxShadow: "0 2px 10px 0 rgba(0,0,0,.2)",
+          padding: "20px",
+          margin: "0 auto",
+          width: "98%", // 여백 줄임
+          maxWidth: "1400px", // 최대 너비 증가
+          minWidth: "auto", // 최소 너비 제거하여 가로 스크롤 방지
         }}
       >
-        {/* 캘린더 부분 */}
-        <div className="calendar">
-          {/* 월 이동 네비게이션 */}
-          <div
+        <div
+          className="calendar-header"
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "16px",
+          }}
+        >
+          <h2
             style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "16px",
+              color: "#fff",
+              fontSize: "20px",
+              margin: 0,
+              fontWeight: "600",
             }}
           >
-            <button
-              onClick={prevMonth}
-              className="custom-button secondary"
-              style={{ minWidth: "40px", padding: "8px 12px" }}
-            >
-              &lt;
-            </button>
-
+            작업 캘린더
+          </h2>
+          <div
+            className="month-navigation"
+            style={{ display: "flex", gap: "8px" }}
+          >
             <div
               style={{
-                fontWeight: "bold",
-                fontSize: "1.2rem",
+                color: "#fff",
+                fontSize: "16px",
+                fontWeight: "500",
               }}
             >
-              {currentMonth.getFullYear()}년 {currentMonth.getMonth() + 1}월
+              {`${currentMonth.getFullYear()}년 ${
+                currentMonth.getMonth() + 1
+              }월`}
             </div>
-
-            <button
-              onClick={nextMonth}
-              className="custom-button secondary"
-              style={{ minWidth: "40px", padding: "8px 12px" }}
-            >
-              &gt;
-            </button>
+            <div style={{ display: "flex", gap: "4px" }}>
+              <button
+                onClick={prevMonth}
+                style={{
+                  backgroundColor: "#4f545c",
+                  border: "none",
+                  borderRadius: "4px",
+                  color: "white",
+                  padding: "4px 8px",
+                  cursor: "pointer",
+                }}
+              >
+                이전
+              </button>
+              <button
+                onClick={nextMonth}
+                style={{
+                  backgroundColor: "#4f545c",
+                  border: "none",
+                  borderRadius: "4px",
+                  color: "white",
+                  padding: "4px 8px",
+                  cursor: "pointer",
+                }}
+              >
+                다음
+              </button>
+            </div>
           </div>
-
-          {/* 요일 헤더 */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(7, 1fr)",
-              marginBottom: "8px",
-              fontWeight: "bold",
-              textAlign: "center",
-            }}
-          >
-            {weekDays.map((day) => (
-              <div key={day} style={{ padding: "8px" }}>
-                {day}
-              </div>
-            ))}
-          </div>
-
-          {/* 캘린더 날짜 */}
-          <div className="calendar-grid">{renderCalendarDays()}</div>
         </div>
 
-        {/* 선택된 날짜 세션 목록 */}
-        <div className="sessions-list">
-          <div
+        {/* 요일 표시 */}
+        <div
+          className="day-headers"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(7, 1fr)",
+            gap: "4px",
+            marginBottom: "8px",
+            textAlign: "center",
+          }}
+        >
+          {["월", "화", "수", "목", "금", "토", "일"].map((day) => (
+            <div
+              key={day}
+              style={{
+                padding: "8px",
+                fontWeight: "bold",
+                color: "#fff",
+              }}
+            >
+              {day}
+            </div>
+          ))}
+        </div>
+
+        {/* 캘린더 날짜 그리드 */}
+        <div className="calendar-grid">{renderCalendarDays()}</div>
+
+        {/* 선택된 날짜의 세션 */}
+        <div
+          className="selected-date-info"
+          style={{
+            marginTop: "20px",
+            borderTop: "1px solid #40444b",
+            paddingTop: "16px",
+          }}
+        >
+          <h3
             style={{
-              fontWeight: "bold",
-              marginBottom: "16px",
-              padding: "8px",
-              backgroundColor: "var(--bg-secondary)",
-              borderRadius: "8px",
-              textAlign: "center",
+              color: "#fff",
+              fontSize: "16px",
+              marginBottom: "12px",
             }}
           >
-            {selectedDate.getFullYear()}년 {selectedDate.getMonth() + 1}월{" "}
-            {selectedDate.getDate()}일
-          </div>
-
+            {`${selectedDate.getFullYear()}년 ${
+              selectedDate.getMonth() + 1
+            }월 ${selectedDate.getDate()}일 작업`}
+          </h3>
           {renderSelectedDateSessions()}
         </div>
       </div>

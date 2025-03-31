@@ -19,6 +19,94 @@ declare global {
   }
 }
 
+// 앱 아이콘 컴포넌트
+const AppIcon: React.FC<{ name: string }> = ({ name }) => {
+  // 앱 이름에 따라 색상과 아이콘 첫 글자 결정
+  const getIconInfo = (appName: string) => {
+    appName = appName.toLowerCase();
+
+    if (appName.includes("chrome")) {
+      return { color: "#4285F4", letter: "C" };
+    } else if (appName.includes("edge")) {
+      return { color: "#0078D7", letter: "E" };
+    } else if (appName.includes("cursor")) {
+      return { color: "#5865F2", letter: "C" };
+    } else if (appName.includes("settings")) {
+      return { color: "#888", letter: "S" };
+    } else if (appName.includes("firefox")) {
+      return { color: "#FF9500", letter: "F" };
+    } else if (appName.includes("premiere")) {
+      return { color: "#9999FF", letter: "P" };
+    } else if (appName.includes("photoshop")) {
+      return { color: "#31A8FF", letter: "P" };
+    } else {
+      // 기본값 (임의의 컬러, 첫 글자 사용)
+      return {
+        color: `#${Math.floor(Math.random() * 0xffffff)
+          .toString(16)
+          .padStart(6, "0")}`,
+        letter: appName.charAt(0).toUpperCase(),
+      };
+    }
+  };
+
+  const { color, letter } = getIconInfo(name);
+
+  return (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        backgroundColor: color,
+        color: "white",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: "32px",
+        fontWeight: "bold",
+      }}
+    >
+      {letter}
+    </div>
+  );
+};
+
+// 윈도우 썸네일 컴포넌트
+const WindowThumbnail: React.FC<{ window: any }> = ({ window }) => {
+  const [imageError, setImageError] = useState(false);
+
+  // 썸네일 이미지 에러 처리
+  const handleImageError = () => {
+    setImageError(true);
+  };
+
+  // 썸네일이 없거나 로드 실패 시 앱 아이콘 표시
+  if (!window.thumbnail || imageError) {
+    return <AppIcon name={window.name} />;
+  }
+
+  // 썸네일 있는 경우 이미지 표시
+  try {
+    const dataUrl = window.thumbnail.toDataURL();
+
+    return (
+      <img
+        src={dataUrl}
+        alt={window.name}
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+        }}
+        onError={handleImageError}
+      />
+    );
+  } catch (error) {
+    // 예외 발생 시 앱 아이콘으로 폴백
+    return <AppIcon name={window.name} />;
+  }
+};
+
 const Timelapse: React.FC = () => {
   const {
     isCapturing,
@@ -41,6 +129,12 @@ const Timelapse: React.FC = () => {
     null
   );
   const [selectedSpeedFactor, setSelectedSpeedFactor] = useState<number>(3); // 기본 3배속
+
+  // 컴포넌트 마운트 시 창 목록 초기 로드만 수행
+  useEffect(() => {
+    // 초기 창 목록 로드
+    refreshActiveWindows();
+  }, [refreshActiveWindows]);
 
   // 타이머 관리
   useEffect(() => {
@@ -95,11 +189,6 @@ const Timelapse: React.FC = () => {
     changeSelectedWindow(windowId);
   };
 
-  // 활성 창 목록 새로고침 핸들러
-  const handleRefreshWindows = () => {
-    refreshActiveWindows();
-  };
-
   // 작업 시간 포맷팅 (00:00:00 형식)
   const formattedTime = formatTime(workTime);
 
@@ -110,9 +199,11 @@ const Timelapse: React.FC = () => {
         backgroundColor: "#36393f",
         color: "#dcddde",
         minHeight: "100vh",
+        width: "100%", // 가로 스크롤 방지
         display: "flex",
         flexDirection: "column",
-        padding: "20px",
+        padding: "12px",
+        overflowX: "hidden", // 가로 스크롤 방지
       }}
     >
       <div
@@ -122,17 +213,18 @@ const Timelapse: React.FC = () => {
           borderRadius: "8px",
           boxShadow: "0 2px 10px 0 rgba(0,0,0,.2)",
           padding: "20px",
-          maxWidth: "800px",
           margin: "0 auto",
-          width: "100%",
+          width: "98%", // 여백 더 줄임
+          maxWidth: "1400px", // 최대 너비 증가
+          minWidth: "auto", // 최소 너비 제거하여 가로 스크롤 방지
         }}
       >
         <h2
           className="section-title"
           style={{
             color: "#fff",
-            fontSize: "24px",
-            marginBottom: "20px",
+            fontSize: "20px",
+            marginBottom: "16px",
             textAlign: "center",
             fontWeight: "600",
           }}
@@ -141,52 +233,60 @@ const Timelapse: React.FC = () => {
         </h2>
 
         {!isCapturing && !showGeneratePrompt && (
-          <div className="settings" style={{ marginBottom: "20px" }}>
-            <div className="setting-section" style={{ marginBottom: "20px" }}>
+          <div className="settings" style={{ marginBottom: "16px" }}>
+            <div className="setting-section" style={{ marginBottom: "16px" }}>
               <div
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  marginBottom: "10px",
+                  marginBottom: "8px",
                 }}
               >
                 <h3
                   style={{
                     color: "#fff",
-                    fontSize: "18px",
+                    fontSize: "16px",
                     margin: 0,
                   }}
                 >
                   녹화할 화면
                 </h3>
-                <button
-                  onClick={handleRefreshWindows}
-                  style={{
-                    padding: "4px 10px",
-                    borderRadius: "4px",
-                    border: "none",
-                    backgroundColor: "#4f545c",
-                    color: "#fff",
-                    cursor: "pointer",
-                    fontSize: "12px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "5px",
-                  }}
-                  disabled={isLoadingWindows}
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "5px" }}
                 >
-                  {isLoadingWindows ? "로딩 중..." : "새로고침"}
-                </button>
+                  {isLoadingWindows && (
+                    <span style={{ color: "#a0a0a0", fontSize: "12px" }}>
+                      새로고침 중...
+                    </span>
+                  )}
+                  <button
+                    onClick={refreshActiveWindows}
+                    style={{
+                      padding: "4px 12px",
+                      borderRadius: "4px",
+                      border: "none",
+                      backgroundColor: "#4f545c",
+                      color: "#fff",
+                      cursor: "pointer",
+                      fontSize: "12px",
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                    disabled={isLoadingWindows}
+                  >
+                    새로고침
+                  </button>
+                </div>
               </div>
 
               <div
                 className="windows-grid"
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", // 그리드 셀 크기 증가
                   gap: "10px",
-                  marginTop: "15px",
+                  marginTop: "10px",
                 }}
               >
                 {activeWindows.map((window) => (
@@ -208,8 +308,8 @@ const Timelapse: React.FC = () => {
                   >
                     <div
                       style={{
-                        width: "150px",
-                        height: "100px",
+                        width: "160px", // 썸네일 크기 증가
+                        height: "120px", // 썸네일 크기 증가
                         backgroundColor: "#2f3136",
                         marginBottom: "8px",
                         display: "flex",
@@ -219,34 +319,12 @@ const Timelapse: React.FC = () => {
                         overflow: "hidden",
                       }}
                     >
-                      {window.thumbnail ? (
-                        <img
-                          src={
-                            window.thumbnail &&
-                            typeof window.thumbnail.toDataURL === "function"
-                              ? window.thumbnail.toDataURL()
-                              : ""
-                          }
-                          alt={window.name}
-                          style={{ maxWidth: "100%", maxHeight: "100%" }}
-                          onError={(e) => {
-                            if (
-                              e.currentTarget &&
-                              e.currentTarget.parentElement
-                            ) {
-                              e.currentTarget.style.display = "none";
-                              e.currentTarget.parentElement.innerHTML = `<div style="color: #72767d">미리보기 없음</div>`;
-                            }
-                          }}
-                        />
-                      ) : (
-                        <div style={{ color: "#72767d" }}>미리보기 없음</div>
-                      )}
+                      <WindowThumbnail window={window} />
                     </div>
                     <div
                       style={{
                         color: "#fff",
-                        fontSize: "12px",
+                        fontSize: "13px",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         width: "100%",
@@ -260,12 +338,12 @@ const Timelapse: React.FC = () => {
               </div>
             </div>
 
-            <div className="setting-section" style={{ marginBottom: "20px" }}>
+            <div className="setting-section" style={{ marginBottom: "16px" }}>
               <h3
                 style={{
                   color: "#fff",
-                  fontSize: "18px",
-                  marginBottom: "10px",
+                  fontSize: "16px",
+                  marginBottom: "8px",
                 }}
               >
                 타임랩스 배속
@@ -292,6 +370,7 @@ const Timelapse: React.FC = () => {
                       cursor: "pointer",
                       transition: "background-color 0.2s",
                       fontSize: "14px",
+                      minWidth: "60px",
                     }}
                   >
                     {speed}x
@@ -306,7 +385,7 @@ const Timelapse: React.FC = () => {
           className="timer-display"
           style={{
             textAlign: "center",
-            margin: "30px 0",
+            margin: "20px 0",
             border: "1px solid #40444b",
             borderRadius: "8px",
             padding: "20px",
@@ -330,7 +409,7 @@ const Timelapse: React.FC = () => {
           style={{
             display: "flex",
             justifyContent: "center",
-            marginTop: "20px",
+            marginTop: "16px",
           }}
         >
           <button
@@ -346,7 +425,8 @@ const Timelapse: React.FC = () => {
               fontWeight: "500",
               transition: "background-color 0.2s",
               width: "100%",
-              maxWidth: "200px",
+              maxWidth: "240px", // 버튼 너비 증가
+              minWidth: "180px",
             }}
           >
             {isCapturing ? "정지" : "시작"}
@@ -367,7 +447,7 @@ const Timelapse: React.FC = () => {
             <p
               style={{
                 fontSize: "16px",
-                marginBottom: "20px",
+                marginBottom: "16px",
                 textAlign: "center",
               }}
             >
@@ -379,7 +459,7 @@ const Timelapse: React.FC = () => {
               style={{
                 display: "flex",
                 justifyContent: "center",
-                gap: "10px",
+                gap: "12px",
               }}
             >
               <button
@@ -392,6 +472,7 @@ const Timelapse: React.FC = () => {
                   color: "#fff",
                   cursor: "pointer",
                   fontSize: "14px",
+                  minWidth: "100px",
                 }}
               >
                 예
@@ -406,6 +487,7 @@ const Timelapse: React.FC = () => {
                   color: "#fff",
                   cursor: "pointer",
                   fontSize: "14px",
+                  minWidth: "100px",
                 }}
               >
                 아니오
