@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, CSSProperties } from "react";
 
 const AppTitleBar: React.FC = () => {
   const [isMaximized, setIsMaximized] = useState(false);
@@ -53,13 +53,19 @@ const AppTitleBar: React.FC = () => {
   }
 
   return (
-    <div className="flex items-center justify-between h-8 bg-[var(--bg-tertiary)] px-4 -webkit-app-region-drag select-none">
+    <div
+      className="flex items-center justify-between h-8 bg-[var(--bg-tertiary)] px-4 select-none"
+      style={{ WebkitAppRegion: "drag" } as CSSProperties}
+    >
       <div className="flex items-center">
         <span className="text-lg mr-2">🦝</span>
         <span className="font-semibold">담비</span>
       </div>
 
-      <div className="flex items-center space-x-2 -webkit-app-region-no-drag">
+      <div
+        className="flex items-center space-x-2"
+        style={{ WebkitAppRegion: "no-drag" } as CSSProperties}
+      >
         <button
           onClick={handleMinimize}
           className="w-3 h-3 rounded-full bg-[#ffbd4c] flex items-center justify-center hover:brightness-90 transition-all"
