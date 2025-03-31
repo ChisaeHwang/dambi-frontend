@@ -3,7 +3,12 @@ const ffmpeg = require("fluent-ffmpeg");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
-const { spawn } = require("child_process");
+const spawn = require("cross-spawn");
+const ffmpegInstaller = require("@ffmpeg-installer/ffmpeg");
+
+// FFmpeg 경로 설정
+const ffmpegPath = ffmpegInstaller.path;
+console.log("FFmpeg 실행 파일 경로:", ffmpegPath);
 
 // 캡처 세션 상태
 let captureSession = {
@@ -336,7 +341,7 @@ function startCapture(event, args) {
       console.log("실행할 FFmpeg 명령어:", "ffmpeg", ffmpegOptions.join(" "));
 
       // FFmpeg로 화면 녹화 시작
-      const ffmpegProcess = spawn("ffmpeg", ffmpegOptions);
+      const ffmpegProcess = spawn(ffmpegPath, ffmpegOptions);
 
       captureSession.ffmpegProcess = ffmpegProcess;
 
