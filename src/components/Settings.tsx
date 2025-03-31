@@ -192,11 +192,23 @@ const Settings: React.FC = () => {
                   >
                     {window.thumbnail ? (
                       <img
-                        src={`data:image/png;base64,${Buffer.from(
-                          window.thumbnail.toPNG()
-                        ).toString("base64")}`}
+                        src={
+                          window.thumbnail &&
+                          typeof window.thumbnail.toDataURL === "function"
+                            ? window.thumbnail.toDataURL()
+                            : ""
+                        }
                         alt={window.name}
                         style={{ maxWidth: "100%", maxHeight: "100%" }}
+                        onError={(e) => {
+                          if (
+                            e.currentTarget &&
+                            e.currentTarget.parentElement
+                          ) {
+                            e.currentTarget.style.display = "none";
+                            e.currentTarget.parentElement.innerHTML = `<div style="color: #72767d">미리보기 없음</div>`;
+                          }
+                        }}
                       />
                     ) : (
                       <div style={{ color: "#72767d" }}>미리보기 없음</div>

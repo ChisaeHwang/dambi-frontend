@@ -122,10 +122,18 @@ function createAppDirectories() {
 async function getActiveWindows() {
   return new Promise(async (resolve) => {
     try {
+      console.log("데스크탑 캡처러를 사용하여 소스 가져오기 시작");
+
       // 데스크탑 캡처러를 사용하여 화면 소스 목록 가져오기
       const sources = await desktopCapturer.getSources({
         types: ["window", "screen"],
         thumbnailSize: { width: 150, height: 150 },
+        fetchWindowIcons: true, // 윈도우 아이콘 가져오기 추가
+      });
+
+      console.log("가져온 소스 개수:", sources.length);
+      sources.forEach((source) => {
+        console.log("소스 정보:", source.id, source.name, source.display_id);
       });
 
       // 전체 화면 항목 추가
@@ -133,27 +141,57 @@ async function getActiveWindows() {
         {
           id: "screen:0",
           name: "전체 화면",
-          thumbnail: sources.find((s) => s.id.includes("screen:0"))?.thumbnail,
+          thumbnail: sources.find((s) => s.id.includes("screen:"))?.thumbnail,
         },
       ];
 
-      // 개별 창 항목 추가
-      const windowSources = sources.filter((source) =>
-        source.id.includes("window")
+      // 개별 창 항목 추가 (전체 소스 사용)
+      const windowSources = sources.filter(
+        (source) =>
+          // 'window:'로 시작하는 ID를 가진 소스만 필터링
+          source.id.includes("window:") ||
+          // 또는 name이 있고 빈 문자열이 아닌 경우
+          (source.name && source.name.trim() !== "")
       );
 
-      // 창 목록을 처리하여 중복 없이 정렬
+      // 창 목록 처리
       const windowsList = windowSources.map((source) => ({
         id: source.id,
         name: source.name,
         thumbnail: source.thumbnail,
       }));
 
+      console.log("처리된 창 목록 개수:", windowsList.length);
+
       // 결과 반환
       resolve([...windows, ...windowsList]);
     } catch (error) {
       console.error("창 목록 가져오기 오류:", error);
-      resolve([{ id: "screen:0", name: "전체 화면", thumbnail: null }]);
+
+      // 오류 발생 시 기본 항목 반환
+      const fallbackWindows = [
+        { id: "screen:0", name: "전체 화면", thumbnail: null },
+      ];
+
+      // 빌트인 애플리케이션 항목 추가
+      if (process.platform === "win32") {
+        const commonApps = [
+          { id: "window:cursor", name: "Cursor", thumbnail: null },
+          {
+            id: "window:premiere",
+            name: "Adobe Premiere Pro",
+            thumbnail: null,
+          },
+          { id: "window:photoshop", name: "Adobe Photoshop", thumbnail: null },
+          { id: "window:chrome", name: "Google Chrome", thumbnail: null },
+          { id: "window:edge", name: "Microsoft Edge", thumbnail: null },
+        ];
+
+        // 일반적인 앱 목록으로 대체
+        resolve([...fallbackWindows, ...commonApps]);
+      } else {
+        resolve(fallbackWindows);
+      }
     }
   });
 }
@@ -168,6 +206,7 @@ ipcMain.handle("get-active-windows", async () => {
 ipcMain.on("start-capture", async (event, args) => {
   console.log("Main 프로세스: start-capture 이벤트 수신", args);
   const targetWindowId = args.windowId || "screen:0";
+  console.log("캡처 대상 창 ID:", targetWindowId);
 
   // 이미 캡처 중이면 중지
   if (captureSession.isCapturing) {
@@ -188,6 +227,7 @@ ipcMain.on("start-capture", async (event, args) => {
 
   // 비디오 파일 경로
   const videoPath = path.join(sessionDir, `session_${sessionTimestamp}.mp4`);
+  console.log("비디오 저장 경로:", videoPath);
 
   captureSession = {
     isCapturing: true,
@@ -197,16 +237,41 @@ ipcMain.on("start-capture", async (event, args) => {
     targetWindowId: targetWindowId,
   };
 
-  // FFmpeg 명령어 옵션 설정
-  let ffmpegOptions = [];
+  try {
+    // 녹화할 창 정보 가져오기
+    let targetWindow = null;
 
-  if (process.platform === "win32") {
-    if (targetWindowId.includes("window:")) {
-      // 특정 창 녹화를 위한 정보 가져오기
+    if (targetWindowId !== "screen:0") {
       const windows = await getActiveWindows();
-      const targetWindow = windows.find((win) => win.id === targetWindowId);
+      targetWindow = windows.find((win) => win.id === targetWindowId);
 
       if (targetWindow) {
+        console.log("녹화할 창 찾음:", targetWindow.name);
+      } else {
+        console.log("대상 창을 찾을 수 없음, 전체 화면 녹화로 진행");
+      }
+    }
+
+    // FFmpeg 명령어 옵션 설정
+    let ffmpegOptions = [];
+
+    if (process.platform === "win32") {
+      // Windows 환경
+      if (targetWindow && targetWindowId !== "screen:0") {
+        // 하드코딩된 앱 명칭 기준으로 창 찾기 (fallback 대응)
+        let windowTitle = targetWindow.name;
+
+        // 일반적인 앱 창 명칭 처리
+        if (targetWindowId.includes("cursor")) {
+          windowTitle = "Cursor";
+        } else if (targetWindowId.includes("premiere")) {
+          windowTitle = "Adobe Premiere Pro";
+        } else if (targetWindowId.includes("photoshop")) {
+          windowTitle = "Adobe Photoshop";
+        }
+
+        console.log("녹화할 창 제목:", windowTitle);
+
         // 창 제목으로 녹화 (gdigrab)
         ffmpegOptions = [
           "-f",
@@ -214,7 +279,7 @@ ipcMain.on("start-capture", async (event, args) => {
           "-framerate",
           "15",
           "-i",
-          `title=${targetWindow.name}`,
+          `title=${windowTitle}`,
           "-c:v",
           "libx264",
           "-preset",
@@ -226,7 +291,8 @@ ipcMain.on("start-capture", async (event, args) => {
           videoPath,
         ];
       } else {
-        // 전체 화면 녹화로 대체
+        // 전체 화면 녹화
+        console.log("전체 화면 녹화 설정");
         ffmpegOptions = [
           "-f",
           "gdigrab",
@@ -245,15 +311,36 @@ ipcMain.on("start-capture", async (event, args) => {
           videoPath,
         ];
       }
-    } else {
-      // 전체 화면 녹화
+    } else if (process.platform === "darwin") {
+      // macOS용 명령어 (AVFoundation)
+      console.log("macOS 녹화 설정");
       ffmpegOptions = [
         "-f",
-        "gdigrab",
+        "avfoundation",
         "-framerate",
         "15",
         "-i",
-        "desktop",
+        "1:0", // 화면:오디오 (오디오 없음)
+        "-c:v",
+        "libx264",
+        "-preset",
+        "ultrafast",
+        "-crf",
+        "28",
+        "-pix_fmt",
+        "yuv420p",
+        videoPath,
+      ];
+    } else {
+      // Linux용 명령어 (x11grab)
+      console.log("Linux 녹화 설정");
+      ffmpegOptions = [
+        "-f",
+        "x11grab",
+        "-framerate",
+        "15",
+        "-i",
+        ":0.0",
         "-c:v",
         "libx264",
         "-preset",
@@ -265,54 +352,30 @@ ipcMain.on("start-capture", async (event, args) => {
         videoPath,
       ];
     }
-  } else if (process.platform === "darwin") {
-    // macOS용 명령어 (AVFoundation)
-    ffmpegOptions = [
-      "-f",
-      "avfoundation",
-      "-framerate",
-      "15",
-      "-i",
-      "1:0", // 화면:오디오 (오디오 없음)
-      "-c:v",
-      "libx264",
-      "-preset",
-      "ultrafast",
-      "-crf",
-      "28",
-      "-pix_fmt",
-      "yuv420p",
-      videoPath,
-    ];
-  } else {
-    // Linux용 명령어 (x11grab)
-    ffmpegOptions = [
-      "-f",
-      "x11grab",
-      "-framerate",
-      "15",
-      "-i",
-      ":0.0",
-      "-c:v",
-      "libx264",
-      "-preset",
-      "ultrafast",
-      "-crf",
-      "28",
-      "-pix_fmt",
-      "yuv420p",
-      videoPath,
-    ];
-  }
 
-  try {
+    // FFmpeg 명령어 로깅
+    console.log("실행할 FFmpeg 명령어:", "ffmpeg", ffmpegOptions.join(" "));
+
     // FFmpeg로 화면 녹화 시작
     const ffmpegProcess = spawn("ffmpeg", ffmpegOptions);
 
     captureSession.ffmpegProcess = ffmpegProcess;
 
     ffmpegProcess.stderr.on("data", (data) => {
-      console.log("FFmpeg 로그:", data.toString());
+      const logData = data.toString();
+      console.log(
+        "FFmpeg 로그:",
+        logData.substring(0, 150) + (logData.length > 150 ? "..." : "")
+      );
+    });
+
+    ffmpegProcess.on("error", (error) => {
+      console.error("FFmpeg 실행 오류:", error);
+      event.sender.send("capture-status", {
+        isCapturing: false,
+        duration: 0,
+        error: error.message,
+      });
     });
 
     ffmpegProcess.on("close", (code) => {
