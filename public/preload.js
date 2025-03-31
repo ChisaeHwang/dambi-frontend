@@ -2,10 +2,15 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 // 일렉트론 API를 웹 콘텐츠에 노출
 contextBridge.exposeInMainWorld("electron", {
+  // 활성 창 목록 가져오기
+  getActiveWindows: async () => {
+    return await ipcRenderer.invoke("get-active-windows");
+  },
+
   // 스크린샷 캡처 시작
-  startCapture: (interval) => {
-    console.log("Preload: startCapture 호출됨", interval);
-    ipcRenderer.send("start-capture", { interval });
+  startCapture: (windowId) => {
+    console.log("Preload: startCapture 호출됨", windowId);
+    ipcRenderer.send("start-capture", { windowId });
   },
 
   // 스크린샷 캡처 중지

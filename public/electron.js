@@ -6,6 +6,7 @@ const os = require("os");
 const { desktopCapturer } = require("electron");
 const ffmpeg = require("fluent-ffmpeg");
 const ffmpegPath = require("@ffmpeg-installer/ffmpeg").path;
+const { spawn, exec } = require("child_process");
 
 // FFmpeg 경로 설정
 ffmpeg.setFfmpegPath(ffmpegPath);
@@ -18,6 +19,10 @@ let captureSession = {
   captureDir: null,
   interval: 5,
   intervalId: null,
+  ffmpegProcess: null,
+  videoPath: null,
+  targetApplication: null,
+  durationInterval: null,
 };
 
 let mainWindow;
@@ -113,107 +118,241 @@ function createAppDirectories() {
   });
 }
 
+// 현재 실행 중인 창 목록 가져오기
+async function getActiveWindows() {
+  return new Promise(async (resolve) => {
+    try {
+      // 데스크탑 캡처러를 사용하여 화면 소스 목록 가져오기
+      const sources = await desktopCapturer.getSources({
+        types: ["window", "screen"],
+        thumbnailSize: { width: 150, height: 150 },
+      });
+
+      // 전체 화면 항목 추가
+      const windows = [
+        {
+          id: "screen:0",
+          name: "전체 화면",
+          thumbnail: sources.find((s) => s.id.includes("screen:0"))?.thumbnail,
+        },
+      ];
+
+      // 개별 창 항목 추가
+      const windowSources = sources.filter((source) =>
+        source.id.includes("window")
+      );
+
+      // 창 목록을 처리하여 중복 없이 정렬
+      const windowsList = windowSources.map((source) => ({
+        id: source.id,
+        name: source.name,
+        thumbnail: source.thumbnail,
+      }));
+
+      // 결과 반환
+      resolve([...windows, ...windowsList]);
+    } catch (error) {
+      console.error("창 목록 가져오기 오류:", error);
+      resolve([{ id: "screen:0", name: "전체 화면", thumbnail: null }]);
+    }
+  });
+}
+
+// IPC 핸들러 추가: 실행 중인 창 목록 요청
+ipcMain.handle("get-active-windows", async () => {
+  const windows = await getActiveWindows();
+  return windows;
+});
+
 // 스크린샷 캡처 시작
-ipcMain.on("start-capture", (event, args) => {
+ipcMain.on("start-capture", async (event, args) => {
   console.log("Main 프로세스: start-capture 이벤트 수신", args);
-  const interval = args.interval || 5;
+  const targetWindowId = args.windowId || "screen:0";
 
   // 이미 캡처 중이면 중지
   if (captureSession.isCapturing) {
-    console.log("Main 프로세스: 이미 캡처 중. 기존 인터벌 제거");
-    clearInterval(captureSession.intervalId);
+    console.log("Main 프로세스: 이미 캡처 중. 기존 녹화 중지");
+    if (captureSession.ffmpegProcess) {
+      captureSession.ffmpegProcess.kill();
+    }
   }
 
   // 새 캡처 세션 초기화
   const sessionTimestamp = new Date().toISOString().replace(/:/g, "-");
-  const sessionDir = path.join(
-    os.homedir(),
-    "Documents",
-    "담비",
-    "captures",
-    `session_${sessionTimestamp}`
-  );
+  const sessionDir = path.join(os.homedir(), "Documents", "담비", "captures");
 
-  console.log("Main 프로세스: 캡처 디렉토리 생성", sessionDir);
   // 디렉토리 생성
   if (!fs.existsSync(sessionDir)) {
     fs.mkdirSync(sessionDir, { recursive: true });
   }
 
+  // 비디오 파일 경로
+  const videoPath = path.join(sessionDir, `session_${sessionTimestamp}.mp4`);
+
   captureSession = {
     isCapturing: true,
-    frameCount: 0,
     startTime: new Date(),
-    captureDir: sessionDir,
-    interval,
-    intervalId: null,
+    videoPath: videoPath,
+    ffmpegProcess: null,
+    targetWindowId: targetWindowId,
   };
 
-  // 스크린샷 캡처 함수
-  const captureScreen = async () => {
-    if (!captureSession.isCapturing) return;
+  // FFmpeg 명령어 옵션 설정
+  let ffmpegOptions = [];
 
-    try {
-      // 스크린 캡처 소스 가져오기
-      const sources = await desktopCapturer.getSources({
-        types: ["screen"],
-        thumbnailSize: { width: 1920, height: 1080 },
-      });
+  if (process.platform === "win32") {
+    if (targetWindowId.includes("window:")) {
+      // 특정 창 녹화를 위한 정보 가져오기
+      const windows = await getActiveWindows();
+      const targetWindow = windows.find((win) => win.id === targetWindowId);
 
-      // 첫 번째 화면 (주 화면) 선택
-      const mainSource = sources[0];
-      if (!mainSource) {
-        console.error("화면 소스를 찾을 수 없습니다.");
+      if (targetWindow) {
+        // 창 제목으로 녹화 (gdigrab)
+        ffmpegOptions = [
+          "-f",
+          "gdigrab",
+          "-framerate",
+          "15",
+          "-i",
+          `title=${targetWindow.name}`,
+          "-c:v",
+          "libx264",
+          "-preset",
+          "ultrafast",
+          "-crf",
+          "28",
+          "-pix_fmt",
+          "yuv420p",
+          videoPath,
+        ];
+      } else {
+        // 전체 화면 녹화로 대체
+        ffmpegOptions = [
+          "-f",
+          "gdigrab",
+          "-framerate",
+          "15",
+          "-i",
+          "desktop",
+          "-c:v",
+          "libx264",
+          "-preset",
+          "ultrafast",
+          "-crf",
+          "28",
+          "-pix_fmt",
+          "yuv420p",
+          videoPath,
+        ];
+      }
+    } else {
+      // 전체 화면 녹화
+      ffmpegOptions = [
+        "-f",
+        "gdigrab",
+        "-framerate",
+        "15",
+        "-i",
+        "desktop",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "ultrafast",
+        "-crf",
+        "28",
+        "-pix_fmt",
+        "yuv420p",
+        videoPath,
+      ];
+    }
+  } else if (process.platform === "darwin") {
+    // macOS용 명령어 (AVFoundation)
+    ffmpegOptions = [
+      "-f",
+      "avfoundation",
+      "-framerate",
+      "15",
+      "-i",
+      "1:0", // 화면:오디오 (오디오 없음)
+      "-c:v",
+      "libx264",
+      "-preset",
+      "ultrafast",
+      "-crf",
+      "28",
+      "-pix_fmt",
+      "yuv420p",
+      videoPath,
+    ];
+  } else {
+    // Linux용 명령어 (x11grab)
+    ffmpegOptions = [
+      "-f",
+      "x11grab",
+      "-framerate",
+      "15",
+      "-i",
+      ":0.0",
+      "-c:v",
+      "libx264",
+      "-preset",
+      "ultrafast",
+      "-crf",
+      "28",
+      "-pix_fmt",
+      "yuv420p",
+      videoPath,
+    ];
+  }
+
+  try {
+    // FFmpeg로 화면 녹화 시작
+    const ffmpegProcess = spawn("ffmpeg", ffmpegOptions);
+
+    captureSession.ffmpegProcess = ffmpegProcess;
+
+    ffmpegProcess.stderr.on("data", (data) => {
+      console.log("FFmpeg 로그:", data.toString());
+    });
+
+    ffmpegProcess.on("close", (code) => {
+      console.log(`FFmpeg 프로세스 종료, 코드: ${code}`);
+    });
+
+    // 정기적으로 녹화 진행 시간 업데이트
+    const durationInterval = setInterval(() => {
+      if (!captureSession.isCapturing) {
+        clearInterval(durationInterval);
         return;
       }
-
-      // 프레임 번호 (4자리 숫자, 앞에 0 채움)
-      const frameNumber = String(captureSession.frameCount + 1).padStart(
-        4,
-        "0"
-      );
-
-      // 이미지 저장 경로
-      const imagePath = path.join(
-        captureSession.captureDir,
-        `${frameNumber}.png`
-      );
-
-      // 썸네일 저장
-      fs.writeFileSync(imagePath, mainSource.thumbnail.toPNG());
-
-      // 프레임 카운트 증가
-      captureSession.frameCount++;
 
       // 경과 시간 계산 (초)
       const duration = Math.floor(
         (new Date() - captureSession.startTime) / 1000
       );
 
-      // 캡처 상태 이벤트 전송
       event.sender.send("capture-status", {
         isCapturing: true,
-        frameCount: captureSession.frameCount,
         duration,
       });
-    } catch (error) {
-      console.error("스크린샷 캡처 오류:", error);
-    }
-  };
+    }, 1000);
 
-  // 첫 번째 캡처 실행
-  captureScreen();
+    captureSession.durationInterval = durationInterval;
 
-  // 정해진 간격으로 캡처 실행
-  captureSession.intervalId = setInterval(captureScreen, interval * 1000);
-
-  // 캡처 시작 상태 전송
-  console.log("Main 프로세스: 캡처 시작 상태 전송");
-  event.sender.send("capture-status", {
-    isCapturing: true,
-    frameCount: captureSession.frameCount,
-    duration: 0,
-  });
+    // 캡처 시작 상태 전송
+    console.log("Main 프로세스: 캡처 시작 상태 전송");
+    event.sender.send("capture-status", {
+      isCapturing: true,
+      duration: 0,
+    });
+  } catch (error) {
+    console.error("화면 녹화 시작 오류:", error);
+    event.sender.send("capture-status", {
+      isCapturing: false,
+      duration: 0,
+      error: error.message,
+    });
+  }
 });
 
 // 스크린샷 캡처 중지
@@ -224,9 +363,16 @@ ipcMain.on("stop-capture", (event) => {
     return;
   }
 
+  // FFmpeg 프로세스 종료 (녹화 중지)
+  if (captureSession.ffmpegProcess) {
+    // SIGINT 시그널 보내기
+    captureSession.ffmpegProcess.stdin.write("q");
+    captureSession.ffmpegProcess.kill("SIGINT");
+  }
+
   // 인터벌 타이머 중지
-  if (captureSession.intervalId) {
-    clearInterval(captureSession.intervalId);
+  if (captureSession.durationInterval) {
+    clearInterval(captureSession.durationInterval);
   }
 
   // 캡처 중지 상태 설정
@@ -239,7 +385,6 @@ ipcMain.on("stop-capture", (event) => {
   console.log("Main 프로세스: 캡처 중지 상태 전송");
   event.sender.send("capture-status", {
     isCapturing: false,
-    frameCount: captureSession.frameCount,
     duration,
   });
 });
@@ -247,10 +392,10 @@ ipcMain.on("stop-capture", (event) => {
 // 타임랩스 생성
 ipcMain.on("generate-timelapse", (event, options) => {
   console.log("Main 프로세스: generate-timelapse 이벤트 수신", options);
-  if (captureSession.frameCount === 0) {
-    console.log("Main 프로세스: 캡처된 프레임이 없음");
+  if (!captureSession.videoPath || !fs.existsSync(captureSession.videoPath)) {
+    console.log("Main 프로세스: 녹화된 영상이 없음");
     event.sender.send("generate-timelapse-response", {
-      error: "캡처된 프레임이 없습니다.",
+      error: "녹화된 영상이 없습니다.",
     });
     return;
   }
@@ -279,11 +424,11 @@ ipcMain.on("generate-timelapse", (event, options) => {
   try {
     let command = ffmpeg();
 
-    // 이미지 시퀀스 입력
-    command = command
-      .input(path.join(captureSession.captureDir, "%04d.png"))
-      .inputFPS(1) // 이미지 캡처 속도 (초당)
-      .outputFPS(options.fps || 30);
+    // 녹화 영상 입력
+    command = command.input(captureSession.videoPath);
+
+    // 속도 조절 필터 (배속)
+    const speedFactor = options.speedFactor || 3;
 
     if (options.outputFormat === "mp4") {
       outputPath = path.join(outputDir, `${outputFilename}.mp4`);
@@ -293,11 +438,11 @@ ipcMain.on("generate-timelapse", (event, options) => {
         .videoCodec("libx264")
         .videoBitrate(videoBitrate)
         .format("mp4")
-        .outputOptions([
-          "-pix_fmt yuv420p",
-          "-preset faster",
-          "-movflags +faststart",
-        ]);
+        .videoFilters([
+          `setpts=PTS/${speedFactor}`, // 영상 속도 조절
+          "pix_fmt=yuv420p",
+        ])
+        .outputOptions(["-preset faster", "-movflags +faststart"]);
     } else {
       outputPath = path.join(outputDir, `${outputFilename}.gif`);
 
@@ -305,8 +450,9 @@ ipcMain.on("generate-timelapse", (event, options) => {
         .output(outputPath)
         .format("gif")
         .size("640x?") // GIF 크기 제한 (너비 640px, 비율 유지)
-        .outputOptions([
-          "-vf scale=640:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse",
+        .videoFilters([
+          `setpts=PTS/${speedFactor}`, // 영상 속도 조절
+          "scale=640:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse",
         ]);
     }
 
