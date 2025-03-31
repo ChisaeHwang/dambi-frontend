@@ -52,6 +52,25 @@ const timelapseAPI = {
       ipcRenderer.send("generate-timelapse", options);
     });
   },
+
+  // 타임랩스 생성 진행률 이벤트 구독
+  onTimelapseProgress: (callback) => {
+    console.log("Preload: onTimelapseProgress 이벤트 구독 설정");
+    const progressListener = (event, progress) => {
+      callback(progress);
+    };
+
+    ipcRenderer.on("generate-timelapse-progress", progressListener);
+
+    // 컴포넌트 언마운트 시 이벤트 리스너 정리를 위한 함수 반환
+    return () => {
+      console.log("Preload: 타임랩스 진행률 이벤트 구독 해제");
+      ipcRenderer.removeListener(
+        "generate-timelapse-progress",
+        progressListener
+      );
+    };
+  },
 };
 
 const windowAPI = {

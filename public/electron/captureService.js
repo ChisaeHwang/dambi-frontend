@@ -256,42 +256,88 @@ function startCapture(event, args) {
 
           console.log("녹화할 창 제목:", windowTitle);
 
-          // 창 제목으로 녹화 (gdigrab)
+          // 창 제목으로 녹화 (gdigrab) - 안정성 개선 설정
           ffmpegOptions = [
+            "-hide_banner",
+            "-loglevel",
+            "info",
             "-f",
             "gdigrab",
             "-framerate",
             "15",
+            "-draw_mouse",
+            "1",
+            "-offset_x",
+            "0",
+            "-offset_y",
+            "0",
+            "-video_size",
+            "1920x1080",
+            "-probesize",
+            "10M",
+            "-analyzeduration",
+            "10M",
             "-i",
             `title=${windowTitle}`,
             "-c:v",
             "libx264",
             "-preset",
             "ultrafast",
+            "-tune",
+            "zerolatency",
             "-crf",
-            "28",
+            "23",
             "-pix_fmt",
             "yuv420p",
+            "-movflags",
+            "+faststart",
+            "-g",
+            "30",
+            "-keyint_min",
+            "15",
             videoPath,
           ];
         } else {
-          // 전체 화면 녹화
+          // 전체 화면 녹화 - 안정성 개선 설정
           console.log("전체 화면 녹화 설정");
           ffmpegOptions = [
+            "-hide_banner",
+            "-loglevel",
+            "info",
             "-f",
             "gdigrab",
             "-framerate",
             "15",
+            "-draw_mouse",
+            "1",
+            "-offset_x",
+            "0",
+            "-offset_y",
+            "0",
+            "-video_size",
+            "1920x1080",
+            "-probesize",
+            "10M",
+            "-analyzeduration",
+            "10M",
             "-i",
             "desktop",
             "-c:v",
             "libx264",
             "-preset",
             "ultrafast",
+            "-tune",
+            "zerolatency",
             "-crf",
-            "28",
+            "23",
             "-pix_fmt",
             "yuv420p",
+            "-movflags",
+            "+faststart",
+            "-g",
+            "30",
+            "-keyint_min",
+            "15",
             videoPath,
           ];
         }
@@ -299,40 +345,58 @@ function startCapture(event, args) {
         // macOS용 명령어 (AVFoundation)
         console.log("macOS 녹화 설정");
         ffmpegOptions = [
+          "-hide_banner",
+          "-loglevel",
+          "info",
           "-f",
           "avfoundation",
           "-framerate",
           "15",
+          "-probesize",
+          "10M",
           "-i",
           "1:0", // 화면:오디오 (오디오 없음)
           "-c:v",
           "libx264",
           "-preset",
           "ultrafast",
+          "-tune",
+          "zerolatency",
           "-crf",
-          "28",
+          "23",
           "-pix_fmt",
           "yuv420p",
+          "-movflags",
+          "+faststart",
           videoPath,
         ];
       } else {
         // Linux용 명령어 (x11grab)
         console.log("Linux 녹화 설정");
         ffmpegOptions = [
+          "-hide_banner",
+          "-loglevel",
+          "info",
           "-f",
           "x11grab",
           "-framerate",
           "15",
+          "-probesize",
+          "10M",
           "-i",
           ":0.0",
           "-c:v",
           "libx264",
           "-preset",
           "ultrafast",
+          "-tune",
+          "zerolatency",
           "-crf",
-          "28",
+          "23",
           "-pix_fmt",
           "yuv420p",
+          "-movflags",
+          "+faststart",
           videoPath,
         ];
       }
@@ -411,11 +475,65 @@ function stopCapture(event) {
     return;
   }
 
+  // 캡처 비디오 파일 경로 저장
+  const videoPath = captureSession.videoPath;
+
   // FFmpeg 프로세스 종료 (녹화 중지)
   if (captureSession.ffmpegProcess) {
-    // SIGINT 시그널 보내기
-    captureSession.ffmpegProcess.stdin.write("q");
-    captureSession.ffmpegProcess.kill("SIGINT");
+    try {
+      console.log("FFmpeg 프로세스 종료 시작...");
+
+      // 안전하게 종료하기 위해 q 명령어 전송 시도
+      if (
+        captureSession.ffmpegProcess.stdin &&
+        !captureSession.ffmpegProcess.stdin.destroyed
+      ) {
+        captureSession.ffmpegProcess.stdin.setEncoding("utf-8");
+        captureSession.ffmpegProcess.stdin.write("q\n");
+        console.log("FFmpeg 프로세스에 q 명령 전송됨");
+      } else {
+        console.log("FFmpeg stdin이 사용 불가능하여 시그널로 종료 시도");
+      }
+
+      // 3초 후에도 종료되지 않으면 SIGTERM 시그널 보내기
+      const killTimeout = setTimeout(() => {
+        try {
+          if (captureSession.ffmpegProcess) {
+            console.log(
+              "FFmpeg 프로세스가 여전히 실행 중, SIGTERM 시그널 전송"
+            );
+            captureSession.ffmpegProcess.kill("SIGTERM");
+
+            // 추가 3초 후에도 종료되지 않으면 SIGKILL로 강제 종료
+            setTimeout(() => {
+              try {
+                if (captureSession.ffmpegProcess) {
+                  console.log(
+                    "FFmpeg 프로세스가 여전히 종료되지 않음, SIGKILL로 강제 종료"
+                  );
+                  captureSession.ffmpegProcess.kill("SIGKILL");
+                }
+              } catch (e) {
+                console.error("FFmpeg 강제 종료 시 오류:", e);
+              }
+            }, 3000);
+          }
+        } catch (e) {
+          console.error("FFmpeg SIGTERM 전송 시 오류:", e);
+        }
+      }, 3000);
+
+      // 프로세스가 종료되면 타임아웃 취소
+      captureSession.ffmpegProcess.on("close", (code) => {
+        clearTimeout(killTimeout);
+        console.log(`FFmpeg 프로세스가 코드 ${code}로 종료됨`);
+
+        // 녹화 파일 검증
+        validateCaptureFile(videoPath);
+      });
+    } catch (e) {
+      console.error("FFmpeg 종료 명령 중 오류:", e);
+    }
   }
 
   // 인터벌 타이머 중지
@@ -435,6 +553,33 @@ function stopCapture(event) {
     isCapturing: false,
     duration,
   });
+}
+
+// 녹화 파일 검증 함수
+function validateCaptureFile(videoPath) {
+  if (!videoPath || !fs.existsSync(videoPath)) {
+    console.error("검증할 비디오 파일이 존재하지 않습니다:", videoPath);
+    return false;
+  }
+
+  try {
+    // 파일 크기 확인
+    const stats = fs.statSync(videoPath);
+    console.log(`녹화 완료된 비디오 파일 크기: ${stats.size} 바이트`);
+
+    if (stats.size < 10000) {
+      // 10KB 미만은 너무 작은 파일
+      console.error(
+        "녹화된 비디오 파일이 너무 작습니다. 손상되었을 가능성이 높습니다."
+      );
+      return false;
+    }
+
+    return true;
+  } catch (err) {
+    console.error("비디오 파일 검증 오류:", err);
+    return false;
+  }
 }
 
 module.exports = {
