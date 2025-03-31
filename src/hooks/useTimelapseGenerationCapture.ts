@@ -1,5 +1,11 @@
 import { useState, useEffect } from "react";
 
+// Electron.NativeImage를 대체할 인터페이스 정의
+interface NativeImage {
+  toDataURL: () => string;
+  getSize: () => { width: number; height: number };
+}
+
 // 타임랩스 옵션 인터페이스
 export interface TimelapseOptions {
   speedFactor: number; // 배속 요소 (3, 6, 9, 20 등)
@@ -18,8 +24,8 @@ export interface CaptureStatus {
 export interface WindowInfo {
   id: string;
   name: string;
-  thumbnail?: Electron.NativeImage;
-  appIcon?: Electron.NativeImage;
+  thumbnail?: NativeImage;
+  appIcon?: NativeImage;
   isScreen?: boolean;
 }
 
