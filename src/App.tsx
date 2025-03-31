@@ -29,19 +29,24 @@ function App() {
   };
 
   return (
-    <div className="App">
+    <div className="flex flex-col h-screen overflow-hidden bg-[var(--bg-tertiary)] text-[var(--text-normal)]">
       {isElectron && <AppTitleBar />}
-      <div className="simple-layout">
+      <div className="flex flex-1 overflow-hidden">
         {/* 심플한 아이콘 사이드바 */}
-        <div className="icon-sidebar">
+        <div className="w-[72px] py-3 flex flex-col items-center bg-[var(--bg-tertiary)] shadow-sm">
           <div
-            className={`icon-button ${
-              currentPage === "workspace" ? "active" : ""
+            className={`w-12 h-12 mb-2 flex items-center justify-center rounded-full bg-[var(--bg-secondary)] text-[var(--text-muted)] cursor-pointer transition-all duration-200 hover:bg-[var(--bg-accent)] hover:text-[var(--text-normal)] hover:rounded-2xl hover:-translate-y-0.5 ${
+              currentPage === "workspace"
+                ? "bg-[var(--primary-color)] text-white rounded-2xl relative"
+                : ""
             }`}
             onClick={() => setCurrentPage("workspace")}
             title="워크스페이스"
           >
-            <div className="icon">
+            {currentPage === "workspace" && (
+              <div className="absolute left-[-16px] w-2 h-8 bg-white rounded-r"></div>
+            )}
+            <div className="w-6 h-6 flex items-center justify-center">
               <svg
                 fill="currentColor"
                 viewBox="0 0 24 24"
@@ -53,13 +58,18 @@ function App() {
             </div>
           </div>
           <div
-            className={`icon-button ${
-              currentPage === "calendar" ? "active" : ""
+            className={`w-12 h-12 mb-2 flex items-center justify-center rounded-full bg-[var(--bg-secondary)] text-[var(--text-muted)] cursor-pointer transition-all duration-200 hover:bg-[var(--bg-accent)] hover:text-[var(--text-normal)] hover:rounded-2xl hover:-translate-y-0.5 ${
+              currentPage === "calendar"
+                ? "bg-[var(--primary-color)] text-white rounded-2xl relative"
+                : ""
             }`}
             onClick={() => setCurrentPage("calendar")}
             title="작업 캘린더"
           >
-            <div className="icon">
+            {currentPage === "calendar" && (
+              <div className="absolute left-[-16px] w-2 h-8 bg-white rounded-r"></div>
+            )}
+            <div className="w-6 h-6 flex items-center justify-center">
               <svg
                 fill="currentColor"
                 viewBox="0 0 24 24"
@@ -71,13 +81,18 @@ function App() {
             </div>
           </div>
           <div
-            className={`icon-button ${
-              currentPage === "settings" ? "active" : ""
+            className={`w-12 h-12 mb-2 flex items-center justify-center rounded-full bg-[var(--bg-secondary)] text-[var(--text-muted)] cursor-pointer transition-all duration-200 hover:bg-[var(--bg-accent)] hover:text-[var(--text-normal)] hover:rounded-2xl hover:-translate-y-0.5 ${
+              currentPage === "settings"
+                ? "bg-[var(--primary-color)] text-white rounded-2xl relative"
+                : ""
             }`}
             onClick={() => setCurrentPage("settings")}
             title="설정"
           >
-            <div className="icon">
+            {currentPage === "settings" && (
+              <div className="absolute left-[-16px] w-2 h-8 bg-white rounded-r"></div>
+            )}
+            <div className="w-6 h-6 flex items-center justify-center">
               <svg
                 fill="currentColor"
                 viewBox="0 0 24 24"
@@ -91,7 +106,9 @@ function App() {
         </div>
 
         {/* 메인 컨텐츠 영역 */}
-        <main className="main-content">{renderPageContent()}</main>
+        <main className="flex-1 overflow-hidden bg-[var(--bg-primary)]">
+          {renderPageContent()}
+        </main>
       </div>
     </div>
   );

@@ -1,23 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useTimelapseGenerationCapture } from "../hooks/useTimelapseGenerationCapture";
 import { formatTime } from "../utils/timeUtils";
-
-// 일렉트론 환경에서 IPC 통신을 위한 타입 정의
-declare global {
-  interface Window {
-    electron: {
-      getActiveWindows: () => Promise<any[]>;
-      startCapture: (windowId: string) => void;
-      stopCapture: () => void;
-      generateTimelapse: (options: any) => Promise<string>;
-      onCaptureStatus: (callback: (status: any) => void) => void;
-      isMaximized: () => Promise<boolean>;
-      minimize: () => void;
-      maximize: () => void;
-      close: () => void;
-    };
-  }
-}
+import type { WindowInfo } from "../hooks/useTimelapseGenerationCapture";
 
 // 앱 아이콘 컴포넌트
 const AppIcon: React.FC<{ name: string }> = ({ name }) => {
@@ -72,7 +56,7 @@ const AppIcon: React.FC<{ name: string }> = ({ name }) => {
 };
 
 // 윈도우 썸네일 컴포넌트
-const WindowThumbnail: React.FC<{ window: any }> = ({ window }) => {
+const WindowThumbnail: React.FC<{ window: WindowInfo }> = ({ window }) => {
   const [imageError, setImageError] = useState(false);
 
   // 썸네일 이미지 에러 처리
@@ -121,6 +105,7 @@ const Timelapse: React.FC = () => {
     isLoadingWindows,
     changeSelectedWindow,
     refreshActiveWindows,
+    error,
   } = useTimelapseGenerationCapture();
 
   const [showGeneratePrompt, setShowGeneratePrompt] = useState<boolean>(false);
@@ -134,7 +119,7 @@ const Timelapse: React.FC = () => {
   useEffect(() => {
     // 초기 창 목록 로드
     refreshActiveWindows();
-  }, [refreshActiveWindows]);
+  }, []); // 의존성 배열을 빈 배열로 변경하여 마운트 시에만 실행
 
   // 타이머 관리
   useEffect(() => {
@@ -198,12 +183,12 @@ const Timelapse: React.FC = () => {
       style={{
         backgroundColor: "#36393f",
         color: "#dcddde",
-        minHeight: "100vh",
-        width: "100%", // 가로 스크롤 방지
+        height: "100%",
+        width: "100%",
         display: "flex",
         flexDirection: "column",
         padding: "12px",
-        overflowX: "hidden", // 가로 스크롤 방지
+        overflow: "hidden", // 전체 컨테이너에서는 스크롤 제거
       }}
     >
       <div
@@ -214,9 +199,12 @@ const Timelapse: React.FC = () => {
           boxShadow: "0 2px 10px 0 rgba(0,0,0,.2)",
           padding: "20px",
           margin: "0 auto",
-          width: "98%", // 여백 더 줄임
-          maxWidth: "1400px", // 최대 너비 증가
-          minWidth: "auto", // 최소 너비 제거하여 가로 스크롤 방지
+          width: "98%",
+          maxWidth: "1400px",
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "auto", // 카드 내부에만 스크롤 허용
         }}
       >
         <h2
@@ -231,6 +219,21 @@ const Timelapse: React.FC = () => {
         >
           워크스페이스
         </h2>
+
+        {error && (
+          <div
+            style={{
+              color: "#ed4245",
+              backgroundColor: "rgba(237, 66, 69, 0.1)",
+              padding: "10px",
+              borderRadius: "4px",
+              marginBottom: "16px",
+              textAlign: "center",
+            }}
+          >
+            {error}
+          </div>
+        )}
 
         {!isCapturing && !showGeneratePrompt && (
           <div className="settings" style={{ marginBottom: "16px" }}>
@@ -284,7 +287,7 @@ const Timelapse: React.FC = () => {
                 className="windows-grid"
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", // 그리드 셀 크기 증가
+                  gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
                   gap: "10px",
                   marginTop: "10px",
                 }}
@@ -308,8 +311,8 @@ const Timelapse: React.FC = () => {
                   >
                     <div
                       style={{
-                        width: "160px", // 썸네일 크기 증가
-                        height: "120px", // 썸네일 크기 증가
+                        width: "160px",
+                        height: "120px",
                         backgroundColor: "#2f3136",
                         marginBottom: "8px",
                         display: "flex",
@@ -410,6 +413,7 @@ const Timelapse: React.FC = () => {
             display: "flex",
             justifyContent: "center",
             marginTop: "16px",
+            marginBottom: "16px",
           }}
         >
           <button
@@ -425,7 +429,7 @@ const Timelapse: React.FC = () => {
               fontWeight: "500",
               transition: "background-color 0.2s",
               width: "100%",
-              maxWidth: "240px", // 버튼 너비 증가
+              maxWidth: "240px",
               minWidth: "180px",
             }}
           >

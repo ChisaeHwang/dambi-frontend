@@ -2,7 +2,7 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
-  "main": "public/electron.js",
+  "main": "public/electron/main.js",
   "homepage": "./",
   "dependencies": {
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
@@ -63,6 +63,7 @@
     "postcss": "^8.5.3",
     "process": "^0.11.10",
     "stream-browserify": "^3.0.0",
+    "tailwindcss": "^4.0.17",
     "wait-on": "^8.0.3"
   },
   "build": {
@@ -76,7 +77,7 @@
       "buildResources": "assets"
     },
     "extraMetadata": {
-      "main": "build/electron.js"
+      "main": "build/electron/main.js"
     }
   }
 }

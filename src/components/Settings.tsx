@@ -104,7 +104,7 @@ const Settings: React.FC = () => {
   useEffect(() => {
     // 초기 창 목록 로드
     refreshActiveWindows();
-  }, [refreshActiveWindows]);
+  }, []);
 
   // 배속 변경 핸들러
   const handleSpeedChange = (speed: number) => {

@@ -11,6 +11,7 @@ export interface TimelapseOptions {
 export interface CaptureStatus {
   isCapturing: boolean;
   duration: number;
+  error?: string;
 }
 
 // 창 정보 인터페이스
@@ -18,6 +19,8 @@ export interface WindowInfo {
   id: string;
   name: string;
   thumbnail?: Electron.NativeImage;
+  appIcon?: Electron.NativeImage;
+  isScreen?: boolean;
 }
 
 // 일렉트론 환경 확인
@@ -40,9 +43,10 @@ export const useTimelapseGenerationCapture = () => {
   const [electronAvailable, setElectronAvailable] = useState<boolean>(false);
   const [selectedWindowId, setSelectedWindowId] = useState<string>("screen:0");
   const [activeWindows, setActiveWindows] = useState<WindowInfo[]>([
-    { id: "screen:0", name: "전체 화면" },
+    { id: "screen:0", name: "전체 화면", isScreen: true },
   ]);
   const [isLoadingWindows, setIsLoadingWindows] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   // 활성 창 목록 가져오기
   const fetchActiveWindows = async () => {
@@ -50,30 +54,12 @@ export const useTimelapseGenerationCapture = () => {
 
     try {
       setIsLoadingWindows(true);
+      setError(null);
       const windows = await window.electron.getActiveWindows();
-
-      // 현재 화면에서 사용하는 앱만 필터링
-      const filteredWindows = windows.filter((window) => {
-        const name = window.name.toLowerCase();
-        // 피그마, 파이어베이스, vscode 등은 제외
-        return (
-          !name.includes("figma") &&
-          !name.includes("firebase") &&
-          !name.includes("code") &&
-          !name.includes("vscode") &&
-          !name.includes("explorer") &&
-          !name.includes("settings")
-        );
-      });
-
-      // 전체 화면 옵션 추가
-      if (filteredWindows.findIndex((w) => w.id === "screen:0") === -1) {
-        filteredWindows.unshift({ id: "screen:0", name: "전체 화면" });
-      }
-
-      setActiveWindows(filteredWindows);
+      setActiveWindows(windows);
     } catch (error) {
       console.error("활성 창 목록 가져오기 실패:", error);
+      setError("창 목록을 가져오는 데 실패했습니다.");
     } finally {
       setIsLoadingWindows(false);
     }
@@ -84,16 +70,29 @@ export const useTimelapseGenerationCapture = () => {
     const electronEnv = isElectronEnv();
     setElectronAvailable(electronEnv);
 
+    let cleanup: (() => void) | null = null;
+
     if (electronEnv) {
       // 캡처 상태 이벤트 리스너 등록
-      window.electron.onCaptureStatus((status) => {
+      cleanup = window.electron.onCaptureStatus((status) => {
         setIsCapturing(status.isCapturing);
         setDuration(status.duration);
+
+        if (status.error) {
+          setError(status.error);
+        }
       });
 
       // 활성 창 목록 가져오기
       fetchActiveWindows();
     }
+
+    // 컴포넌트 언마운트 시 이벤트 리스너 정리
+    return () => {
+      if (cleanup) {
+        cleanup();
+      }
+    };
   }, []);
 
   // 타임랩스 옵션 변경 핸들러
@@ -116,10 +115,11 @@ export const useTimelapseGenerationCapture = () => {
 
   // 캡처 시작
   const startCapture = () => {
+    setError(null);
+
     if (electronAvailable) {
       // 선택한 창 ID 전달
       window.electron.startCapture(selectedWindowId);
-      setIsCapturing(true);
     } else {
       console.log("모의 환경: 캡처 시작");
       setIsCapturing(true);
@@ -130,7 +130,6 @@ export const useTimelapseGenerationCapture = () => {
   const stopCapture = () => {
     if (electronAvailable) {
       window.electron.stopCapture();
-      setIsCapturing(false);
     } else {
       console.log("모의 환경: 캡처 중지");
       setIsCapturing(false);
@@ -142,6 +141,8 @@ export const useTimelapseGenerationCapture = () => {
     customOptions?: Partial<TimelapseOptions>
   ) => {
     try {
+      setError(null);
+
       if (electronAvailable) {
         // 기존 옵션과 커스텀 옵션 병합
         const mergedOptions = {
@@ -159,7 +160,10 @@ export const useTimelapseGenerationCapture = () => {
         return mockPath;
       }
     } catch (error) {
-      console.error("타임랩스 생성 오류:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error("타임랩스 생성 오류:", errorMessage);
+      setError(errorMessage);
       throw error;
     }
   };
@@ -173,6 +177,7 @@ export const useTimelapseGenerationCapture = () => {
     selectedWindowId,
     activeWindows,
     isLoadingWindows,
+    error,
     startCapture,
     stopCapture,
     changeTimelapseOptions,
