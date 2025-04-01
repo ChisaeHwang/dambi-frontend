@@ -56,16 +56,31 @@ export const useTimelapseGenerationCapture = () => {
 
   // 활성 창 목록 가져오기
   const fetchActiveWindows = async () => {
-    if (!electronAvailable) return;
+    if (!electronAvailable) {
+      // Electron 환경이 아닐 때는 전체 화면만 표시
+      setActiveWindows([{ id: "screen:0", name: "전체 화면", isScreen: true }]);
+      return;
+    }
 
     try {
       setIsLoadingWindows(true);
       setError(null);
       const windows = await window.electron.getActiveWindows();
-      setActiveWindows(windows);
+
+      if (windows && Array.isArray(windows)) {
+        console.log("가져온 창 목록:", windows.map((w) => w.name).join(", "));
+        setActiveWindows(windows);
+      } else {
+        console.error("잘못된 창 목록 형식:", windows);
+        setActiveWindows([
+          { id: "screen:0", name: "전체 화면", isScreen: true },
+        ]);
+      }
     } catch (error) {
       console.error("활성 창 목록 가져오기 실패:", error);
       setError("창 목록을 가져오는 데 실패했습니다.");
+      // 오류 발생 시 최소한 전체 화면은 표시
+      setActiveWindows([{ id: "screen:0", name: "전체 화면", isScreen: true }]);
     } finally {
       setIsLoadingWindows(false);
     }
