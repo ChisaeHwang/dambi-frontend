@@ -7,45 +7,39 @@ interface WindowThumbnailProps {
 
 const WindowThumbnail: React.FC<WindowThumbnailProps> = ({ window }) => {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
-  const [timestamp, setTimestamp] = useState<number>(Date.now());
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // window prop이 변경될 때마다 썸네일 업데이트
+  // 썸네일 데이터가 변경될 때마다 업데이트
   useEffect(() => {
     // 상태 초기화
-    setTimestamp(Date.now());
     setImageSrc(null);
     setErrorMsg(null);
 
-    if (!window.thumbnail) {
-      setErrorMsg("썸네일이 없습니다");
+    // 1. 먼저 직접 Base64로 인코딩된 데이터를 확인
+    if (window.thumbnailDataUrl) {
+      console.log(`직접 전달된 Base64 썸네일 사용 (${window.name})`);
+      setImageSrc(window.thumbnailDataUrl);
       return;
     }
 
-    try {
-      // 그냥 데이터 URL 그대로 사용
-      const dataUrl = window.thumbnail.toDataURL();
-
-      // 데이터 URL 유효성 확인
-      if (!dataUrl || dataUrl.length < 50) {
-        setErrorMsg("썸네일 데이터가 유효하지 않습니다");
-        console.error(
-          `유효하지 않은 데이터 URL: ${dataUrl?.substring(0, 20)}...`
+    // 2. 이전 방식 지원 (NativeImage 객체에서 변환)
+    if (window.thumbnail) {
+      try {
+        console.log(`NativeImage에서 썸네일 변환 (${window.name})`);
+        const dataUrl = window.thumbnail.toDataURL();
+        setImageSrc(dataUrl);
+      } catch (error) {
+        console.error("NativeImage 썸네일 처리 오류:", error);
+        setErrorMsg(
+          `오류: ${error instanceof Error ? error.message : String(error)}`
         );
-        return;
       }
-
-      console.log(
-        `썸네일 로드 성공 (${window.name}): ${dataUrl.substring(0, 30)}...`
-      );
-      setImageSrc(dataUrl);
-    } catch (error) {
-      console.error("썸네일 처리 오류:", error);
-      setErrorMsg(
-        `오류: ${error instanceof Error ? error.message : String(error)}`
-      );
+      return;
     }
-  }, [window]);
+
+    // 3. 썸네일이 없는 경우
+    setErrorMsg("썸네일이 없습니다");
+  }, [window, window.thumbnailDataUrl, window.timestamp]);
 
   // 이미지가 없으면 창 이름 또는 오류 표시
   if (!imageSrc) {
@@ -75,7 +69,7 @@ const WindowThumbnail: React.FC<WindowThumbnailProps> = ({ window }) => {
     );
   }
 
-  // 이미지가 있으면 이미지 표시 (key 속성에 타임스탬프 추가)
+  // 이미지가 있으면 이미지 표시
   return (
     <div
       style={{
@@ -89,7 +83,7 @@ const WindowThumbnail: React.FC<WindowThumbnailProps> = ({ window }) => {
       }}
     >
       <img
-        key={`img-${window.id}-${timestamp}`}
+        key={`img-${window.id}-${window.timestamp || Date.now()}`}
         src={imageSrc}
         alt={window.name}
         style={{

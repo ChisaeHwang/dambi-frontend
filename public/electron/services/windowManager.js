@@ -64,6 +64,9 @@ async function getActiveWindows() {
       const normalWindows = [];
       const screenWindows = [];
 
+      // 타임스탬프 추가 (캐시 방지용)
+      const timestamp = Date.now();
+
       // 창 분류
       for (const source of allSources) {
         try {
@@ -78,16 +81,21 @@ async function getActiveWindows() {
           if (isScreenSource) {
             try {
               if (!source.thumbnail || source.thumbnail.isEmpty()) continue;
-              source.thumbnail.toDataURL(); // 유효성 검사
+
+              // 썸네일을 Base64 문자열로 직접 변환
+              const thumbnailDataUrl = source.thumbnail.toDataURL();
 
               screenWindows.push({
                 id: source.id,
                 name: "전체 화면",
-                thumbnail: source.thumbnail,
+                thumbnailDataUrl, // 직접 Base64 문자열 전달
+                thumbnailWidth: source.thumbnail.getSize().width,
+                thumbnailHeight: source.thumbnail.getSize().height,
                 appIcon: null,
                 isScreen: true,
                 width: displayWidth,
                 height: displayHeight,
+                timestamp, // 캐시 방지를 위한 타임스탬프 추가
               });
             } catch (err) {
               console.error("화면 소스 처리 오류:", err);
@@ -107,8 +115,14 @@ async function getActiveWindows() {
           if (!source.name || source.name.trim() === "") continue;
           if (!source.thumbnail || source.thumbnail.isEmpty()) continue;
 
-          // 썸네일 유효성 테스트
-          source.thumbnail.toDataURL();
+          // 썸네일 변환 시도
+          let thumbnailDataUrl;
+          try {
+            thumbnailDataUrl = source.thumbnail.toDataURL();
+          } catch (thumbError) {
+            console.error(`썸네일 변환 오류 (${source.name}):`, thumbError);
+            continue; // 썸네일 변환 실패 시 이 창은 건너뛰기
+          }
 
           // 썸네일 크기 확인
           const thumbSize = source.thumbnail.getSize();
@@ -124,15 +138,18 @@ async function getActiveWindows() {
             windowHeight = 720;
           }
 
-          // 창 정보 생성
+          // 창 정보 생성 (NativeImage 객체 대신 Base64 문자열 사용)
           const windowInfo = {
             id: source.id,
             name: source.name,
-            thumbnail: source.thumbnail,
-            appIcon: source.appIcon,
+            thumbnailDataUrl, // 직접 Base64 문자열 전달
+            thumbnailWidth: thumbSize.width,
+            thumbnailHeight: thumbSize.height,
+            appIcon: null, // 앱 아이콘은 필요 없으므로 null로 설정
             isScreen: false,
             width: windowWidth,
             height: windowHeight,
+            timestamp, // 캐시 방지를 위한 타임스탬프 추가
           };
 
           // 브라우저 우선순위 확인
@@ -171,11 +188,12 @@ async function getActiveWindows() {
         {
           id: "screen:0",
           name: "전체 화면",
-          thumbnail: null,
+          thumbnailDataUrl: null,
           appIcon: null,
           isScreen: true,
           width: 1920,
           height: 1080,
+          timestamp: Date.now(),
         },
       ];
 

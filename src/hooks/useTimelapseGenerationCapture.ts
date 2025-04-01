@@ -24,8 +24,16 @@ export interface CaptureStatus {
 export interface WindowInfo {
   id: string;
   name: string;
+  // 기존 NativeImage 객체 (이전 버전 호환성 유지)
   thumbnail?: NativeImage;
   appIcon?: NativeImage;
+  // Base64 인코딩된 썸네일 데이터 (새 버전에서 사용)
+  thumbnailDataUrl?: string;
+  thumbnailWidth?: number;
+  thumbnailHeight?: number;
+  // 타임스탬프 (캐시 방지)
+  timestamp: number;
+  // 화면 여부
   isScreen?: boolean;
 }
 
@@ -49,7 +57,12 @@ export const useTimelapseGenerationCapture = () => {
   const [electronAvailable, setElectronAvailable] = useState<boolean>(false);
   const [selectedWindowId, setSelectedWindowId] = useState<string>("screen:0");
   const [activeWindows, setActiveWindows] = useState<WindowInfo[]>([
-    { id: "screen:0", name: "전체 화면", isScreen: true },
+    {
+      id: "screen:0",
+      name: "전체 화면",
+      isScreen: true,
+      timestamp: Date.now(),
+    },
   ]);
   const [isLoadingWindows, setIsLoadingWindows] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,29 +71,56 @@ export const useTimelapseGenerationCapture = () => {
   const fetchActiveWindows = async () => {
     if (!electronAvailable) {
       // Electron 환경이 아닐 때는 전체 화면만 표시
-      setActiveWindows([{ id: "screen:0", name: "전체 화면", isScreen: true }]);
+      setActiveWindows([
+        {
+          id: "screen:0",
+          name: "전체 화면",
+          isScreen: true,
+          timestamp: Date.now(),
+        },
+      ]);
       return;
     }
 
     try {
       setIsLoadingWindows(true);
       setError(null);
-      const windows = await window.electron.getActiveWindows();
+      // any 타입으로 임시 처리 (Electron IPC 통신이 정확한 타입을 보장하지 않음)
+      const windows: any[] = await window.electron.getActiveWindows();
 
       if (windows && Array.isArray(windows)) {
         console.log("가져온 창 목록:", windows.map((w) => w.name).join(", "));
-        setActiveWindows(windows);
+
+        // 타임스탬프 보장: Electron에서 타임스탬프가 제공되지 않은 경우 추가
+        const windowsWithTimestamp = windows.map((win) => ({
+          ...win,
+          timestamp: win.timestamp || Date.now(),
+        }));
+
+        setActiveWindows(windowsWithTimestamp);
       } else {
         console.error("잘못된 창 목록 형식:", windows);
         setActiveWindows([
-          { id: "screen:0", name: "전체 화면", isScreen: true },
+          {
+            id: "screen:0",
+            name: "전체 화면",
+            isScreen: true,
+            timestamp: Date.now(),
+          },
         ]);
       }
     } catch (error) {
       console.error("활성 창 목록 가져오기 실패:", error);
       setError("창 목록을 가져오는 데 실패했습니다.");
       // 오류 발생 시 최소한 전체 화면은 표시
-      setActiveWindows([{ id: "screen:0", name: "전체 화면", isScreen: true }]);
+      setActiveWindows([
+        {
+          id: "screen:0",
+          name: "전체 화면",
+          isScreen: true,
+          timestamp: Date.now(),
+        },
+      ]);
     } finally {
       setIsLoadingWindows(false);
     }
@@ -114,6 +154,7 @@ export const useTimelapseGenerationCapture = () => {
         cleanup();
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 타임랩스 옵션 변경 핸들러

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import type { WindowInfo } from "../../hooks/useTimelapseGenerationCapture";
 import WindowThumbnail from "./window/WindowThumbnail";
 
@@ -17,12 +17,8 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
   isLoadingWindows,
   onRefreshWindows,
 }) => {
-  // 새로고침 시 증가하는 타임스탬프로 캐시를 방지
-  const [refreshTimestamp, setRefreshTimestamp] = useState<number>(Date.now());
-
   // 새로고침 핸들러
   const handleRefresh = () => {
-    setRefreshTimestamp(Date.now());
     onRefreshWindows();
   };
 
@@ -94,7 +90,9 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
         ) : (
           activeWindows.map((window, index) => (
             <div
-              key={`window-${window.id}-${index}-${refreshTimestamp}`}
+              key={`window-${window.id}-${index}-${
+                window.timestamp || Date.now()
+              }`}
               onClick={() => onWindowChange(window.id)}
               style={{
                 backgroundColor:
