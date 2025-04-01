@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import type { WindowInfo } from "../../hooks/useTimelapseGenerationCapture";
 import WindowThumbnail from "./window/WindowThumbnail";
 
@@ -17,6 +17,15 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
   isLoadingWindows,
   onRefreshWindows,
 }) => {
+  // 새로고침 시 증가하는 타임스탬프로 캐시를 방지
+  const [refreshTimestamp, setRefreshTimestamp] = useState<number>(Date.now());
+
+  // 새로고침 핸들러
+  const handleRefresh = () => {
+    setRefreshTimestamp(Date.now());
+    onRefreshWindows();
+  };
+
   return (
     <div className="setting-section" style={{ marginBottom: "16px" }}>
       <div
@@ -43,7 +52,7 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
             </span>
           )}
           <button
-            onClick={onRefreshWindows}
+            onClick={handleRefresh}
             style={{
               padding: "4px 12px",
               borderRadius: "4px",
@@ -66,9 +75,9 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
         className="windows-grid"
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
-          gap: "10px",
-          marginTop: "10px",
+          gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+          gap: "12px",
+          marginTop: "12px",
         }}
       >
         {activeWindows.length === 0 ? (
@@ -83,34 +92,41 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
             표시할 창이 없습니다. 새로고침을 눌러보세요.
           </div>
         ) : (
-          activeWindows.map((window) => (
+          activeWindows.map((window, index) => (
             <div
-              key={window.id}
+              key={`window-${window.id}-${index}-${refreshTimestamp}`}
               onClick={() => onWindowChange(window.id)}
               style={{
                 backgroundColor:
                   selectedWindowId === window.id ? "#5865f2" : "#4f545c",
-                borderRadius: "4px",
-                padding: "8px",
+                borderRadius: "6px",
+                padding: "10px",
                 cursor: "pointer",
-                transition: "background-color 0.2s",
+                transition: "all 0.2s ease",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
                 textAlign: "center",
+                boxShadow:
+                  selectedWindowId === window.id
+                    ? "0 0 8px rgba(88, 101, 242, 0.5)"
+                    : "none",
+                transform:
+                  selectedWindowId === window.id ? "scale(1.02)" : "scale(1)",
               }}
             >
               <div
                 style={{
-                  width: "160px",
-                  height: "120px",
+                  width: "100%",
+                  height: "140px",
                   backgroundColor: "#2f3136",
-                  marginBottom: "8px",
+                  marginBottom: "10px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   borderRadius: "4px",
                   overflow: "hidden",
+                  position: "relative",
                 }}
               >
                 <WindowThumbnail window={window} />
