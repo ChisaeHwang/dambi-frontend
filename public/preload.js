@@ -1,11 +1,16 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
-// 일렉트론 API를 웹 콘텐츠에 노출
-contextBridge.exposeInMainWorld("electron", {
+// API 그룹 정의
+const captureAPI = {
+  // 활성 창 목록 가져오기
+  getActiveWindows: async () => {
+    return await ipcRenderer.invoke("get-active-windows");
+  },
+
   // 스크린샷 캡처 시작
-  startCapture: (interval) => {
-    console.log("Preload: startCapture 호출됨", interval);
-    ipcRenderer.send("start-capture", { interval });
+  startCapture: (windowId) => {
+    console.log("Preload: startCapture 호출됨", windowId);
+    ipcRenderer.send("start-capture", { windowId });
   },
 
   // 스크린샷 캡처 중지
@@ -14,6 +19,24 @@ contextBridge.exposeInMainWorld("electron", {
     ipcRenderer.send("stop-capture");
   },
 
+  // 캡처 상태 이벤트 구독
+  onCaptureStatus: (callback) => {
+    console.log("Preload: onCaptureStatus 이벤트 구독 설정");
+    const captureStatusListener = (event, status) => {
+      callback(status);
+    };
+
+    ipcRenderer.on("capture-status", captureStatusListener);
+
+    // 컴포넌트 언마운트 시 이벤트 리스너 정리를 위한 함수 반환
+    return () => {
+      console.log("Preload: 캡처 상태 이벤트 구독 해제");
+      ipcRenderer.removeListener("capture-status", captureStatusListener);
+    };
+  },
+};
+
+const timelapseAPI = {
   // 타임랩스 생성
   generateTimelapse: (options) => {
     console.log("Preload: generateTimelapse 호출됨", options);
@@ -30,20 +53,27 @@ contextBridge.exposeInMainWorld("electron", {
     });
   },
 
-  // 캡처 상태 이벤트 구독
-  onCaptureStatus: (callback) => {
-    const captureStatusListener = (event, status) => {
-      callback(status);
+  // 타임랩스 생성 진행률 이벤트 구독
+  onTimelapseProgress: (callback) => {
+    console.log("Preload: onTimelapseProgress 이벤트 구독 설정");
+    const progressListener = (event, progress) => {
+      callback(progress);
     };
 
-    ipcRenderer.on("capture-status", captureStatusListener);
+    ipcRenderer.on("generate-timelapse-progress", progressListener);
 
     // 컴포넌트 언마운트 시 이벤트 리스너 정리를 위한 함수 반환
     return () => {
-      ipcRenderer.removeListener("capture-status", captureStatusListener);
+      console.log("Preload: 타임랩스 진행률 이벤트 구독 해제");
+      ipcRenderer.removeListener(
+        "generate-timelapse-progress",
+        progressListener
+      );
     };
   },
+};
 
+const windowAPI = {
   // 창 제어 API
   minimize: () => {
     ipcRenderer.send("window:minimize");
@@ -65,4 +95,11 @@ contextBridge.exposeInMainWorld("electron", {
       ipcRenderer.send("window:is-maximized");
     });
   },
+};
+
+// 모든 API를 통합하여 노출
+contextBridge.exposeInMainWorld("electron", {
+  ...captureAPI,
+  ...timelapseAPI,
+  ...windowAPI,
 });

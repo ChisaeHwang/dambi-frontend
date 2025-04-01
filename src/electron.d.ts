@@ -1,26 +1,39 @@
 // Electron API에 대한 타입 정의
 interface CaptureStatus {
   isCapturing: boolean;
-  frameCount: number;
   duration: number;
-  estimatedPlaybackDuration?: number;
+  error?: string;
 }
 
 interface TimelapseOptions {
-  fps: number;
+  speedFactor: number;
   outputQuality: "low" | "medium" | "high";
   outputFormat: "mp4" | "gif";
+}
+
+// 창 정보 인터페이스
+interface WindowInfo {
+  id: string;
+  name: string;
+  thumbnail?: Electron.NativeImage;
+  appIcon?: Electron.NativeImage;
+  isScreen?: boolean;
 }
 
 // 전역 Window 타입 확장
 declare global {
   interface Window {
     electron: {
-      // 타임랩스 관련 API
-      startCapture: (interval: number) => void;
+      // 캡처 관련 API
+      getActiveWindows: () => Promise<WindowInfo[]>;
+      startCapture: (windowId: string) => void;
       stopCapture: () => void;
+      onCaptureStatus: (
+        callback: (status: CaptureStatus) => void
+      ) => () => void;
+
+      // 타임랩스 관련 API
       generateTimelapse: (options: TimelapseOptions) => Promise<string>;
-      onCaptureStatus: (callback: (status: CaptureStatus) => void) => void;
 
       // 창 제어 API
       minimize: () => void;

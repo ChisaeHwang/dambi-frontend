@@ -1,8 +1,14 @@
 import { useState, useEffect } from "react";
 
+// Electron.NativeImage를 대체할 인터페이스 정의
+interface NativeImage {
+  toDataURL: () => string;
+  getSize: () => { width: number; height: number };
+}
+
 // 타임랩스 옵션 인터페이스
 export interface TimelapseOptions {
-  fps: number;
+  speedFactor: number; // 배속 요소 (3, 6, 9, 20 등)
   outputQuality: "low" | "medium" | "high";
   outputFormat: "mp4" | "gif";
 }
@@ -10,8 +16,17 @@ export interface TimelapseOptions {
 // 캡처 상태 인터페이스
 export interface CaptureStatus {
   isCapturing: boolean;
-  frameCount: number;
   duration: number;
+  error?: string;
+}
+
+// 창 정보 인터페이스
+export interface WindowInfo {
+  id: string;
+  name: string;
+  thumbnail?: NativeImage;
+  appIcon?: NativeImage;
+  isScreen?: boolean;
 }
 
 // 일렉트론 환경 확인
@@ -24,36 +39,67 @@ const isElectronEnv = () => {
 export const useTimelapseGenerationCapture = () => {
   // 상태 관리
   const [isCapturing, setIsCapturing] = useState<boolean>(false);
-  const [captureInterval, setCaptureInterval] = useState<number>(5);
-  const [frameCount, setFrameCount] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
   const [timelapseOptions, setTimelapseOptions] = useState<TimelapseOptions>({
-    fps: 30,
+    speedFactor: 3, // 기본 3배속
     outputQuality: "medium",
     outputFormat: "mp4",
   });
   const [outputPath, setOutputPath] = useState<string>("");
   const [electronAvailable, setElectronAvailable] = useState<boolean>(false);
+  const [selectedWindowId, setSelectedWindowId] = useState<string>("screen:0");
+  const [activeWindows, setActiveWindows] = useState<WindowInfo[]>([
+    { id: "screen:0", name: "전체 화면", isScreen: true },
+  ]);
+  const [isLoadingWindows, setIsLoadingWindows] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // 컴포넌트 초기화 시 Electron 환경 확인
+  // 활성 창 목록 가져오기
+  const fetchActiveWindows = async () => {
+    if (!electronAvailable) return;
+
+    try {
+      setIsLoadingWindows(true);
+      setError(null);
+      const windows = await window.electron.getActiveWindows();
+      setActiveWindows(windows);
+    } catch (error) {
+      console.error("활성 창 목록 가져오기 실패:", error);
+      setError("창 목록을 가져오는 데 실패했습니다.");
+    } finally {
+      setIsLoadingWindows(false);
+    }
+  };
+
+  // 컴포넌트 초기화 시 Electron 환경 확인 및 활성 창 목록 가져오기
   useEffect(() => {
     const electronEnv = isElectronEnv();
     setElectronAvailable(electronEnv);
 
+    let cleanup: (() => void) | null = null;
+
     if (electronEnv) {
       // 캡처 상태 이벤트 리스너 등록
-      window.electron.onCaptureStatus((status) => {
+      cleanup = window.electron.onCaptureStatus((status) => {
         setIsCapturing(status.isCapturing);
-        setFrameCount(status.frameCount);
         setDuration(status.duration);
-      });
-    }
-  }, []);
 
-  // 캡처 간격 변경 핸들러
-  const changeCaptureInterval = (interval: number) => {
-    setCaptureInterval(interval);
-  };
+        if (status.error) {
+          setError(status.error);
+        }
+      });
+
+      // 활성 창 목록 가져오기
+      fetchActiveWindows();
+    }
+
+    // 컴포넌트 언마운트 시 이벤트 리스너 정리
+    return () => {
+      if (cleanup) {
+        cleanup();
+      }
+    };
+  }, []);
 
   // 타임랩스 옵션 변경 핸들러
   const changeTimelapseOptions = (options: Partial<TimelapseOptions>) => {
@@ -63,11 +109,23 @@ export const useTimelapseGenerationCapture = () => {
     }));
   };
 
+  // 선택된 창 변경 핸들러
+  const changeSelectedWindow = (windowId: string) => {
+    setSelectedWindowId(windowId);
+  };
+
+  // 활성 창 목록 새로고침
+  const refreshActiveWindows = () => {
+    fetchActiveWindows();
+  };
+
   // 캡처 시작
   const startCapture = () => {
+    setError(null);
+
     if (electronAvailable) {
-      window.electron.startCapture(captureInterval);
-      setIsCapturing(true);
+      // 선택한 창 ID 전달
+      window.electron.startCapture(selectedWindowId);
     } else {
       console.log("모의 환경: 캡처 시작");
       setIsCapturing(true);
@@ -78,7 +136,6 @@ export const useTimelapseGenerationCapture = () => {
   const stopCapture = () => {
     if (electronAvailable) {
       window.electron.stopCapture();
-      setIsCapturing(false);
     } else {
       console.log("모의 환경: 캡처 중지");
       setIsCapturing(false);
@@ -86,16 +143,20 @@ export const useTimelapseGenerationCapture = () => {
   };
 
   // 타임랩스 생성
-  const generateTimelapse = async () => {
+  const generateTimelapse = async (
+    customOptions?: Partial<TimelapseOptions>
+  ) => {
     try {
+      setError(null);
+
       if (electronAvailable) {
-        // 타임랩스 생성 시 프레임 속도 조정
-        const adjustedOptions = {
+        // 기존 옵션과 커스텀 옵션 병합
+        const mergedOptions = {
           ...timelapseOptions,
-          fps: Math.min(timelapseOptions.fps * 2, 60), // FPS를 두 배로 조정 (최대 60)
+          ...customOptions,
         };
 
-        const path = await window.electron.generateTimelapse(adjustedOptions);
+        const path = await window.electron.generateTimelapse(mergedOptions);
         setOutputPath(path);
         return path;
       } else {
@@ -105,23 +166,29 @@ export const useTimelapseGenerationCapture = () => {
         return mockPath;
       }
     } catch (error) {
-      console.error("타임랩스 생성 오류:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error("타임랩스 생성 오류:", errorMessage);
+      setError(errorMessage);
       throw error;
     }
   };
 
   return {
     isCapturing,
-    captureInterval,
-    frameCount,
     duration,
     timelapseOptions,
     outputPath,
     electronAvailable,
+    selectedWindowId,
+    activeWindows,
+    isLoadingWindows,
+    error,
     startCapture,
     stopCapture,
-    changeCaptureInterval,
     changeTimelapseOptions,
+    changeSelectedWindow,
+    refreshActiveWindows,
     generateTimelapse,
   };
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, CSSProperties } from "react";
 
 const AppTitleBar: React.FC = () => {
   const [isMaximized, setIsMaximized] = useState(false);
@@ -53,76 +53,93 @@ const AppTitleBar: React.FC = () => {
   }
 
   return (
-    <div className="app-title-bar">
-      <div className="app-logo">
-        <span style={{ fontSize: "1.1rem" }}>🦝</span> 담비
+    <div
+      className="flex items-center justify-between h-8 bg-[var(--bg-tertiary)] px-4 select-none"
+      style={{ WebkitAppRegion: "drag" } as CSSProperties}
+    >
+      <div className="flex items-center">
+        <span className="text-lg mr-2">🦝</span>
+        <span className="font-semibold">담비</span>
       </div>
 
-      <div className="title-bar-buttons">
-        <div className="title-bar-button" onClick={handleMinimize}>
+      <div
+        className="flex items-center space-x-2"
+        style={{ WebkitAppRegion: "no-drag" } as CSSProperties}
+      >
+        <button
+          onClick={handleMinimize}
+          className="w-3 h-3 rounded-full bg-[#ffbd4c] flex items-center justify-center hover:brightness-90 transition-all"
+          aria-label="최소화"
+        >
           <svg
-            width="12"
-            height="12"
-            viewBox="0 0 12 12"
+            className="w-2 h-2 opacity-0 group-hover:opacity-100"
+            viewBox="0 0 8 8"
             fill="none"
-            xmlns="http://www.w3.org/2000/svg"
           >
-            <rect x="1" y="5.5" width="10" height="1" fill="currentColor" />
+            <rect x="1" y="3.5" width="6" height="1" fill="#996209" />
           </svg>
-        </div>
+        </button>
 
-        <div className="title-bar-button" onClick={handleMaximize}>
+        <button
+          onClick={handleMaximize}
+          className="w-3 h-3 rounded-full bg-[#00ca56] flex items-center justify-center hover:brightness-90 transition-all"
+          aria-label={isMaximized ? "복원" : "최대화"}
+        >
           {isMaximized ? (
             <svg
-              width="12"
-              height="12"
-              viewBox="0 0 12 12"
+              className="w-2 h-2 opacity-0 group-hover:opacity-100"
+              viewBox="0 0 8 8"
               fill="none"
-              xmlns="http://www.w3.org/2000/svg"
             >
               <path
-                d="M3.5 1H10.5C11.0523 1 11.5 1.44772 11.5 2V9C11.5 9.55229 11.0523 10 10.5 10H3.5C2.94772 10 2.5 9.55228 2.5 9V2C2.5 1.44771 2.94772 1 3.5 1Z"
-                stroke="currentColor"
+                d="M1.5 3.5V1.5H6.5V6.5H4.5"
+                stroke="#0d6128"
+                strokeWidth="1"
               />
-              <path
-                d="M1 3.5V10.5C1 11.0523 1.44772 11.5 2 11.5H9"
-                stroke="currentColor"
+              <rect
+                x="1.5"
+                y="3.5"
+                width="5"
+                height="3"
+                stroke="#0d6128"
+                strokeWidth="1"
               />
             </svg>
           ) : (
             <svg
-              width="12"
-              height="12"
-              viewBox="0 0 12 12"
+              className="w-2 h-2 opacity-0 group-hover:opacity-100"
+              viewBox="0 0 8 8"
               fill="none"
-              xmlns="http://www.w3.org/2000/svg"
             >
               <rect
                 x="1.5"
                 y="1.5"
-                width="9"
-                height="9"
-                stroke="currentColor"
+                width="5"
+                height="5"
+                stroke="#0d6128"
+                strokeWidth="1"
               />
             </svg>
           )}
-        </div>
+        </button>
 
-        <div className="title-bar-button" onClick={handleClose}>
+        <button
+          onClick={handleClose}
+          className="w-3 h-3 rounded-full bg-[#ff5f57] flex items-center justify-center hover:brightness-90 transition-all"
+          aria-label="닫기"
+        >
           <svg
-            width="12"
-            height="12"
-            viewBox="0 0 12 12"
+            className="w-2 h-2 opacity-0 group-hover:opacity-100"
+            viewBox="0 0 8 8"
             fill="none"
-            xmlns="http://www.w3.org/2000/svg"
           >
             <path
-              d="M1 1L11 11M1 11L11 1"
-              stroke="currentColor"
-              strokeWidth="1.5"
+              d="M1.5 1.5L6.5 6.5M1.5 6.5L6.5 1.5"
+              stroke="#96221b"
+              strokeWidth="1.2"
             />
           </svg>
-        </div>
+        </button>
       </div>
     </div>
   );

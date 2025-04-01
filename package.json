@@ -2,10 +2,9 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
-  "main": "public/electron.js",
+  "main": "public/electron/main.js",
   "homepage": "./",
   "dependencies": {
-    "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
@@ -14,6 +13,7 @@
     "@types/node": "^16.18.126",
     "@types/react": "^19.0.12",
     "@types/react-dom": "^19.0.4",
+    "cross-spawn": "^7.0.6",
     "electron-is-dev": "^3.0.1",
     "fluent-ffmpeg": "^2.1.3",
     "react": "^19.1.0",
@@ -52,17 +52,22 @@
     ]
   },
   "devDependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "@tailwindcss/postcss": "^4.0.17",
+    "@types/electron": "^1.6.12",
     "autoprefixer": "^10.4.21",
     "buffer": "^6.0.3",
     "concurrently": "^9.1.2",
     "cross-env": "^7.0.3",
     "electron": "^35.1.2",
     "electron-builder": "^26.0.12",
+    "ffmpeg-static": "^5.2.0",
     "os-browserify": "^0.3.0",
     "path-browserify": "^1.0.1",
     "postcss": "^8.5.3",
     "process": "^0.11.10",
     "stream-browserify": "^3.0.0",
+    "tailwindcss": "^4.0.17",
     "wait-on": "^8.0.3"
   },
   "build": {
@@ -76,7 +81,7 @@
       "buildResources": "assets"
     },
     "extraMetadata": {
-      "main": "build/electron.js"
+      "main": "build/electron/main.js"
     }
   }
 }
