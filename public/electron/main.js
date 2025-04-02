@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
 const isDev = require("electron-is-dev");
+const fs = require("fs");
 
 // 분리된 서비스 모듈 가져오기
 const captureService = require("./captureService");
@@ -93,11 +94,41 @@ function setupIpcHandlers() {
   // 타임랩스 생성 이벤트
   ipcMain.on("generate-timelapse", (event, options) => {
     const captureSession = captureService.getCaptureSession();
-    timelapseService.generateTimelapse(
-      event,
-      options,
-      captureSession.videoPath
-    );
+
+    // 세션에서 비디오 경로를 가져옴
+    const videoPath = captureSession.videoPath;
+
+    console.log("타임랩스 생성 요청 - 캡처 세션 정보:", {
+      isCapturing: captureSession.isCapturing,
+      videoPath,
+      videoExists: videoPath ? fs.existsSync(videoPath) : false,
+    });
+
+    // 파일이 실제로 존재하는지 확인
+    if (videoPath && fs.existsSync(videoPath)) {
+      // 파일 크기 확인
+      try {
+        const stats = fs.statSync(videoPath);
+        console.log(`비디오 파일 크기: ${stats.size} 바이트`);
+
+        if (stats.size < 10000) {
+          event.sender.send("generate-timelapse-response", {
+            error: "녹화된 파일이 너무 작습니다. 다시 녹화해주세요.",
+          });
+          return;
+        }
+      } catch (err) {
+        console.error("파일 상태 확인 오류:", err);
+      }
+
+      // 타임랩스 생성 실행
+      timelapseService.generateTimelapse(event, options, videoPath);
+    } else {
+      console.error("비디오 파일을 찾을 수 없음:", videoPath);
+      event.sender.send("generate-timelapse-response", {
+        error: "녹화된 영상을 찾을 수 없습니다. 먼저 화면 녹화를 진행해주세요.",
+      });
+    }
   });
 }
 

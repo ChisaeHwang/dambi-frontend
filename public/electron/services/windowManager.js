@@ -1,6 +1,34 @@
 const { desktopCapturer, screen } = require("electron");
 
 /**
+ * 시스템의 모든 화면 정보를 가져오는 함수
+ * @returns {Object} 메인 화면 해상도 정보
+ */
+function getDisplayResolution() {
+  try {
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const allDisplays = screen.getAllDisplays();
+
+    console.log("모든 화면 정보:");
+    allDisplays.forEach((display, index) => {
+      console.log(
+        `화면 ${index + 1}: ${display.size.width}x${
+          display.size.height
+        } (작업영역: ${display.workArea.width}x${display.workArea.height})`
+      );
+    });
+
+    return {
+      width: primaryDisplay.size.width,
+      height: primaryDisplay.size.height,
+    };
+  } catch (error) {
+    console.error("화면 정보 가져오기 오류:", error);
+    return { width: 1920, height: 1080 }; // 기본값
+  }
+}
+
+/**
  * 활성 창 목록을 가져오는 함수
  * @returns {Promise<Array>} 활성 창 목록
  */
@@ -8,9 +36,10 @@ async function getActiveWindows() {
   return new Promise(async (resolve) => {
     try {
       // 화면 해상도 가져오기
-      const primaryDisplay = screen.getPrimaryDisplay();
       const { width: displayWidth, height: displayHeight } =
-        primaryDisplay.workAreaSize;
+        getDisplayResolution();
+
+      console.log(`실제 모니터 해상도: ${displayWidth}x${displayHeight}`);
 
       // 썸네일 크기 설정 (더 큰 크기로 설정)
       const thumbnailWidth = Math.floor(displayWidth / 2.5);
@@ -183,7 +212,15 @@ async function getActiveWindows() {
       resolve(resultWindows);
     } catch (error) {
       console.error("창 목록 가져오기 오류:", error);
-      // 오류 발생 시 기본 목록 제공
+
+      // 모니터 해상도 가져오기 시도
+      const { width: screenWidth, height: screenHeight } =
+        getDisplayResolution();
+      console.log(
+        `fallback에서 감지한 모니터 해상도: ${screenWidth}x${screenHeight}`
+      );
+
+      // 오류 발생 시 기본 목록 제공 (동적 해상도 적용)
       const fallbackWindows = [
         {
           id: "screen:0",
@@ -191,8 +228,8 @@ async function getActiveWindows() {
           thumbnailDataUrl: null,
           appIcon: null,
           isScreen: true,
-          width: 1920,
-          height: 1080,
+          width: screenWidth, // 동적으로 감지한 해상도 사용
+          height: screenHeight, // 동적으로 감지한 해상도 사용
           timestamp: Date.now(),
         },
       ];
@@ -204,4 +241,5 @@ async function getActiveWindows() {
 
 module.exports = {
   getActiveWindows,
+  getDisplayResolution,
 };
