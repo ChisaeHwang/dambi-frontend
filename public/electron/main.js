@@ -23,7 +23,7 @@ class TimelapseCapture {
     this.startTime = null;
     this.frameCount = 0;
     this.captureConfig = {
-      interval: 1000, // 1초 간격으로 변경 (기존 2000ms에서 1000ms로)
+      interval: 100, // 0.1초 간격으로 변경 (더 부드러운 타임랩스를 위해)
       quality: 80, // JPEG 품질 (0-100)
     };
   }
@@ -195,6 +195,10 @@ class TimelapseCapture {
 
     return new Promise((resolve, reject) => {
       try {
+        // 프레임 보간(Interpolation)을 사용하여 더 부드러운 영상을 만드는 필터 추가
+        // minterpolate 필터: 중간 프레임을 생성하여 부드러운 영상 만들기
+        const filterComplex = `scale=1920:-2,minterpolate='fps=${fps}:mi_mode=mci:me_mode=bidir',setpts=PTS/${speedFactor}`;
+
         // FFmpeg를 사용하여 이미지 시퀀스를 비디오로 변환 - PNG 형식으로 변경
         const ffmpeg = spawn(ffmpegPath, [
           "-framerate",
@@ -202,7 +206,7 @@ class TimelapseCapture {
           "-i",
           path.join(this.captureDir, "frame_%06d.png"),
           "-vf",
-          `setpts=PTS/${speedFactor}`, // 속도 조절
+          filterComplex, // 더 부드러운 타임랩스를 위한 복합 필터
           "-c:v",
           "libx264",
           "-pix_fmt",
