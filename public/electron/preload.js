@@ -1,108 +1,30 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
-// API 그룹 정의
-const captureAPI = {
-  // 활성 창 목록 가져오기
-  getActiveWindows: async () => {
-    return await ipcRenderer.invoke("get-active-windows");
-  },
-
-  // 스크린샷 캡처 시작
-  startCapture: (windowId, windowName) => {
-    console.log("Preload: startCapture 호출됨", windowId, windowName);
-    ipcRenderer.send("start-capture", {
-      windowId,
-      windowName: windowName || "",
-    });
-  },
-
-  // 스크린샷 캡처 중지
-  stopCapture: () => {
-    console.log("Preload: stopCapture 호출됨");
-    ipcRenderer.send("stop-capture");
-  },
-
-  // 캡처 상태 이벤트 구독
-  onCaptureStatus: (callback) => {
-    console.log("Preload: onCaptureStatus 이벤트 구독 설정");
-    const captureStatusListener = (event, status) => {
-      callback(status);
-    };
-
-    ipcRenderer.on("capture-status", captureStatusListener);
-
-    // 컴포넌트 언마운트 시 이벤트 리스너 정리를 위한 함수 반환
-    return () => {
-      console.log("Preload: 캡처 상태 이벤트 구독 해제");
-      ipcRenderer.removeListener("capture-status", captureStatusListener);
-    };
-  },
-};
-
-const timelapseAPI = {
-  // 타임랩스 생성
-  generateTimelapse: (options) => {
-    console.log("Preload: generateTimelapse 호출됨", options);
-    return new Promise((resolve, reject) => {
-      ipcRenderer.once("generate-timelapse-response", (event, response) => {
-        if (response.error) {
-          reject(response.error);
-        } else {
-          resolve(response.outputPath);
-        }
-      });
-
-      ipcRenderer.send("generate-timelapse", options);
-    });
-  },
-
-  // 타임랩스 생성 진행률 이벤트 구독
-  onTimelapseProgress: (callback) => {
-    console.log("Preload: onTimelapseProgress 이벤트 구독 설정");
-    const progressListener = (event, progress) => {
-      callback(progress);
-    };
-
-    ipcRenderer.on("generate-timelapse-progress", progressListener);
-
-    // 컴포넌트 언마운트 시 이벤트 리스너 정리를 위한 함수 반환
-    return () => {
-      console.log("Preload: 타임랩스 진행률 이벤트 구독 해제");
-      ipcRenderer.removeListener(
-        "generate-timelapse-progress",
-        progressListener
-      );
-    };
-  },
-};
-
-const windowAPI = {
-  // 창 제어 API
-  minimize: () => {
-    ipcRenderer.send("window:minimize");
-  },
-
-  maximize: () => {
-    ipcRenderer.send("window:maximize");
-  },
-
-  close: () => {
-    ipcRenderer.send("window:close");
-  },
-
-  isMaximized: () => {
-    return new Promise((resolve) => {
-      ipcRenderer.once("window:is-maximized-response", (event, isMaximized) => {
-        resolve(isMaximized);
-      });
-      ipcRenderer.send("window:is-maximized");
-    });
-  },
-};
-
-// 모든 API를 통합하여 노출
+// 렌더러 프로세스에 노출할 API 정의
 contextBridge.exposeInMainWorld("electron", {
-  ...captureAPI,
-  ...timelapseAPI,
-  ...windowAPI,
+  // 창 관리 기능
+  minimize: () => ipcRenderer.invoke("minimize-window"),
+  maximize: () => ipcRenderer.invoke("maximize-window"),
+  close: () => ipcRenderer.invoke("close-window"),
+  isMaximized: () => ipcRenderer.invoke("is-maximized"),
+
+  // 타임랩스 캡처 관련 기능
+  getActiveWindows: () => ipcRenderer.invoke("get-active-windows"),
+  startCapture: (windowId, windowName) =>
+    ipcRenderer.invoke("start-capture", windowId, windowName),
+  stopCapture: () => ipcRenderer.invoke("stop-capture"),
+  generateTimelapse: (options) =>
+    ipcRenderer.invoke("generate-timelapse", options),
+
+  // 이벤트 리스너
+  onCaptureStatus: (callback) => {
+    // IPC 이벤트 리스너 등록
+    const captureStatusHandler = (_, status) => callback(status);
+    ipcRenderer.on("capture-status", captureStatusHandler);
+
+    // 클린업 함수 반환 (이벤트 리스너 제거용)
+    return () => {
+      ipcRenderer.removeListener("capture-status", captureStatusHandler);
+    };
+  },
 });
