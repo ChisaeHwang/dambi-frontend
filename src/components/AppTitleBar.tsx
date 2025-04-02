@@ -54,7 +54,7 @@ const AppTitleBar: React.FC = () => {
 
   return (
     <div
-      className="flex items-center justify-between h-8 bg-[var(--bg-tertiary)] px-4 select-none"
+      className="flex items-center justify-between h-8 bg-[var(--bg-tertiary)] pl-4 select-none"
       style={{ WebkitAppRegion: "drag" } as CSSProperties}
     >
       <div className="flex items-center">
@@ -63,81 +63,77 @@ const AppTitleBar: React.FC = () => {
       </div>
 
       <div
-        className="flex items-center space-x-2"
+        className="flex items-center h-full"
         style={{ WebkitAppRegion: "no-drag" } as CSSProperties}
       >
         <button
           onClick={handleMinimize}
-          className="w-3 h-3 rounded-full bg-[#ffbd4c] flex items-center justify-center hover:brightness-90 transition-all"
+          className="h-full px-3 text-gray-200 hover:bg-gray-600 transition-colors flex items-center justify-center"
           aria-label="최소화"
         >
           <svg
-            className="w-2 h-2 opacity-0 group-hover:opacity-100"
-            viewBox="0 0 8 8"
+            className="w-4 h-4"
+            viewBox="0 0 24 24"
             fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           >
-            <rect x="1" y="3.5" width="6" height="1" fill="#996209" />
+            <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
         </button>
 
         <button
           onClick={handleMaximize}
-          className="w-3 h-3 rounded-full bg-[#00ca56] flex items-center justify-center hover:brightness-90 transition-all"
+          className="h-full px-3 text-gray-200 hover:bg-gray-600 transition-colors flex items-center justify-center"
           aria-label={isMaximized ? "복원" : "최대화"}
         >
           {isMaximized ? (
             <svg
-              className="w-2 h-2 opacity-0 group-hover:opacity-100"
-              viewBox="0 0 8 8"
+              className="w-4 h-4"
+              viewBox="0 0 24 24"
               fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
-              <path
-                d="M1.5 3.5V1.5H6.5V6.5H4.5"
-                stroke="#0d6128"
-                strokeWidth="1"
-              />
-              <rect
-                x="1.5"
-                y="3.5"
-                width="5"
-                height="3"
-                stroke="#0d6128"
-                strokeWidth="1"
-              />
+              <rect x="5" y="9" width="10" height="10"></rect>
+              <polyline points="15 5 19 5 19 9"></polyline>
+              <line x1="19" y1="5" x2="14" y2="10"></line>
             </svg>
           ) : (
             <svg
-              className="w-2 h-2 opacity-0 group-hover:opacity-100"
-              viewBox="0 0 8 8"
+              className="w-4 h-4"
+              viewBox="0 0 24 24"
               fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
-              <rect
-                x="1.5"
-                y="1.5"
-                width="5"
-                height="5"
-                stroke="#0d6128"
-                strokeWidth="1"
-              />
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
             </svg>
           )}
         </button>
 
         <button
           onClick={handleClose}
-          className="w-3 h-3 rounded-full bg-[#ff5f57] flex items-center justify-center hover:brightness-90 transition-all"
+          className="h-full px-3 text-gray-200 hover:bg-red-600 transition-colors flex items-center justify-center"
           aria-label="닫기"
         >
           <svg
-            className="w-2 h-2 opacity-0 group-hover:opacity-100"
-            viewBox="0 0 8 8"
+            className="w-4 h-4"
+            viewBox="0 0 24 24"
             fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           >
-            <path
-              d="M1.5 1.5L6.5 6.5M1.5 6.5L6.5 1.5"
-              stroke="#96221b"
-              strokeWidth="1.2"
-            />
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
       </div>
