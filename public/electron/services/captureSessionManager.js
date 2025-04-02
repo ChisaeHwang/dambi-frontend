@@ -15,12 +15,12 @@ let captureSession = {
 /**
  * 새 캡처 세션을 초기화
  * @param {string} targetWindowId 캡처할 창 ID
+ * @param {string} customPath 사용자 지정 저장 경로 (선택적)
  * @returns {Object} 초기화된 세션 정보
  */
-function initCaptureSession(targetWindowId) {
+function initCaptureSession(targetWindowId, customPath = null) {
   // 기존 세션 정리
   if (captureSession.isCapturing && captureSession.ffmpegProcess) {
-    console.log("기존 세션 정리 - 이전 프로세스가 있으면 정리");
     try {
       captureSession.ffmpegProcess.kill();
     } catch (e) {
@@ -30,22 +30,12 @@ function initCaptureSession(targetWindowId) {
 
   const sessionTimestamp = new Date().toISOString().replace(/:/g, "-");
 
-  // 캡처 디렉토리 설정
-  const sessionDir = path.join(os.homedir(), "Documents", "담비", "captures");
-
-  // 디렉토리 생성
-  if (!fs.existsSync(sessionDir)) {
-    try {
-      console.log("캡처 디렉토리 생성:", sessionDir);
-      fs.mkdirSync(sessionDir, { recursive: true });
-    } catch (err) {
-      console.error("캡처 디렉토리 생성 오류:", err);
-    }
-  }
+  // 캡처 디렉토리 설정 (사용자 지정 경로 또는 기본 경로)
+  const sessionDir =
+    customPath || path.join(os.homedir(), "Documents", "담비", "captures");
 
   // 비디오 파일 경로
   const videoPath = path.join(sessionDir, `session_${sessionTimestamp}.mp4`);
-  console.log("비디오 저장 경로:", videoPath);
 
   // 세션 정보 업데이트
   captureSession = {
@@ -56,12 +46,6 @@ function initCaptureSession(targetWindowId) {
     ffmpegProcess: null,
     durationInterval: null,
   };
-
-  console.log("새 캡처 세션 초기화 완료:", {
-    isCapturing: captureSession.isCapturing,
-    targetWindowId: captureSession.targetWindowId,
-    videoPath: captureSession.videoPath,
-  });
 
   return {
     videoPath,
@@ -84,10 +68,6 @@ function getCaptureSession() {
  */
 function setFFmpegProcess(ffmpegProcess) {
   captureSession.ffmpegProcess = ffmpegProcess;
-  console.log(
-    "FFmpeg 프로세스 설정됨:",
-    ffmpegProcess ? "프로세스 있음" : "프로세스 없음"
-  );
 }
 
 /**
@@ -112,21 +92,12 @@ function endCaptureSession() {
   captureSession.isCapturing = false;
 
   // 비디오 파일 존재 확인
-  if (captureSession.videoPath) {
-    const videoExists = fs.existsSync(captureSession.videoPath);
-    console.log(
-      `캡처 세션 종료 - 비디오 파일 확인: ${captureSession.videoPath} - ${
-        videoExists ? "존재함" : "존재하지 않음"
-      }`
-    );
-
-    if (videoExists) {
-      try {
-        const stats = fs.statSync(captureSession.videoPath);
-        console.log(`비디오 파일 크기: ${stats.size} 바이트`);
-      } catch (err) {
-        console.error("비디오 파일 상태 확인 오류:", err);
-      }
+  if (captureSession.videoPath && fs.existsSync(captureSession.videoPath)) {
+    try {
+      const stats = fs.statSync(captureSession.videoPath);
+      console.log(`비디오 파일 크기: ${stats.size} 바이트`);
+    } catch (err) {
+      console.error("비디오 파일 상태 확인 오류:", err);
     }
   }
 }
