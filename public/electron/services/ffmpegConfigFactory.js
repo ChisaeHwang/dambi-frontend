@@ -56,20 +56,8 @@ class FFmpegConfigFactory {
         scale: 0.5,
         threadQueue: "1024",
         probesize: "10M",
-        priority: "normal",
         vsync: "2",
-        additional: [
-          "-me_method",
-          "dia",
-          "-subq",
-          "1",
-          "-refs",
-          "1",
-          "-threads",
-          "2",
-          "-g",
-          "20",
-        ],
+        additional: [],
       };
     }
 
@@ -80,25 +68,23 @@ class FFmpegConfigFactory {
         qp: "0",
         crf: "23",
         preset: "ultrafast",
-        bufferSize: "4000M",
+        bufferSize: "2000M",
         threadQueue: "8192",
         probesize: "100M",
-        priority: "high",
         vsync: "1",
         additional: [],
       };
     }
 
-    // 저품질 모드
+    // 저품질 모드 (기본)
     return {
       framerate: "15",
       qp: "28",
       crf: "32",
       preset: "ultrafast",
-      bufferSize: "4000M",
+      bufferSize: "2000M",
       threadQueue: "8192",
       probesize: "100M",
-      priority: "high",
       vsync: "1",
       additional: [],
     };
@@ -150,6 +136,17 @@ class FFmpegConfigFactory {
     const videoOptions = this.getVideoOptions(options);
     const logLevel = options.logLevel || "info";
 
+    console.log(`캡처 대상 창 이름: "${targetWindow.name}"`);
+
+    // 창 이름에 특수 문자가 있을 경우 전체 화면 캡처로 대체
+    const hasSpecialChars = /[^\w\s\-가-힣]/.test(targetWindow.name);
+    if (hasSpecialChars) {
+      console.log(
+        "창 이름에 특수 문자가 포함되어 있어 전체 화면 캡처로 대체합니다."
+      );
+      return this.createWindowsScreenOptions(null, videoPath, options);
+    }
+
     return [
       "-loglevel",
       logLevel,
@@ -167,12 +164,14 @@ class FFmpegConfigFactory {
       showMouse ? "2" : "0",
       "-i",
       `title=${targetWindow.name}`,
-      "-vcodec",
+      "-c:v",
       "libx264",
       "-preset",
       videoOptions.preset,
       "-qp",
       videoOptions.qp,
+      "-pix_fmt",
+      "yuv420p", // pix_fmt 추가
       videoPath,
     ];
   }
@@ -193,12 +192,16 @@ class FFmpegConfigFactory {
       height = Math.floor(height * videoOptions.scale);
     }
 
-    // 기본 옵션
+    console.log(`FFmpeg 해상도 설정: ${width}x${height}`);
+    console.log(
+      `타겟 윈도우 정보:`,
+      JSON.stringify(targetWindow || {}, null, 2)
+    );
+
+    // 기본 옵션 (priority_class 제거)
     const baseOptions = [
       "-loglevel",
       logLevel,
-      "-priority_class",
-      videoOptions.priority,
       "-f",
       "gdigrab",
       "-rtbufsize",
@@ -215,29 +218,19 @@ class FFmpegConfigFactory {
       videoOptions.vsync,
     ];
 
-    // 캡처 영역
-    const captureOptions = [
-      "-offset_x",
-      targetWindow?.x || "0",
-      "-offset_y",
-      targetWindow?.y || "0",
-      "-video_size",
-      `${width}x${height}`,
-      "-i",
-      "desktop",
-    ];
+    // 캡처 영역 - 기본 전체 화면으로 단순화
+    const captureOptions = ["-i", "desktop"];
 
     // 인코딩
     const encodingOptions = [
-      "-hwaccel",
-      "auto",
-      ...(process.env.HAS_NVIDIA_GPU === "true"
-        ? ["-c:v", "h264_nvenc"]
-        : ["-c:v", "libx264"]),
+      "-c:v",
+      "libx264", // 항상 libx264 사용
       "-preset",
       videoOptions.preset,
       "-qp",
       videoOptions.qp,
+      "-pix_fmt",
+      "yuv420p", // pix_fmt 추가
     ];
 
     // 스케일링 필터 (초경량 모드일 때만)

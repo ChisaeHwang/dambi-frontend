@@ -34,6 +34,23 @@ function initCaptureSession(targetWindowId, customPath = null) {
   const sessionDir =
     customPath || path.join(os.homedir(), "Documents", "담비", "captures");
 
+  // 디렉토리 생성 확인
+  try {
+    if (!fs.existsSync(sessionDir)) {
+      console.log(`캡처 저장 디렉토리 생성: ${sessionDir}`);
+      fs.mkdirSync(sessionDir, { recursive: true });
+    }
+
+    // 디렉토리 쓰기 권한 테스트
+    const testFile = path.join(sessionDir, ".write_test");
+    fs.writeFileSync(testFile, "test");
+    fs.unlinkSync(testFile);
+    console.log(`캡처 디렉토리 쓰기 권한 확인 완료: ${sessionDir}`);
+  } catch (error) {
+    console.error(`디렉토리 생성 또는 접근 오류: ${error.message}`);
+    throw new Error(`캡처 저장 경로에 접근할 수 없습니다: ${error.message}`);
+  }
+
   // 비디오 파일 경로
   const videoPath = path.join(sessionDir, `session_${sessionTimestamp}.mp4`);
 
@@ -46,6 +63,10 @@ function initCaptureSession(targetWindowId, customPath = null) {
     ffmpegProcess: null,
     durationInterval: null,
   };
+
+  console.log(
+    `캡처 세션 초기화: 대상=${targetWindowId}, 저장경로=${videoPath}`
+  );
 
   return {
     videoPath,

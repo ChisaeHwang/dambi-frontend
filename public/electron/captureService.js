@@ -82,7 +82,7 @@ function startCapture(event, args) {
           sessionInfo.videoPath,
           {
             showMouse: args?.showMouse ?? true,
-            logLevel: "info",
+            logLevel: "debug",
             lowQuality: args?.lowQuality ?? true,
             ultraLight: args?.ultraLight ?? false,
           }
@@ -92,7 +92,8 @@ function startCapture(event, args) {
         const ffmpegProcess = ffmpegManager.startFFmpegProcess(
           ffmpegOptions,
           (logData) => {
-            // 로그 처리 (필요시 구현)
+            // 로그 출력 추가
+            console.log(`FFmpeg 로그: ${logData}`);
           },
           (error) => {
             // 에러 처리

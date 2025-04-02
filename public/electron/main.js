@@ -78,6 +78,14 @@ function setupIpcHandlers() {
     windowService.isWindowMaximized(mainWindow, event);
   });
 
+  // 시스템 정보 진단 이벤트 추가
+  ipcMain.handle("get-system-info", async () => {
+    console.log("시스템 정보 요청 수신");
+    const systemInfo = windowService.getSystemInfo();
+    console.log("시스템 정보:", JSON.stringify(systemInfo, null, 2));
+    return systemInfo;
+  });
+
   // 캡처 관련 이벤트
   ipcMain.handle("get-active-windows", async () => {
     return await captureService.getActiveWindows();

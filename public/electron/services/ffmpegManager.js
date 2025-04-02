@@ -51,9 +51,22 @@ function startFFmpegProcess(ffmpegOptions, onLog, onError, onClose) {
     // FFmpeg로 화면 녹화 시작
     console.log("FFmpeg 프로세스 시작...");
 
+    // 각 옵션에 대한 공백 처리와 특수 문자 처리 확인
+    const sanitizedOptions = ffmpegOptions.map((opt) => {
+      // 공백이 있는 경우 따옴표로 감싸기
+      if (typeof opt === "string" && opt.includes(" ")) {
+        return `"${opt}"`;
+      }
+      return opt;
+    });
+
+    console.log("FFmpeg 명령어:", [ffmpegPath, ...sanitizedOptions].join(" "));
+
     // child_process 모듈로 직접 실행
     const ffmpegProcess = spawn(ffmpegPath, ffmpegOptions, {
       stdio: ["pipe", "pipe", "pipe"],
+      windowsHide: true, // 윈도우에서 명령 프롬프트 창 숨기기
+      shell: false, // 셸을 사용하지 않음
     });
 
     if (!ffmpegProcess || !ffmpegProcess.pid) {

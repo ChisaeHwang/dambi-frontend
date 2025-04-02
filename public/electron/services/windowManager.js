@@ -6,6 +6,14 @@ const { desktopCapturer, screen } = require("electron");
  */
 function getDisplayResolution() {
   try {
+    // screen이 존재하는지 확인
+    if (!screen) {
+      console.warn(
+        "screen 객체가 존재하지 않습니다. 기본 해상도를 사용합니다."
+      );
+      return { width: 1920, height: 1080 };
+    }
+
     const primaryDisplay = screen.getPrimaryDisplay();
     const allDisplays = screen.getAllDisplays();
 
@@ -17,6 +25,14 @@ function getDisplayResolution() {
         } (작업영역: ${display.workArea.width}x${display.workArea.height})`
       );
     });
+
+    // primaryDisplay가 유효한지 확인
+    if (!primaryDisplay || !primaryDisplay.size) {
+      console.warn(
+        "기본 디스플레이 정보를 가져올 수 없습니다. 기본 해상도를 사용합니다."
+      );
+      return { width: 1920, height: 1080 };
+    }
 
     return {
       width: primaryDisplay.size.width,
