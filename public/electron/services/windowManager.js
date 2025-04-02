@@ -124,6 +124,11 @@ async function getActiveWindows() {
                 isScreen: true,
                 width: displayWidth,
                 height: displayHeight,
+                x: 0,
+                y: 0,
+                isMainScreen:
+                  source.id === `screen:${screen.getPrimaryDisplay().id}`,
+                displayId: source.id.split(":")[1],
                 timestamp, // 캐시 방지를 위한 타임스탬프 추가
               });
             } catch (err) {
@@ -178,6 +183,8 @@ async function getActiveWindows() {
             isScreen: false,
             width: windowWidth,
             height: windowHeight,
+            x: 0,
+            y: 0,
             timestamp, // 캐시 방지를 위한 타임스탬프 추가
           };
 
@@ -230,6 +237,10 @@ async function getActiveWindows() {
           isScreen: true,
           width: screenWidth, // 동적으로 감지한 해상도 사용
           height: screenHeight, // 동적으로 감지한 해상도 사용
+          x: 0,
+          y: 0,
+          isMainScreen: true,
+          displayId: "0",
           timestamp: Date.now(),
         },
       ];

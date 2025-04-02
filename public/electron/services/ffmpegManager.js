@@ -2,17 +2,29 @@ const ffmpeg = require("fluent-ffmpeg");
 const spawn = require("cross-spawn");
 const ffmpegInstaller = require("@ffmpeg-installer/ffmpeg");
 const fs = require("fs");
+const path = require("path");
 const FFmpegConfigFactory = require("./ffmpegConfigFactory");
 
 // FFmpeg 경로 설정 및 라이브러리 설정
 const ffmpegPath = ffmpegInstaller.path;
 ffmpeg.setFfmpegPath(ffmpegPath);
+
+// FFmpeg 경로 및 상세 정보 로깅
 console.log("FFmpeg 실행 파일 경로:", ffmpegPath);
+console.log("FFmpeg 실행 파일 존재 여부:", fs.existsSync(ffmpegPath));
+console.log("FFmpeg 실행 파일 디렉터리:", path.dirname(ffmpegPath));
+console.log("FFmpeg 모듈 정보:", ffmpegInstaller);
 
 // FFmpeg 실행 파일 존재 확인
 try {
   if (fs.existsSync(ffmpegPath)) {
     console.log("FFmpeg 실행 파일이 존재합니다.");
+
+    // 파일 크기 및 접근 권한 확인
+    const stats = fs.statSync(ffmpegPath);
+    console.log("FFmpeg 파일 크기:", stats.size, "바이트");
+    console.log("FFmpeg 파일 권한:", stats.mode.toString(8));
+    console.log("FFmpeg 파일 마지막 수정:", stats.mtime);
   } else {
     console.error(
       "경고: FFmpeg 실행 파일이 존재하지 않습니다. 녹화가 작동하지 않을 수 있습니다!"
@@ -54,32 +66,68 @@ function startFFmpegProcess(ffmpegOptions, onLog, onError, onClose) {
   }
 
   try {
-    // FFmpeg로 화면 녹화 시작
-    console.log("FFmpeg 프로세스 시작 시도 중...");
-    const ffmpegProcess = spawn(ffmpegPath, ffmpegOptions);
-    console.log(
-      `FFmpeg 프로세스 생성됨, PID: ${ffmpegProcess.pid || "알 수 없음"}`
-    );
+    // 직접 경로를 명시적으로 사용
+    const ffmpegExePath = path.resolve(ffmpegPath);
+    console.log("사용할 FFmpeg 실행 파일 절대 경로:", ffmpegExePath);
 
     // 비디오 파일 경로
     const videoPath = ffmpegOptions[ffmpegOptions.length - 1];
     console.log("녹화 대상 파일:", videoPath);
 
-    ffmpegProcess.stderr.on("data", (data) => {
-      const logData = data.toString();
-      // 중요한 오류 메시지만 로깅하도록 변경
-      if (
-        logData.includes("error") ||
-        logData.includes("fail") ||
-        logData.includes("warning")
-      ) {
-        const truncatedLog =
-          logData.substring(0, 150) + (logData.length > 150 ? "..." : "");
-        console.log("FFmpeg 오류:", truncatedLog);
+    // 비디오 파일 디렉토리 확인 및 생성
+    const videoDir = path.dirname(videoPath);
+    if (!fs.existsSync(videoDir)) {
+      fs.mkdirSync(videoDir, { recursive: true });
+      console.log("녹화 파일 디렉토리 생성:", videoDir);
+    }
 
-        if (onLog) {
-          onLog(logData);
-        }
+    // 명령어 문자열로 직접 구성
+    const commandString = [ffmpegExePath, ...ffmpegOptions].join(" ");
+    console.log("FFmpeg 명령어 문자열:", commandString);
+
+    // FFmpeg로 화면 녹화 시작
+    console.log("FFmpeg 프로세스 시작 시도 중...");
+
+    // child_process.exec 방식으로 시도 (테스트용)
+    const { exec } = require("child_process");
+    const ffmpegProcess = exec(commandString, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`FFmpeg 실행 오류: ${error.message}`);
+        if (onError) onError(error);
+        return;
+      }
+
+      if (stderr) {
+        console.log(`FFmpeg 로그: ${stderr}`);
+        if (onLog) onLog(stderr);
+      }
+
+      console.log(`FFmpeg 출력: ${stdout}`);
+    });
+
+    if (!ffmpegProcess || !ffmpegProcess.pid) {
+      console.error("FFmpeg 프로세스 생성 실패");
+      if (onError) {
+        onError(new Error("FFmpeg 프로세스를 생성할 수 없습니다."));
+      }
+      return null;
+    }
+
+    console.log(
+      `FFmpeg 프로세스 생성됨, PID: ${ffmpegProcess.pid || "알 수 없음"}`
+    );
+
+    // stdout 출력 로깅 추가
+    ffmpegProcess.stdout?.on("data", (data) => {
+      console.log("FFmpeg 출력:", data.toString());
+    });
+
+    ffmpegProcess.stderr?.on("data", (data) => {
+      const logData = data.toString();
+      console.log("FFmpeg 로그:", logData.substring(0, 500)); // 모든 로그 출력 (디버깅)
+
+      if (onLog) {
+        onLog(logData);
       }
     });
 

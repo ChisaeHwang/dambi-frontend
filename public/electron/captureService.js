@@ -35,8 +35,22 @@ function startCapture(event, args) {
         // 선택된 창 또는 전체 화면 찾기
         let targetWindow = null;
 
-        if (targetWindowId !== "screen:0") {
-          // 특정 창을 찾음
+        if (targetWindowId.startsWith("screen:")) {
+          // 특정 모니터 찾기 (screen:ID 형식으로 들어옴)
+          targetWindow = windows.find((win) => win.id === targetWindowId);
+
+          if (targetWindow) {
+            console.log(
+              `녹화할 모니터: "${targetWindow.name}" (${targetWindow.width}x${targetWindow.height}, 위치: ${targetWindow.x},${targetWindow.y})`
+            );
+          } else {
+            console.log(
+              "지정된 모니터를 찾을 수 없어 기본 화면으로 대체합니다."
+            );
+            targetWindow = windows.find((win) => win.isScreen);
+          }
+        } else if (targetWindowId !== "screen:0") {
+          // 특정 창 찾기
           targetWindow = windows.find((win) => win.id === targetWindowId);
 
           if (targetWindow) {
@@ -48,12 +62,12 @@ function startCapture(event, args) {
             targetWindow = windows.find((win) => win.isScreen);
           }
         } else {
-          // 전체 화면 녹화
+          // 전체 화면 녹화 (기본값)
           targetWindow = windows.find((win) => win.isScreen);
 
           if (targetWindow) {
             console.log(
-              `전체 화면 녹화: ${targetWindow.width}x${targetWindow.height}`
+              `전체 화면 녹화: ${targetWindow.width}x${targetWindow.height}, 위치: ${targetWindow.x},${targetWindow.y}`
             );
           } else {
             console.error("화면 캡처 대상을 찾을 수 없습니다.");
@@ -78,19 +92,24 @@ function startCapture(event, args) {
           targetWindow,
           sessionInfo.videoPath,
           {
-            // 마우스 커서 깜빡임 문제를 방지하기 위해 마우스 표시 비활성화
-            showMouse: false,
+            // 기본 옵션으로 되돌림
+            showMouse: true, // 마우스 커서 표시
+            logLevel: "info", // 디버깅용 상세 로그
           }
+        );
+
+        console.log(
+          `녹화 설정: 대상=${
+            targetWindow ? targetWindow.name : "전체 화면"
+          }, 마우스=표시, 로그레벨=info`
         );
 
         // FFmpeg 프로세스 시작
         const ffmpegProcess = ffmpegManager.startFFmpegProcess(
           ffmpegOptions,
           (logData) => {
-            // 로그 콜백 (중요 정보만 콘솔에 출력)
-            if (logData.includes("error") || logData.includes("fail")) {
-              console.error("FFmpeg 오류:", logData);
-            }
+            // 모든 로그 출력 (디버깅용)
+            console.log("FFmpeg 로그 콜백:", logData.substring(0, 200));
           },
           (error) => {
             // 에러 콜백
