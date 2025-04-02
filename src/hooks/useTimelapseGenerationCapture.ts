@@ -10,6 +10,8 @@ export interface TimelapseOptions {
   speedFactor: number; // 배속 요소 (3, 6, 9, 20 등)
   outputQuality: "low" | "medium" | "high";
   outputFormat: "mp4" | "gif";
+  outputPath?: string; // 출력 경로
+  preserveOriginals?: boolean; // 원본 이미지 보존 여부
 }
 
 // 캡처 상태 인터페이스
@@ -43,6 +45,9 @@ const isElectronEnv = () => {
   );
 };
 
+// 로컬 스토리지 키
+const SAVE_PATH_STORAGE_KEY = "timelapse_save_path";
+
 export const useTimelapseGenerationCapture = () => {
   // 상태 관리
   const [isCapturing, setIsCapturing] = useState<boolean>(false);
@@ -51,6 +56,7 @@ export const useTimelapseGenerationCapture = () => {
     speedFactor: 3, // 기본 3배속
     outputQuality: "medium",
     outputFormat: "mp4",
+    preserveOriginals: true, // 기본적으로 원본 파일 보존
   });
   const [outputPath, setOutputPath] = useState<string>("");
   const [electronAvailable, setElectronAvailable] = useState<boolean>(false);
@@ -65,6 +71,10 @@ export const useTimelapseGenerationCapture = () => {
   ]);
   const [isLoadingWindows, setIsLoadingWindows] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  // 저장 경로 상태 추가
+  const [saveFolderPath, setSaveFolderPath] = useState<string | null>(
+    localStorage.getItem(SAVE_PATH_STORAGE_KEY)
+  );
 
   // 활성 창 목록 가져오기
   const fetchActiveWindows = async () => {
@@ -174,6 +184,40 @@ export const useTimelapseGenerationCapture = () => {
     fetchActiveWindows();
   };
 
+  // 저장 폴더 선택 핸들러
+  const selectSaveFolder = async () => {
+    if (!electronAvailable) {
+      console.log(
+        "일렉트론 환경이 아닙니다. 폴더 선택 기능을 사용할 수 없습니다."
+      );
+      return;
+    }
+
+    try {
+      // 일렉트론의 dialog API를 통해 폴더 선택 다이얼로그 표시
+      const result = await window.electron.selectSaveFolder();
+
+      if (result && result.filePaths && result.filePaths.length > 0) {
+        const selectedPath = result.filePaths[0];
+        setSaveFolderPath(selectedPath);
+
+        // 로컬 스토리지에 경로 저장
+        localStorage.setItem(SAVE_PATH_STORAGE_KEY, selectedPath);
+
+        // timelapseOptions에도 경로 설정
+        setTimelapseOptions((prev) => ({
+          ...prev,
+          outputPath: selectedPath,
+        }));
+
+        console.log(`타임랩스 저장 경로 설정됨: ${selectedPath}`);
+      }
+    } catch (error) {
+      console.error("폴더 선택 오류:", error);
+      setError("폴더 선택 중 오류가 발생했습니다.");
+    }
+  };
+
   // 캡처 시작
   const startCapture = () => {
     setError(null);
@@ -221,6 +265,11 @@ export const useTimelapseGenerationCapture = () => {
           ...customOptions,
         };
 
+        // 저장 경로가 설정되어 있으면 추가
+        if (saveFolderPath) {
+          mergedOptions.outputPath = saveFolderPath;
+        }
+
         const path = await window.electron.generateTimelapse(mergedOptions);
         setOutputPath(path);
         return path;
@@ -249,11 +298,14 @@ export const useTimelapseGenerationCapture = () => {
     activeWindows,
     isLoadingWindows,
     error,
-    startCapture,
-    stopCapture,
     changeTimelapseOptions,
     changeSelectedWindow,
     refreshActiveWindows,
+    startCapture,
+    stopCapture,
     generateTimelapse,
+    saveFolderPath,
+    setSaveFolderPath,
+    selectSaveFolder,
   };
 };

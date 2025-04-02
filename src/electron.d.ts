@@ -19,6 +19,12 @@ interface WindowInfo {
   isScreen?: boolean;
 }
 
+// 다이얼로그 결과 인터페이스
+interface DialogResult {
+  canceled: boolean;
+  filePaths: string[];
+}
+
 // 일렉트론 API 인터페이스
 interface ElectronAPI {
   // 창 관리 기능
@@ -36,6 +42,9 @@ interface ElectronAPI {
   stopCapture: () => Promise<{ success: boolean; totalFrames: number }>;
   generateTimelapse: (options: TimelapseOptions) => Promise<string>;
 
+  // 파일 시스템 기능
+  selectSaveFolder: () => Promise<DialogResult>;
+
   // 이벤트 리스너
   onCaptureStatus: (callback: (status: CaptureStatus) => void) => () => void;
 }
@@ -47,4 +56,4 @@ declare global {
   }
 }
 
-export { ElectronAPI, CaptureStatus, WindowInfo };
+export { ElectronAPI, CaptureStatus, WindowInfo, DialogResult };

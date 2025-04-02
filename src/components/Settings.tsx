@@ -12,6 +12,9 @@ const Settings: React.FC = () => {
     changeTimelapseOptions,
     changeSelectedWindow,
     refreshActiveWindows,
+    saveFolderPath,
+    setSaveFolderPath,
+    selectSaveFolder,
   } = useTimelapseGenerationCapture();
 
   // 컴포넌트 마운트 시 창 목록 초기 로드만 수행
@@ -34,6 +37,15 @@ const Settings: React.FC = () => {
   const handleSaveSettings = () => {
     // 설정 저장 로직 (로컬 스토리지나 백엔드로 전송)
     alert("설정이 저장되었습니다.");
+  };
+
+  // 저장 폴더 선택 핸들러
+  const handleSelectFolder = async () => {
+    try {
+      await selectSaveFolder();
+    } catch (error) {
+      console.error("폴더 선택 오류:", error);
+    }
   };
 
   // 속도 옵션
@@ -141,6 +153,146 @@ const Settings: React.FC = () => {
                     : "높음"}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* 저장 경로 설정 */}
+          <div className="form-group" style={{ marginBottom: "20px" }}>
+            <label
+              className="form-label"
+              style={{
+                display: "block",
+                marginBottom: "10px",
+                fontSize: "14px",
+              }}
+            >
+              타임랩스 저장 위치
+            </label>
+            <div
+              className="path-selector"
+              style={{
+                display: "flex",
+                gap: "10px",
+                alignItems: "center",
+              }}
+            >
+              <input
+                type="text"
+                value={saveFolderPath || "기본 위치 (내 비디오 폴더)"}
+                readOnly
+                style={{
+                  flex: 1,
+                  padding: "10px",
+                  borderRadius: "4px",
+                  border: "1px solid #4f545c",
+                  backgroundColor: "#40444b",
+                  color: "#dcddde",
+                  fontSize: "14px",
+                }}
+              />
+              <button
+                onClick={handleSelectFolder}
+                style={{
+                  padding: "10px 16px",
+                  borderRadius: "4px",
+                  border: "none",
+                  backgroundColor: "#4f545c",
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                폴더 선택
+              </button>
+            </div>
+            <div
+              style={{
+                fontSize: "12px",
+                color: "#a0a0a0",
+                marginTop: "6px",
+              }}
+            >
+              타임랩스 영상이 저장될 폴더를 선택하세요. 기본값은 시스템의 비디오
+              폴더입니다.
+            </div>
+          </div>
+
+          {/* 원본 이미지 보존 설정 */}
+          <div className="form-group" style={{ marginBottom: "20px" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <label
+                className="form-label"
+                style={{
+                  fontSize: "14px",
+                }}
+              >
+                원본 캡처 이미지 보존
+              </label>
+
+              <div className="toggle-switch">
+                <input
+                  type="checkbox"
+                  id="preserveOriginals"
+                  checked={timelapseOptions.preserveOriginals !== false}
+                  onChange={(e) =>
+                    changeTimelapseOptions({
+                      preserveOriginals: e.target.checked,
+                    })
+                  }
+                  style={{ display: "none" }}
+                />
+                <label
+                  htmlFor="preserveOriginals"
+                  style={{
+                    display: "inline-block",
+                    width: "46px",
+                    height: "24px",
+                    backgroundColor:
+                      timelapseOptions.preserveOriginals !== false
+                        ? "#5865f2"
+                        : "#72767d",
+                    borderRadius: "12px",
+                    position: "relative",
+                    cursor: "pointer",
+                    transition: "background-color 0.2s",
+                  }}
+                >
+                  <span
+                    style={{
+                      display: "block",
+                      width: "18px",
+                      height: "18px",
+                      backgroundColor: "#fff",
+                      borderRadius: "50%",
+                      position: "absolute",
+                      top: "3px",
+                      left:
+                        timelapseOptions.preserveOriginals !== false
+                          ? "25px"
+                          : "3px",
+                      transition: "left 0.2s",
+                    }}
+                  />
+                </label>
+              </div>
+            </div>
+            <div
+              style={{
+                fontSize: "12px",
+                color: "#a0a0a0",
+                marginTop: "6px",
+              }}
+            >
+              타임랩스 생성 후 원본 캡처 이미지를 보존할지 여부를 설정합니다.
+              보존하면 디스크 공간을 더 많이 사용하지만 필요할 때 다시
+              타임랩스를 만들 수 있습니다.
             </div>
           </div>
         </div>

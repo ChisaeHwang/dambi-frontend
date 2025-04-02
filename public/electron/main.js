@@ -23,7 +23,7 @@ class TimelapseCapture {
     this.startTime = null;
     this.frameCount = 0;
     this.captureConfig = {
-      interval: 100, // 0.1초 간격으로 변경 (더 부드러운 타임랩스를 위해)
+      interval: 500, // 0.5초 간격으로 변경 (더 부드러운 타임랩스를 위해)
       quality: 80, // JPEG 품질 (0-100)
     };
   }
@@ -158,11 +158,52 @@ class TimelapseCapture {
       path.join(app.getPath("videos"), `timelapse_${Date.now()}.mp4`);
     const speedFactor = options.speedFactor || 3;
     const quality = options.outputQuality || "medium";
+    // 원본 파일 보존 여부 - 기본값은 true로 설정 (원본 유지)
+    const preserveOriginals = options.preserveOriginals !== false;
 
     // 출력 디렉토리 확인 및 생성
     const outputDir = path.dirname(outputPath);
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
+    }
+
+    // 유효한 프레임 파일 확인
+    console.log("캡처된 프레임 파일 확인 중...");
+    const files = fs
+      .readdirSync(this.captureDir)
+      .filter((file) => file.startsWith("frame_") && file.endsWith(".png"))
+      .sort();
+
+    if (files.length === 0) {
+      throw new Error("유효한 캡처 프레임이 없습니다");
+    }
+
+    console.log(`유효한 프레임 수: ${files.length}`);
+
+    // 연속된 프레임 번호로 파일 재구성
+    const frameDir = path.join(this.captureDir, "frames_fixed");
+    if (fs.existsSync(frameDir)) {
+      // 이전 수정 디렉토리가 있다면 삭제
+      const oldFiles = fs.readdirSync(frameDir);
+      for (const file of oldFiles) {
+        fs.unlinkSync(path.join(frameDir, file));
+      }
+    } else {
+      fs.mkdirSync(frameDir, { recursive: true });
+    }
+
+    // 파일 복사 및 이름 변경
+    for (let i = 0; i < files.length; i++) {
+      try {
+        const sourceFile = path.join(this.captureDir, files[i]);
+        const targetFile = path.join(
+          frameDir,
+          `frame_${i.toString().padStart(6, "0")}.png`
+        );
+        fs.copyFileSync(sourceFile, targetFile);
+      } catch (error) {
+        console.error(`프레임 파일 처리 오류: ${files[i]}`, error);
+      }
     }
 
     // 프레임레이트 계산 (간격과 속도 고려)
@@ -190,23 +231,23 @@ class TimelapseCapture {
 
     console.log(`타임랩스 생성 시작: ${outputPath}`);
     console.log(
-      `설정: 속도=${speedFactor}x, 품질=${quality}, 프리셋=${preset}, CRF=${crf}`
+      `설정: 속도=${speedFactor}x, 품질=${quality}, 프리셋=${preset}, CRF=${crf}, 원본 보존=${preserveOriginals}`
     );
 
     return new Promise((resolve, reject) => {
       try {
-        // 프레임 보간(Interpolation)을 사용하여 더 부드러운 영상을 만드는 필터 추가
-        // minterpolate 필터: 중간 프레임을 생성하여 부드러운 영상 만들기
-        const filterComplex = `scale=1920:-2,minterpolate='fps=${fps}:mi_mode=mci:me_mode=bidir',setpts=PTS/${speedFactor}`;
+        // 프레임 보간(Interpolation)을 생략하고 기본적인 필터로 변경
+        // 필터 복잡도를 줄여 안정성 향상
+        const filterComplex = `scale=1920:-2,setpts=PTS/${speedFactor}`;
 
-        // FFmpeg를 사용하여 이미지 시퀀스를 비디오로 변환 - PNG 형식으로 변경
+        // 수정된 프레임 디렉토리 사용
         const ffmpeg = spawn(ffmpegPath, [
           "-framerate",
           inputFps.toString(),
           "-i",
-          path.join(this.captureDir, "frame_%06d.png"),
+          path.join(frameDir, "frame_%06d.png"),
           "-vf",
-          filterComplex, // 더 부드러운 타임랩스를 위한 복합 필터
+          filterComplex,
           "-c:v",
           "libx264",
           "-pix_fmt",
@@ -216,6 +257,8 @@ class TimelapseCapture {
           "-crf",
           crf,
           "-y", // 기존 파일 덮어쓰기
+          "-max_muxing_queue_size",
+          "9999", // 큐 크기 증가
           outputPath,
         ]);
 
@@ -230,11 +273,26 @@ class TimelapseCapture {
         ffmpeg.on("close", (code) => {
           if (code === 0) {
             console.log(`타임랩스 생성 완료: ${outputPath}`);
-            // 성공적으로 생성됨
-            if (options.deleteOriginals) {
-              // 원본 이미지 삭제
+
+            // 작업 임시 디렉토리 정리
+            try {
+              if (fs.existsSync(frameDir)) {
+                const fixedFiles = fs.readdirSync(frameDir);
+                for (const file of fixedFiles) {
+                  fs.unlinkSync(path.join(frameDir, file));
+                }
+                fs.rmdirSync(frameDir);
+              }
+            } catch (cleanupError) {
+              console.error("임시 파일 정리 오류:", cleanupError);
+            }
+
+            // 원본 파일은 기본적으로 보존
+            if (!preserveOriginals) {
+              // 사용자가 명시적으로 삭제를 요청한 경우에만 원본 이미지 삭제
               this.deleteOriginalFrames();
             }
+
             resolve(outputPath);
           } else {
             const errorMsg = `타임랩스 생성 실패: FFmpeg 오류 코드 ${code}`;
@@ -252,16 +310,24 @@ class TimelapseCapture {
   // 원본 이미지 삭제
   deleteOriginalFrames() {
     if (this.captureDir && fs.existsSync(this.captureDir)) {
-      const files = fs.readdirSync(this.captureDir);
-      for (const file of files) {
-        if (
-          file.startsWith("frame_") &&
-          (file.endsWith(".jpg") || file.endsWith(".png"))
-        ) {
-          fs.unlinkSync(path.join(this.captureDir, file));
+      try {
+        const files = fs.readdirSync(this.captureDir);
+        for (const file of files) {
+          if (
+            file.startsWith("frame_") &&
+            (file.endsWith(".jpg") || file.endsWith(".png"))
+          ) {
+            try {
+              fs.unlinkSync(path.join(this.captureDir, file));
+            } catch (error) {
+              console.error(`파일 삭제 오류: ${file}`, error);
+            }
+          }
         }
+        console.log("원본 캡처 이미지 삭제 완료");
+      } catch (error) {
+        console.error("원본 파일 삭제 중 오류:", error);
       }
-      console.log("원본 캡처 이미지 삭제 완료");
     }
   }
 }
@@ -364,9 +430,35 @@ ipcMain.handle("stop-capture", async () => {
 
 ipcMain.handle("generate-timelapse", async (event, options) => {
   try {
+    // 사용자 지정 저장 경로가 있는 경우
+    if (options.outputPath) {
+      // 파일명 생성 (타임스탬프 추가)
+      const fileName = `timelapse_${Date.now()}.mp4`;
+      // 전체 경로 설정
+      options.outputPath = path.join(options.outputPath, fileName);
+    }
+
     return await timelapseCapture.generateTimelapse(options);
   } catch (error) {
     console.error("타임랩스 생성 오류:", error);
+    throw error;
+  }
+});
+
+// 폴더 선택 다이얼로그
+ipcMain.handle("select-save-folder", async () => {
+  try {
+    // 다이얼로그 열기
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: "타임랩스 저장 폴더 선택",
+      defaultPath: app.getPath("videos"),
+      properties: ["openDirectory", "createDirectory"],
+      buttonLabel: "선택",
+    });
+
+    return result;
+  } catch (error) {
+    console.error("폴더 선택 다이얼로그 오류:", error);
     throw error;
   }
 });
