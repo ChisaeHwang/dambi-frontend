@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 
 /**
- * FFmpeg 설정 팩토리 클래스
+ * FFmpeg 설정 팩토리 클래스 - 단순화된 버전
  * 각 플랫폼 및 녹화 유형에 맞는 FFmpeg 옵션을 생성
  */
 class FFmpegConfigFactory {
@@ -25,73 +25,58 @@ class FFmpegConfigFactory {
   }
 
   /**
-   * 해상도 정보 가져오기
+   * 해상도 정보 가져오기 및 2의 배수로 맞추기
    * @param {Object} targetWindow 대상 창 정보
-   * @returns {Object} 너비와 높이 정보
+   * @returns {Object} 조정된 너비와 높이 정보
    */
   static getResolution(targetWindow) {
+    let width, height;
+
     if (targetWindow?.width && targetWindow?.height) {
-      return { width: targetWindow.width, height: targetWindow.height };
+      width = targetWindow.width;
+      height = targetWindow.height;
+    } else {
+      const resolution = windowManager.getDisplayResolution();
+      width = resolution.width;
+      height = resolution.height;
     }
-    const resolution = windowManager.getDisplayResolution();
-    return { width: resolution.width, height: resolution.height };
+
+    // 너비와 높이를 2의 배수로 조정 (libx264 요구사항)
+    width = Math.floor(width / 2) * 2;
+    height = Math.floor(height / 2) * 2;
+
+    return { width, height };
   }
 
   /**
-   * 품질 및 인코딩 옵션 생성
-   * @param {Object} options 옵션 설정
+   * 품질 설정 생성 - 단순화된 버전
+   * @param {boolean} lowQuality 저품질 모드 사용 여부
    * @returns {Object} 비디오 설정 옵션
    */
-  static getVideoOptions(options = {}) {
-    const { ultraLight = false, lowQuality = true } = options;
-
-    // 초경량 모드
-    if (ultraLight) {
-      return {
-        framerate: "10",
-        qp: "35",
-        crf: "40",
-        preset: "veryfast",
-        bufferSize: "1000M",
-        scale: 0.5,
-        threadQueue: "1024",
-        probesize: "10M",
-        vsync: "2",
-        additional: [],
-      };
-    }
-
-    // 일반 품질 모드
-    if (!lowQuality) {
-      return {
-        framerate: "30",
-        qp: "0",
-        crf: "23",
-        preset: "ultrafast",
-        bufferSize: "2000M",
-        threadQueue: "8192",
-        probesize: "100M",
-        vsync: "1",
-        additional: [],
-      };
-    }
-
+  static getVideoOptions(lowQuality = true) {
     // 저품질 모드 (기본)
+    if (lowQuality) {
+      return {
+        framerate: "15",
+        preset: "ultrafast",
+        crf: "28",
+        bufferSize: "2000M",
+        threadQueue: "4096",
+      };
+    }
+
+    // 고품질 모드
     return {
-      framerate: "15",
-      qp: "28",
-      crf: "32",
-      preset: "ultrafast",
-      bufferSize: "2000M",
+      framerate: "30",
+      preset: "veryfast",
+      crf: "23",
+      bufferSize: "3000M",
       threadQueue: "8192",
-      probesize: "100M",
-      vsync: "1",
-      additional: [],
     };
   }
 
   /**
-   * 플랫폼별 옵션 생성
+   * FFmpeg 옵션 생성 - 단순화된 인터페이스
    * @param {Object} targetWindow 녹화 대상 창 정보
    * @param {string} videoPath 비디오 저장 경로
    * @param {Object} options 추가 옵션
@@ -100,166 +85,188 @@ class FFmpegConfigFactory {
   static createOptions(targetWindow, videoPath, options = {}) {
     const validatedPath = this.prepareVideoPath(videoPath);
 
-    // 플랫폼별 옵션 생성
-    const platformOptionsMap = {
-      win32: () => {
-        if (targetWindow && !targetWindow.isScreen) {
-          return this.createWindowsWindowOptions(
-            targetWindow,
-            validatedPath,
-            options
-          );
-        }
-        return this.createWindowsScreenOptions(
+    // 플랫폼별 분기 처리
+    const platform = process.platform;
+
+    if (platform === "win32") {
+      if (targetWindow && !targetWindow.isScreen) {
+        return this.createWindowsWindowOptions(
           targetWindow,
           validatedPath,
           options
         );
-      },
-      darwin: () =>
-        this.createMacOSOptions(targetWindow, validatedPath, options),
-      linux: () =>
-        this.createLinuxOptions(targetWindow, validatedPath, options),
-    };
-
-    // 현재 플랫폼에 맞는 옵션 생성 함수 호출
-    const platformFn =
-      platformOptionsMap[process.platform] || platformOptionsMap.linux;
-    return platformFn();
+      }
+      return this.createWindowsScreenOptions(
+        targetWindow,
+        validatedPath,
+        options
+      );
+    } else if (platform === "darwin") {
+      return this.createMacOSOptions(targetWindow, validatedPath, options);
+    } else {
+      return this.createLinuxOptions(targetWindow, validatedPath, options);
+    }
   }
 
   /**
-   * Windows 개별 창 캡처 옵션 생성
+   * Windows 개별 창 캡처 옵션 생성 - 단순화된 버전
    */
   static createWindowsWindowOptions(targetWindow, videoPath, options = {}) {
-    const { showMouse = true } = options;
-    const videoOptions = this.getVideoOptions(options);
-    const logLevel = options.logLevel || "info";
+    const { showMouse = true, lowQuality = true } = options;
+    const videoOptions = this.getVideoOptions(lowQuality);
+    const { width, height } = this.getResolution(targetWindow);
 
-    console.log(`캡처 대상 창 이름: "${targetWindow.name}"`);
+    // 창 이름에 특수문자나 한글이 있는지 확인
+    const hasSpecialChars = /[<>:"\/\\|?*]/.test(targetWindow.name);
 
-    // 창 이름에 특수 문자가 있을 경우 전체 화면 캡처로 대체
-    const hasSpecialChars = /[^\w\s\-가-힣]/.test(targetWindow.name);
-    if (hasSpecialChars) {
-      console.log(
-        "창 이름에 특수 문자가 포함되어 있어 전체 화면 캡처로 대체합니다."
-      );
-      return this.createWindowsScreenOptions(null, videoPath, options);
+    // 특수문자가 있거나 창 좌표가 있으면 좌표 기반 캡처 사용
+    if (
+      hasSpecialChars ||
+      (targetWindow.x !== undefined && targetWindow.width)
+    ) {
+      console.log("좌표 기반 창 캡처 모드 사용");
+
+      // 좌표 기반 캡처
+      return [
+        "-loglevel",
+        options.logLevel || "warning",
+        "-f",
+        "gdigrab",
+        "-rtbufsize",
+        videoOptions.bufferSize,
+        "-thread_queue_size",
+        videoOptions.threadQueue,
+        "-framerate",
+        videoOptions.framerate,
+        "-draw_mouse",
+        showMouse ? "1" : "0",
+        "-offset_x",
+        Math.max(0, targetWindow.x || 0).toString(),
+        "-offset_y",
+        Math.max(0, targetWindow.y || 0).toString(),
+        "-video_size",
+        `${width}x${height}`,
+        "-i",
+        "desktop",
+        "-c:v",
+        "libx264",
+        "-preset",
+        videoOptions.preset,
+        "-crf",
+        videoOptions.crf,
+        "-pix_fmt",
+        "yuv420p",
+        videoPath,
+      ];
     }
 
+    // 창 이름 기반 캡처 (기본)
+    console.log("창 이름 기반 캡처 모드 사용");
     return [
       "-loglevel",
-      logLevel,
-      "-f",
-      "gdigrab",
-      "-rtbufsize",
-      "2000M",
-      "-thread_queue_size",
-      "4096",
-      "-framerate",
-      videoOptions.framerate,
-      "-vsync",
-      "cfr",
-      "-draw_mouse",
-      showMouse ? "2" : "0",
-      "-i",
-      `title=${targetWindow.name}`,
-      "-c:v",
-      "libx264",
-      "-preset",
-      videoOptions.preset,
-      "-qp",
-      videoOptions.qp,
-      "-pix_fmt",
-      "yuv420p", // pix_fmt 추가
-      videoPath,
-    ];
-  }
-
-  /**
-   * Windows 전체 화면 캡처 옵션 생성
-   */
-  static createWindowsScreenOptions(targetWindow, videoPath, options = {}) {
-    const { showMouse = true } = options;
-    const videoOptions = this.getVideoOptions(options);
-    const logLevel = options.logLevel || "info";
-    let { width, height } = this.getResolution(targetWindow);
-
-    // 초경량 모드에서는 해상도 축소
-    const ultraLight = options.ultraLight || false;
-    if (ultraLight) {
-      width = Math.floor(width * videoOptions.scale);
-      height = Math.floor(height * videoOptions.scale);
-    }
-
-    console.log(`FFmpeg 해상도 설정: ${width}x${height}`);
-    console.log(
-      `타겟 윈도우 정보:`,
-      JSON.stringify(targetWindow || {}, null, 2)
-    );
-
-    // 기본 옵션 (priority_class 제거)
-    const baseOptions = [
-      "-loglevel",
-      logLevel,
+      options.logLevel || "warning",
       "-f",
       "gdigrab",
       "-rtbufsize",
       videoOptions.bufferSize,
       "-thread_queue_size",
       videoOptions.threadQueue,
-      "-probesize",
-      videoOptions.probesize,
-      "-draw_mouse",
-      showMouse ? "1" : "0",
       "-framerate",
       videoOptions.framerate,
-      "-vsync",
-      videoOptions.vsync,
-    ];
-
-    // 캡처 영역 - 기본 전체 화면으로 단순화
-    const captureOptions = ["-i", "desktop"];
-
-    // 인코딩
-    const encodingOptions = [
+      "-draw_mouse",
+      showMouse ? "1" : "0",
+      "-i",
+      `title=${targetWindow.name}`,
       "-c:v",
-      "libx264", // 항상 libx264 사용
+      "libx264",
       "-preset",
       videoOptions.preset,
-      "-qp",
-      videoOptions.qp,
+      "-crf",
+      videoOptions.crf,
       "-pix_fmt",
-      "yuv420p", // pix_fmt 추가
-    ];
-
-    // 스케일링 필터 (초경량 모드일 때만)
-    const filterOptions = ultraLight ? [`-vf scale=${width}:${height}`] : [];
-
-    // 최종 옵션 배열
-    return [
-      ...baseOptions,
-      ...captureOptions,
-      ...encodingOptions,
-      ...videoOptions.additional,
-      ...filterOptions,
+      "yuv420p",
       videoPath,
-    ].filter(Boolean);
+    ];
   }
 
   /**
-   * macOS 화면 캡처 옵션 생성
+   * Windows 전체 화면 캡처 옵션 생성 - 단순화된 버전
+   */
+  static createWindowsScreenOptions(targetWindow, videoPath, options = {}) {
+    const { showMouse = true, lowQuality = true } = options;
+    const videoOptions = this.getVideoOptions(lowQuality);
+
+    // 특정 모니터 캡처를 위한 좌표 및 크기 설정
+    let offsetX = 0;
+    let offsetY = 0;
+    let width = 1920;
+    let height = 1080;
+
+    if (targetWindow && targetWindow.isScreen) {
+      // 선택된 모니터의 좌표와 크기를 사용
+      console.log(
+        `모니터 캡처 - 좌표: (${targetWindow.x}, ${targetWindow.y}), 크기: ${targetWindow.width}x${targetWindow.height}`
+      );
+      offsetX = Math.max(0, targetWindow.x || 0);
+      offsetY = Math.max(0, targetWindow.y || 0);
+      width = targetWindow.width || width;
+      height = targetWindow.height || height;
+    } else {
+      // 선택된 모니터 정보가 없으면 주 모니터 정보 사용
+      const resolution = this.getResolution(targetWindow);
+      width = resolution.width;
+      height = resolution.height;
+      console.log(`주 모니터 캡처 - 크기: ${width}x${height}`);
+    }
+
+    // 너비와 높이가 2의 배수가 되도록 조정
+    width = Math.floor(width / 2) * 2;
+    height = Math.floor(height / 2) * 2;
+
+    return [
+      "-loglevel",
+      options.logLevel || "warning",
+      "-f",
+      "gdigrab",
+      "-rtbufsize",
+      videoOptions.bufferSize,
+      "-thread_queue_size",
+      videoOptions.threadQueue,
+      "-framerate",
+      videoOptions.framerate,
+      "-draw_mouse",
+      showMouse ? "1" : "0",
+      "-offset_x",
+      offsetX.toString(),
+      "-offset_y",
+      offsetY.toString(),
+      "-video_size",
+      `${width}x${height}`,
+      "-i",
+      "desktop",
+      "-c:v",
+      "libx264",
+      "-preset",
+      videoOptions.preset,
+      "-crf",
+      videoOptions.crf,
+      "-pix_fmt",
+      "yuv420p",
+      videoPath,
+    ];
+  }
+
+  /**
+   * macOS 화면 캡처 옵션 생성 - 단순화된 버전
    */
   static createMacOSOptions(targetWindow, videoPath, options = {}) {
-    const { showMouse = false } = options;
-    const videoOptions = this.getVideoOptions(options);
-    const logLevel = options.logLevel || "info";
+    const { showMouse = true, lowQuality = true } = options;
+    const videoOptions = this.getVideoOptions(lowQuality);
     const { width, height } = this.getResolution(targetWindow);
 
     return [
-      "-hide_banner",
       "-loglevel",
-      logLevel,
+      options.logLevel || "warning",
       "-f",
       "avfoundation",
       "-framerate",
@@ -283,18 +290,16 @@ class FFmpegConfigFactory {
   }
 
   /**
-   * Linux 화면 캡처 옵션 생성
+   * Linux 화면 캡처 옵션 생성 - 단순화된 버전
    */
   static createLinuxOptions(targetWindow, videoPath, options = {}) {
-    const { showMouse = false } = options;
-    const videoOptions = this.getVideoOptions(options);
-    const logLevel = options.logLevel || "info";
+    const { showMouse = true, lowQuality = true } = options;
+    const videoOptions = this.getVideoOptions(lowQuality);
     const { width, height } = this.getResolution(targetWindow);
 
     return [
-      "-hide_banner",
       "-loglevel",
-      logLevel,
+      options.logLevel || "warning",
       "-f",
       "x11grab",
       "-framerate",

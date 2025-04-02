@@ -8,9 +8,12 @@ const captureAPI = {
   },
 
   // 스크린샷 캡처 시작
-  startCapture: (windowId) => {
-    console.log("Preload: startCapture 호출됨", windowId);
-    ipcRenderer.send("start-capture", { windowId });
+  startCapture: (windowId, windowName) => {
+    console.log("Preload: startCapture 호출됨", windowId, windowName);
+    ipcRenderer.send("start-capture", {
+      windowId,
+      windowName: windowName || "",
+    });
   },
 
   // 스크린샷 캡처 중지

@@ -26,7 +26,7 @@ declare global {
     electron: {
       // 캡처 관련 API
       getActiveWindows: () => Promise<WindowInfo[]>;
-      startCapture: (windowId: string) => void;
+      startCapture: (windowId: string, windowName?: string) => void;
       stopCapture: () => void;
       onCaptureStatus: (
         callback: (status: CaptureStatus) => void

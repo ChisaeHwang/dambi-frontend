@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 
-// Electron.NativeImage를 대체할 인터페이스 정의
 interface NativeImage {
   toDataURL: () => string;
   getSize: () => { width: number; height: number };
@@ -180,8 +179,18 @@ export const useTimelapseGenerationCapture = () => {
     setError(null);
 
     if (electronAvailable) {
-      // 선택한 창 ID 전달
-      window.electron.startCapture(selectedWindowId);
+      console.log(`선택된 창 ID로 캡처 시작: ${selectedWindowId}`);
+
+      // 선택한 창 이름도 함께 전달
+      const selectedWindow = activeWindows.find(
+        (window) => window.id === selectedWindowId
+      );
+      const windowName = selectedWindow ? selectedWindow.name : "";
+
+      console.log(`선택된 창 이름: ${windowName}`);
+
+      // ID와 이름 모두 전달
+      window.electron.startCapture(selectedWindowId, windowName);
     } else {
       console.log("모의 환경: 캡처 시작");
       setIsCapturing(true);

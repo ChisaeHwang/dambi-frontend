@@ -1,4 +1,4 @@
-const { BrowserWindow, screen } = require("electron");
+const { screen } = require("electron");
 
 // 창 제어 함수들
 function minimizeWindow(mainWindow) {
