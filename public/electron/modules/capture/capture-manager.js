@@ -90,36 +90,21 @@ class CaptureManager {
       // 3. 캡처할 소스 찾기
       this.currentSource = await recorderService.findCaptureSource(windowId);
 
-      // 4. 녹화 시작 (메인 프로세스 기반)
-      try {
-        await recorderService.startMainProcessRecording(
-          this.currentSource,
-          this.videoPath
-        );
-        this._setupRecordingStateUpdates();
+      // 4. 렌더러 프로세스 기반 녹화 시작 (더 안정적인 품질)
+      // electron-screen-recorder 패키지 문제로 메인 프로세스 건너뛰기
+      const callbacks = this._createRendererProcessCallbacks();
 
-        return { success: true, captureDir: this.captureDir };
-      } catch (mainProcessError) {
-        console.error(
-          "[CaptureManager] 메인 프로세스 녹화 실패, 렌더러 프로세스로 전환",
-          mainProcessError
-        );
+      // 이벤트 리스너 설정
+      recorderService.setupRendererProcessEventListeners(callbacks);
 
-        // 5. 메인 프로세스 실패 시 렌더러 프로세스 기반 녹화 시도
-        const callbacks = this._createRendererProcessCallbacks();
+      // 렌더러 프로세스 녹화 시작
+      await recorderService.startRendererProcessRecording(
+        this.currentSource,
+        this.videoPath,
+        this.captureDir
+      );
 
-        // 이벤트 리스너 설정
-        recorderService.setupRendererProcessEventListeners(callbacks);
-
-        // 렌더러 프로세스 녹화 시작
-        await recorderService.startRendererProcessRecording(
-          this.currentSource,
-          this.videoPath,
-          this.captureDir
-        );
-
-        return { success: true, captureDir: this.captureDir };
-      }
+      return { success: true, captureDir: this.captureDir };
     } catch (error) {
       console.error("[CaptureManager] 캡처 시작 오류:", error);
       this.isCapturing = false;

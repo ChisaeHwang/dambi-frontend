@@ -217,30 +217,56 @@ class TimelapseGenerator {
    */
   _buildFfmpegArgs(inputPath, outputPath, options) {
     const { speedFactor, crf } = options;
+    const cpuCount = Math.max(4, os.cpus().length);
 
     return [
+      // 입력 파일
       "-i",
       inputPath,
-      // 스레드 최적화
+
+      // 스레드 최적화 - 더 많은 코어 활용
       "-threads",
-      Math.max(4, os.cpus().length).toString(),
-      // 타임랩스 효과 (속도 증가) + 스케일링
+      cpuCount.toString(),
+
+      // 향상된 타임랩스 효과 + 스케일링 + 필터링
       "-vf",
-      `setpts=PTS/${speedFactor},scale=1280:720`,
-      // 인코더 옵션
+      `setpts=PTS/${speedFactor},scale=-2:1080:flags=lanczos,fps=${
+        30 / speedFactor
+      }`,
+
+      // 인코더 옵션 - 향상된 품질 설정
       "-c:v",
-      "libx264",
+      "libx264", // H.264 코덱
       "-pix_fmt",
       "yuv420p",
       "-preset",
-      "ultrafast",
+      "medium", // ultrafast보다 품질 우선
+      "-tune",
+      "film", // 영상 콘텐츠 최적화
       "-crf",
       crf,
+
+      // 추가 인코딩 최적화
+      "-profile:v",
+      "high", // 고품질 프로필
+      "-level",
+      "4.2",
+
+      // I-프레임 간격 설정
+      "-g",
+      "50",
+
       // 빠른 디코딩 최적화
       "-movflags",
       "+faststart",
+
       // 오디오 제거
       "-an",
+
+      // 메타데이터 추가
+      "-metadata",
+      `title=담비 타임랩스 (${speedFactor}x)`,
+
       // 출력 파일 덮어쓰기
       "-y",
       outputPath,
