@@ -37,7 +37,12 @@ const Settings: React.FC = () => {
 
   // 창 선택 핸들러
   const handleWindowChange = (windowId: string) => {
-    changeSelectedWindow(windowId);
+    try {
+      if (!windowId) return;
+      changeSelectedWindow(windowId);
+    } catch (error) {
+      console.error("Settings: 창 선택 변경 중 오류 발생", error);
+    }
   };
 
   // 설정 저장 핸들러

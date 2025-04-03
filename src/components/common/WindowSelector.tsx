@@ -20,30 +20,43 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
 }) => {
   // 컴포넌트 마운트 시 로컬 스토리지에서 선택된 창 ID 확인
   useEffect(() => {
+    // 활성 창 목록이 비어있으면 처리하지 않음
+    if (activeWindows.length === 0) {
+      return;
+    }
+
+    // 이미 선택된 창이 있으면 검증 (활성 창 목록에 있는지 확인)
+    if (
+      selectedWindowId &&
+      activeWindows.some((window) => window.id === selectedWindowId)
+    ) {
+      // 이미 유효한 선택이 있으므로 처리 불필요
+      return;
+    }
+
+    // 로컬 스토리지에서 저장된 ID 확인
     const savedWindowId = localStorage.getItem(STORAGE_KEYS.SELECTED_WINDOW_ID);
 
-    // 저장된 ID가 있고, 현재 선택된 ID와 다르며, 활성 창 목록에 있는 경우
+    // 저장된 ID가 있고, 활성 창 목록에 있는 경우에만 처리
     if (
       savedWindowId &&
-      savedWindowId !== selectedWindowId &&
       activeWindows.some((window) => window.id === savedWindowId)
     ) {
-      console.log("로컬 스토리지에 저장된 창 ID로 복원:", savedWindowId);
+      // 이전 선택 내용 복원
       onWindowChange(savedWindowId);
+    } else if (activeWindows.length > 0) {
+      // 저장된 ID가 없거나 유효하지 않으면 첫 번째 창으로 설정
+      onWindowChange(activeWindows[0].id);
     }
-  }, [activeWindows, onWindowChange]);
+  }, [activeWindows, selectedWindowId, onWindowChange]);
 
   // 새로고침 버튼 처리기
-  const handleRefreshWindows = () => {
-    // 현재 선택된 ID를 기억
-    const currentSelectedId = selectedWindowId;
-
-    // 창 목록 새로고침
-    onRefreshWindows();
-
-    // 새로고침 후에도 기존 선택 상태를 유지하기 위해 로컬 스토리지에 강제로 저장
-    if (currentSelectedId) {
-      localStorage.setItem(STORAGE_KEYS.SELECTED_WINDOW_ID, currentSelectedId);
+  const handleRefresh = () => {
+    try {
+      // 부모 컴포넌트의 새로고침 함수 호출
+      onRefreshWindows();
+    } catch (error) {
+      console.error("창 목록 새로고침 중 오류 발생:", error);
     }
   };
 
@@ -51,28 +64,21 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
   const handleWindowChange = (windowId: string) => {
     if (!windowId) return; // 유효하지 않은 ID 방지
 
-    // 로컬 스토리지와 상태 모두 업데이트
-    localStorage.setItem(STORAGE_KEYS.SELECTED_WINDOW_ID, windowId);
-    onWindowChange(windowId);
-
-    // 디버깅을 위한 로그
-    console.log("창 선택 변경:", windowId);
-  };
-
-  // 활성 창 목록이 변경될 때 선택 상태 확인
-  useEffect(() => {
-    // 현재 선택된 창이 활성 창 목록에 없는 경우, 첫 번째 창 선택
-    if (
-      selectedWindowId &&
-      !activeWindows.some((window) => window.id === selectedWindowId) &&
-      activeWindows.length > 0
-    ) {
-      const newWindowId = activeWindows[0].id;
-      console.log("선택한 창이 목록에 없어 첫 번째 창으로 변경:", newWindowId);
-      localStorage.setItem(STORAGE_KEYS.SELECTED_WINDOW_ID, newWindowId);
-      onWindowChange(newWindowId);
+    // 이미 선택된 창이면 중복 이벤트 방지
+    if (windowId === selectedWindowId) {
+      return;
     }
-  }, [activeWindows, selectedWindowId, onWindowChange]);
+
+    try {
+      // 로컬 스토리지에 저장
+      localStorage.setItem(STORAGE_KEYS.SELECTED_WINDOW_ID, windowId);
+
+      // 부모 컴포넌트에 알림
+      onWindowChange(windowId);
+    } catch (error) {
+      console.error("WindowSelector: 창 선택 변경 중 오류 발생", error);
+    }
+  };
 
   return (
     <div className="form-group" style={{ marginBottom: "20px" }}>
@@ -95,7 +101,7 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
           녹화할 화면
         </label>
         <button
-          onClick={handleRefreshWindows}
+          onClick={handleRefresh}
           disabled={isLoadingWindows}
           style={{
             padding: "8px 16px",

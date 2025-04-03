@@ -3,11 +3,13 @@ import React from "react";
 interface GeneratePromptProps {
   onGenerate: () => void;
   onCancel: () => void;
+  isGenerating?: boolean;
 }
 
 const GeneratePrompt: React.FC<GeneratePromptProps> = ({
   onGenerate,
   onCancel,
+  isGenerating = false,
 }) => (
   <div
     className="generate-prompt"
@@ -25,8 +27,20 @@ const GeneratePrompt: React.FC<GeneratePromptProps> = ({
         textAlign: "center",
       }}
     >
-      타임랩스를 만드시겠습니까?
+      {isGenerating ? "타임랩스 생성 중..." : "타임랩스를 만드시겠습니까?"}
     </p>
+
+    {isGenerating && (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          marginBottom: "16px",
+        }}
+      >
+        <div className="loading-spinner"></div>
+      </div>
+    )}
 
     <div
       className="prompt-buttons"
@@ -38,30 +52,34 @@ const GeneratePrompt: React.FC<GeneratePromptProps> = ({
     >
       <button
         onClick={onGenerate}
+        disabled={isGenerating}
         style={{
           padding: "10px 20px",
           borderRadius: "4px",
           border: "none",
-          backgroundColor: "#43b581",
+          backgroundColor: isGenerating ? "#36794e" : "#43b581",
           color: "#fff",
-          cursor: "pointer",
+          cursor: isGenerating ? "default" : "pointer",
           fontSize: "14px",
           minWidth: "100px",
+          opacity: isGenerating ? 0.7 : 1,
         }}
       >
         예
       </button>
       <button
         onClick={onCancel}
+        disabled={isGenerating}
         style={{
           padding: "10px 20px",
           borderRadius: "4px",
           border: "none",
-          backgroundColor: "#ed4245",
+          backgroundColor: isGenerating ? "#a52e31" : "#ed4245",
           color: "#fff",
-          cursor: "pointer",
+          cursor: isGenerating ? "default" : "pointer",
           fontSize: "14px",
           minWidth: "100px",
+          opacity: isGenerating ? 0.7 : 1,
         }}
       >
         아니오

@@ -20,6 +20,7 @@ const Timelapse: React.FC = () => {
     changeSelectedWindow,
     refreshActiveWindows,
     error,
+    isGeneratingTimelapse,
   } = useTimelapseGenerationCapture();
 
   const [showGeneratePrompt, setShowGeneratePrompt] = useState<boolean>(false);
@@ -70,8 +71,8 @@ const Timelapse: React.FC = () => {
   const handleGenerateTimelapse = async () => {
     try {
       const path = await generateTimelapse(timelapseOptions);
-      alert(`타임랩스가 생성되었습니다: ${path}`);
       setShowGeneratePrompt(false);
+      alert(`타임랩스가 생성되었습니다: ${path}`);
     } catch (error: any) {
       alert(
         `타임랩스 생성 실패: ${error instanceof Error ? error.message : error}`
@@ -81,7 +82,12 @@ const Timelapse: React.FC = () => {
 
   // 창 선택 핸들러
   const handleWindowChange = (windowId: string) => {
-    changeSelectedWindow(windowId);
+    try {
+      if (!windowId) return;
+      changeSelectedWindow(windowId);
+    } catch (error) {
+      console.error("Timelapse: 창 선택 변경 중 오류 발생", error);
+    }
   };
 
   // 작업 시간 포맷팅 (00:00:00 형식)
@@ -169,6 +175,7 @@ const Timelapse: React.FC = () => {
           <GeneratePrompt
             onGenerate={handleGenerateTimelapse}
             onCancel={() => setShowGeneratePrompt(false)}
+            isGenerating={isGeneratingTimelapse}
           />
         )}
       </div>
