@@ -10,16 +10,13 @@ interface WindowThumbnailProps {
   window: WindowInfo;
 }
 
-
 const WindowThumbnail: React.FC<WindowThumbnailProps> = ({ window }) => {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // 썸네일 데이터가 변경될 때마다 업데이트
   useEffect(() => {
     // 상태 초기화
     setImageSrc(null);
-    setErrorMsg(null);
 
     // 1. 먼저 직접 Base64로 인코딩된 데이터를 확인
     if (window.thumbnailDataUrl) {

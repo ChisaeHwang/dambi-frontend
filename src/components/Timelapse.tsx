@@ -41,7 +41,7 @@ const Timelapse: React.FC = () => {
       refreshActiveWindows();
       mountedRef.current = true;
     }
-  }, []); // 의존성 배열을 빈 배열로 변경하여 마운트 시에만 실행
+  }, [refreshActiveWindows]); // refreshActiveWindows 의존성 추가
 
   // 타이머 관리
   useEffect(() => {

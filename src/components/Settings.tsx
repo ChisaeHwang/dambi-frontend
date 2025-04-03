@@ -13,7 +13,6 @@ const Settings: React.FC = () => {
     changeSelectedWindow,
     refreshActiveWindows,
     saveFolderPath,
-    setSaveFolderPath,
     selectSaveFolder,
   } = useTimelapseGenerationCapture();
 
@@ -28,7 +27,7 @@ const Settings: React.FC = () => {
       refreshActiveWindows();
       mountedRef.current = true;
     }
-  }, []);
+  }, [refreshActiveWindows]);
 
   // 배속 변경 핸들러
   const handleSpeedChange = (speed: number) => {
