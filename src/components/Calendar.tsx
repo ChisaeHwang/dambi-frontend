@@ -73,12 +73,13 @@ const Calendar: React.FC = () => {
       style={{
         backgroundColor: "#36393f",
         color: "#dcddde",
-        minHeight: "100vh",
-        width: "100%", // 가로 스크롤 방지
+        height: "100vh",
+        width: "100%",
         display: "flex",
         flexDirection: "column",
         padding: "12px",
-        overflowX: "hidden", // 가로 스크롤 방지
+        overflowX: "hidden",
+        overflowY: "auto",
       }}
     >
       <div
@@ -89,9 +90,10 @@ const Calendar: React.FC = () => {
           boxShadow: "0 2px 10px 0 rgba(0,0,0,.2)",
           padding: "20px",
           margin: "0 auto",
-          width: "98%", // 여백 줄임
-          maxWidth: "1400px", // 최대 너비 증가
-          minWidth: "auto", // 최소 너비 제거하여 가로 스크롤 방지
+          width: "98%",
+          maxWidth: "1400px",
+          minWidth: "auto",
+          marginBottom: "20px",
         }}
       >
         <CalendarHeader
