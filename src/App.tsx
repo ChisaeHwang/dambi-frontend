@@ -14,20 +14,6 @@ function App() {
   // 일렉트론 환경에서 실행 중인지 확인
   const isElectron = window.electron !== undefined;
 
-  // 페이지 컨텐츠 렌더링
-  const renderPageContent = () => {
-    switch (currentPage) {
-      case "workspace":
-        return <Timelapse />;
-      case "calendar":
-        return <Calendar />;
-      case "settings":
-        return <Settings />;
-      default:
-        return <Timelapse />;
-    }
-  };
-
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-[var(--bg-tertiary)] text-[var(--text-normal)]">
       {isElectron && <AppTitleBar />}
@@ -105,9 +91,32 @@ function App() {
           </div>
         </div>
 
-        {/* 메인 컨텐츠 영역 */}
+        {/* 메인 컨텐츠 영역 - 모든 컴포넌트를 항상 렌더링하고 display로 제어 */}
         <main className="flex-1 overflow-hidden bg-[var(--bg-primary)]">
-          {renderPageContent()}
+          <div
+            style={{
+              display: currentPage === "workspace" ? "block" : "none",
+              height: "100%",
+            }}
+          >
+            <Timelapse />
+          </div>
+          <div
+            style={{
+              display: currentPage === "calendar" ? "block" : "none",
+              height: "100%",
+            }}
+          >
+            <Calendar />
+          </div>
+          <div
+            style={{
+              display: currentPage === "settings" ? "block" : "none",
+              height: "100%",
+            }}
+          >
+            <Settings />
+          </div>
         </main>
       </div>
     </div>

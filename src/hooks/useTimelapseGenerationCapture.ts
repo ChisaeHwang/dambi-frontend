@@ -1,4 +1,10 @@
 import { useState, useEffect } from "react";
+import {
+  STORAGE_KEYS,
+  saveToLocalStorage,
+  loadFromLocalStorage,
+  loadStringFromLocalStorage,
+} from "../utils/localStorage";
 
 interface NativeImage {
   toDataURL: () => string;
@@ -45,11 +51,6 @@ const isElectronEnv = () => {
   );
 };
 
-// 로컬 스토리지 키
-const SAVE_PATH_STORAGE_KEY = "timelapse_save_path";
-const TIMELAPSE_OPTIONS_KEY = "timelapseOptions";
-const SELECTED_WINDOW_ID_KEY = "selectedWindowId";
-
 export const useTimelapseGenerationCapture = () => {
   // 상태 관리
   const [isCapturing, setIsCapturing] = useState<boolean>(false);
@@ -57,63 +58,59 @@ export const useTimelapseGenerationCapture = () => {
   const [timelapseOptions, setTimelapseOptions] = useState<TimelapseOptions>(
     () => {
       // 로컬 스토리지에서 설정 불러오기
-      const savedOptions = localStorage.getItem(TIMELAPSE_OPTIONS_KEY);
-      if (savedOptions) {
-        try {
-          return JSON.parse(savedOptions);
-        } catch (e) {
-          console.error("설정 파싱 오류:", e);
+      return loadFromLocalStorage<TimelapseOptions>(
+        STORAGE_KEYS.TIMELAPSE_OPTIONS,
+        {
+          speedFactor: 3, // 기본 3배속
+          outputQuality: "medium",
+          outputFormat: "mp4",
+          preserveOriginals: true, // 기본적으로 원본 파일 보존
         }
-      }
-      // 기본값 사용
-      return {
-        speedFactor: 3, // 기본 3배속
-        outputQuality: "medium",
-        outputFormat: "mp4",
-        preserveOriginals: true, // 기본적으로 원본 파일 보존
-      };
+      );
     }
   );
   const [outputPath, setOutputPath] = useState<string>("");
   const [electronAvailable, setElectronAvailable] = useState<boolean>(false);
   const [selectedWindowId, setSelectedWindowId] = useState<string>(() => {
     // 로컬 스토리지에서 선택된 창 ID 불러오기
-    const savedWindowId = localStorage.getItem(SELECTED_WINDOW_ID_KEY);
-    return savedWindowId || "screen:0";
+    const savedWindowId = loadStringFromLocalStorage(
+      STORAGE_KEYS.SELECTED_WINDOW_ID,
+      null
+    );
+    // null이 반환될 경우 빈 문자열 사용 (전체 화면 옵션 제거)
+    return savedWindowId || "";
   });
-  const [activeWindows, setActiveWindows] = useState<WindowInfo[]>([
-    {
-      id: "screen:0",
-      name: "전체 화면",
-      isScreen: true,
-      timestamp: Date.now(),
-    },
-  ]);
+  const [activeWindows, setActiveWindows] = useState<WindowInfo[]>(() => {
+    // 로컬 스토리지에서 활성 창 목록 불러오기
+    return loadFromLocalStorage<WindowInfo[]>(STORAGE_KEYS.ACTIVE_WINDOWS, []);
+  });
   const [isLoadingWindows, setIsLoadingWindows] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   // 저장 경로 상태 추가
   const [saveFolderPath, setSaveFolderPath] = useState<string | null>(
-    localStorage.getItem(SAVE_PATH_STORAGE_KEY)
+    loadStringFromLocalStorage(STORAGE_KEYS.SAVE_PATH, null)
   );
+
+  // activeWindows 상태가 변경될 때마다 localStorage에 저장
+  useEffect(() => {
+    saveToLocalStorage(STORAGE_KEYS.ACTIVE_WINDOWS, activeWindows);
+  }, [activeWindows]);
 
   // 활성 창 목록 가져오기
   const fetchActiveWindows = async () => {
     if (!electronAvailable) {
-      // Electron 환경이 아닐 때는 전체 화면만 표시
-      setActiveWindows([
-        {
-          id: "screen:0",
-          name: "전체 화면",
-          isScreen: true,
-          timestamp: Date.now(),
-        },
-      ]);
+      // Electron 환경이 아닐 때는 빈 배열 반환
+      setActiveWindows([]);
       return;
     }
 
     try {
       setIsLoadingWindows(true);
       setError(null);
+
+      // 현재 선택된 창 ID 저장 (새로고침 후에도 유지하기 위해)
+      const currentSelectedId = selectedWindowId;
+
       // any 타입으로 임시 처리 (Electron IPC 통신이 정확한 타입을 보장하지 않음)
       const windows: any[] = await window.electron.getActiveWindows();
 
@@ -126,53 +123,53 @@ export const useTimelapseGenerationCapture = () => {
           timestamp: win.timestamp || Date.now(),
         }));
 
-        // 전체 화면 옵션을 항상 첫 번째로 추가
-        const allWindows = [
-          {
-            id: "screen:0",
-            name: "전체 화면",
-            isScreen: true,
-            timestamp: Date.now(),
-          },
-          ...windowsWithTimestamp,
-        ];
+        // 실제 창 목록만 사용 (전체 화면 옵션 제거)
+        const allWindows = [...windowsWithTimestamp];
+
+        if (allWindows.length === 0) {
+          console.log("사용 가능한 창이 없습니다.");
+          setActiveWindows([]);
+          return;
+        }
+
+        // 현재 선택된 창이 새 목록에 존재하는지 확인
+        const windowExists = allWindows.some(
+          (win) => win.id === currentSelectedId
+        );
+
+        if (!windowExists && currentSelectedId) {
+          console.log(
+            "선택한 창이 더 이상 존재하지 않습니다. 첫 번째 창으로 선택합니다."
+          );
+          // 기존 선택한 창이 없으면 첫 번째 창으로 설정하고 로컬 스토리지 업데이트
+          const firstWindowId = allWindows[0].id;
+          saveToLocalStorage(STORAGE_KEYS.SELECTED_WINDOW_ID, firstWindowId);
+          setSelectedWindowId(firstWindowId);
+        } else if (currentSelectedId) {
+          // 이미 선택된 창이 있고 그것이 새 목록에 존재하면 유지
+          console.log("선택한 창 유지:", currentSelectedId);
+          saveToLocalStorage(
+            STORAGE_KEYS.SELECTED_WINDOW_ID,
+            currentSelectedId
+          );
+          setSelectedWindowId(currentSelectedId);
+        } else if (allWindows.length > 0) {
+          // 선택된 창이 없을 경우 첫 번째 창 선택
+          const firstWindowId = allWindows[0].id;
+          console.log("창이 선택되지 않아 첫 번째 창으로 설정:", firstWindowId);
+          saveToLocalStorage(STORAGE_KEYS.SELECTED_WINDOW_ID, firstWindowId);
+          setSelectedWindowId(firstWindowId);
+        }
 
         setActiveWindows(allWindows);
-
-        // 사용자가 선택한 창이 새로운 창 목록에 없는 경우 확인
-        const windowExists = allWindows.some(
-          (win) => win.id === selectedWindowId
-        );
-        if (!windowExists) {
-          console.log(
-            "선택한 창이 더 이상.존재하지 않습니다. 기본값으로 되돌립니다."
-          );
-          // 기존 선택한 창이 없으면 로컬 스토리지의 값은 유지하고 UI만 업데이트
-          setSelectedWindowId("screen:0");
-        }
       } else {
         console.error("잘못된 창 목록 형식:", windows);
-        setActiveWindows([
-          {
-            id: "screen:0",
-            name: "전체 화면",
-            isScreen: true,
-            timestamp: Date.now(),
-          },
-        ]);
+        setActiveWindows([]);
       }
     } catch (error) {
       console.error("활성 창 목록 가져오기 실패:", error);
       setError("창 목록을 가져오는 데 실패했습니다.");
-      // 오류 발생 시 최소한 전체 화면은 표시
-      setActiveWindows([
-        {
-          id: "screen:0",
-          name: "전체 화면",
-          isScreen: true,
-          timestamp: Date.now(),
-        },
-      ]);
+      setActiveWindows([]);
     } finally {
       setIsLoadingWindows(false);
     }
@@ -218,7 +215,7 @@ export const useTimelapseGenerationCapture = () => {
       };
 
       // 옵션 변경 시 로컬 스토리지에 저장
-      localStorage.setItem(TIMELAPSE_OPTIONS_KEY, JSON.stringify(newOptions));
+      saveToLocalStorage(STORAGE_KEYS.TIMELAPSE_OPTIONS, newOptions);
 
       return newOptions;
     });
@@ -229,7 +226,7 @@ export const useTimelapseGenerationCapture = () => {
     setSelectedWindowId(windowId);
 
     // 선택된 창 변경 시 로컬 스토리지에 저장
-    localStorage.setItem(SELECTED_WINDOW_ID_KEY, windowId);
+    saveToLocalStorage(STORAGE_KEYS.SELECTED_WINDOW_ID, windowId);
   };
 
   // 활성 창 목록 새로고침
@@ -255,7 +252,7 @@ export const useTimelapseGenerationCapture = () => {
         setSaveFolderPath(selectedPath);
 
         // 로컬 스토리지에 경로 저장
-        localStorage.setItem(SAVE_PATH_STORAGE_KEY, selectedPath);
+        saveToLocalStorage(STORAGE_KEYS.SAVE_PATH, selectedPath);
 
         // timelapseOptions에도 경로 설정
         setTimelapseOptions((prev) => ({

@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import type { WindowInfo } from "../../hooks/useTimelapseGenerationCapture";
 import WindowThumbnail from "./window/WindowThumbnail";
+import { STORAGE_KEYS } from "../../utils/localStorage";
 
 interface WindowSelectorProps {
   activeWindows: WindowInfo[];
@@ -17,15 +18,59 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
   isLoadingWindows,
   onRefreshWindows,
 }) => {
-  // 컴포넌트 마운트 또는 새로고침 버튼 클릭 시에도 선택 상태 유지
+  // 컴포넌트 마운트 시 로컬 스토리지에서 선택된 창 ID 확인
   useEffect(() => {
-    // selectedWindowId가 현재 활성 창 목록에 없는 경우, 첫 번째 창을 선택
+    const savedWindowId = localStorage.getItem(STORAGE_KEYS.SELECTED_WINDOW_ID);
+
+    // 저장된 ID가 있고, 현재 선택된 ID와 다르며, 활성 창 목록에 있는 경우
+    if (
+      savedWindowId &&
+      savedWindowId !== selectedWindowId &&
+      activeWindows.some((window) => window.id === savedWindowId)
+    ) {
+      console.log("로컬 스토리지에 저장된 창 ID로 복원:", savedWindowId);
+      onWindowChange(savedWindowId);
+    }
+  }, [activeWindows, onWindowChange]);
+
+  // 새로고침 버튼 처리기
+  const handleRefreshWindows = () => {
+    // 현재 선택된 ID를 기억
+    const currentSelectedId = selectedWindowId;
+
+    // 창 목록 새로고침
+    onRefreshWindows();
+
+    // 새로고침 후에도 기존 선택 상태를 유지하기 위해 로컬 스토리지에 강제로 저장
+    if (currentSelectedId) {
+      localStorage.setItem(STORAGE_KEYS.SELECTED_WINDOW_ID, currentSelectedId);
+    }
+  };
+
+  // 선택한 창 변경 시 로컬 스토리지에 저장
+  const handleWindowChange = (windowId: string) => {
+    if (!windowId) return; // 유효하지 않은 ID 방지
+
+    // 로컬 스토리지와 상태 모두 업데이트
+    localStorage.setItem(STORAGE_KEYS.SELECTED_WINDOW_ID, windowId);
+    onWindowChange(windowId);
+
+    // 디버깅을 위한 로그
+    console.log("창 선택 변경:", windowId);
+  };
+
+  // 활성 창 목록이 변경될 때 선택 상태 확인
+  useEffect(() => {
+    // 현재 선택된 창이 활성 창 목록에 없는 경우, 첫 번째 창 선택
     if (
       selectedWindowId &&
       !activeWindows.some((window) => window.id === selectedWindowId) &&
       activeWindows.length > 0
     ) {
-      onWindowChange(activeWindows[0].id);
+      const newWindowId = activeWindows[0].id;
+      console.log("선택한 창이 목록에 없어 첫 번째 창으로 변경:", newWindowId);
+      localStorage.setItem(STORAGE_KEYS.SELECTED_WINDOW_ID, newWindowId);
+      onWindowChange(newWindowId);
     }
   }, [activeWindows, selectedWindowId, onWindowChange]);
 
@@ -50,7 +95,7 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
           녹화할 화면
         </label>
         <button
-          onClick={onRefreshWindows}
+          onClick={handleRefreshWindows}
           disabled={isLoadingWindows}
           style={{
             padding: "8px 16px",
@@ -100,7 +145,12 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
               color: "#dcddde",
             }}
           >
-            창 목록이 없습니다
+            녹화할 수 있는 창이 없습니다.
+            <div
+              style={{ marginTop: "10px", fontSize: "12px", color: "#a0a0a0" }}
+            >
+              다른 앱을 실행하고 새로고침 버튼을 클릭하세요.
+            </div>
           </div>
         ) : (
           activeWindows.map((window) => (
@@ -123,43 +173,18 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
                   selectedWindowId === window.id ? "scale(1.02)" : "scale(1)",
                 boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
               }}
-              onClick={() => onWindowChange(window.id)}
+              onClick={() => handleWindowChange(window.id)}
             >
               <div
                 className="thumbnail"
                 style={{
                   backgroundColor: "#2f3136",
                   aspectRatio: "16/9",
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
                   position: "relative",
                 }}
               >
-                {window.thumbnailDataUrl ? (
-                  <img
-                    src={window.thumbnailDataUrl}
-                    alt={window.name}
-                    style={{
-                      maxWidth: "100%",
-                      maxHeight: "100%",
-                      objectFit: "cover",
-                      width: "100%",
-                      height: "100%",
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      color: "#a0a0a0",
-                      fontSize: "14px",
-                      padding: "40px",
-                      textAlign: "center",
-                    }}
-                  >
-                    {window.isScreen ? "전체 화면" : "썸네일이 없습니다"}
-                  </div>
-                )}
+                <WindowThumbnail window={window} />
+
                 {selectedWindowId === window.id && (
                   <div
                     style={{
@@ -176,6 +201,7 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
                       color: "white",
                       fontWeight: "bold",
                       fontSize: "14px",
+                      zIndex: 10,
                     }}
                   >
                     ✓

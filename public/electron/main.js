@@ -685,7 +685,9 @@ ipcMain.handle("get-active-windows", async () => {
     // 각 소스에 대해 필요한 정보만 추출
     return sources.map((source) => ({
       id: source.id,
-      name: source.name,
+      name: source.id.startsWith("screen:")
+        ? `모니터 ${source.id.split(":")[1]}`
+        : source.name,
       thumbnailDataUrl: source.thumbnail.toDataURL(),
       thumbnailWidth: source.thumbnail.getSize().width,
       thumbnailHeight: source.thumbnail.getSize().height,

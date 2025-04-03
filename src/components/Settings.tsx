@@ -17,10 +17,17 @@ const Settings: React.FC = () => {
     selectSaveFolder,
   } = useTimelapseGenerationCapture();
 
+  // 최초 마운트 여부 확인을 위한 ref
+  const mountedRef = React.useRef(false);
+
   // 컴포넌트 마운트 시 창 목록 초기 로드만 수행
   useEffect(() => {
-    // 초기 창 목록 로드
-    refreshActiveWindows();
+    // 초기 창 목록 로드 - 최초 마운트 시에만 실행
+    if (!mountedRef.current) {
+      console.log("Settings: 최초 마운트 시 창 목록 로딩");
+      refreshActiveWindows();
+      mountedRef.current = true;
+    }
   }, []);
 
   // 배속 변경 핸들러
@@ -36,8 +43,8 @@ const Settings: React.FC = () => {
   // 설정 저장 핸들러
   const handleSaveSettings = () => {
     // 현재 타임랩스 옵션을 로컬 스토리지에 저장
-    localStorage.setItem("timelapseOptions", JSON.stringify(timelapseOptions));
-    localStorage.setItem("selectedWindowId", selectedWindowId);
+    // localStorage.setItem("timelapseOptions", JSON.stringify(timelapseOptions));
+    // localStorage.setItem("selectedWindowId", selectedWindowId);
 
     alert("설정이 저장되었습니다.");
   };

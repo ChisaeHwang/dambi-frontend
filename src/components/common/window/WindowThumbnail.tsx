@@ -1,9 +1,17 @@
 import React, { useState, useEffect } from "react";
 import type { WindowInfo } from "../../../hooks/useTimelapseGenerationCapture";
+import {
+  saveThumbnail,
+  loadThumbnail,
+  removeThumbnail,
+} from "../../../utils/localStorage";
 
 interface WindowThumbnailProps {
   window: WindowInfo;
 }
+
+// 로컬 스토리지 키 접두사
+const THUMBNAIL_STORAGE_PREFIX = "window_thumbnail_";
 
 const WindowThumbnail: React.FC<WindowThumbnailProps> = ({ window }) => {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
@@ -19,29 +27,41 @@ const WindowThumbnail: React.FC<WindowThumbnailProps> = ({ window }) => {
     if (window.thumbnailDataUrl) {
       console.log(`직접 전달된 Base64 썸네일 사용 (${window.name})`);
       setImageSrc(window.thumbnailDataUrl);
+
+      // 로컬 스토리지에 저장 (다른 페이지로 이동해도 유지되도록)
+      saveThumbnail(window.id, window.thumbnailDataUrl);
       return;
     }
 
-    // 2. 이전 방식 지원 (NativeImage 객체에서 변환)
+    // 2. 로컬 스토리지에서 확인
+    const storedThumbnail = loadThumbnail(window.id);
+    if (storedThumbnail) {
+      console.log(`로컬 스토리지에서 썸네일 불러옴 (${window.name})`);
+      setImageSrc(storedThumbnail);
+      return;
+    }
+
+    // 3. 이전 방식 지원 (NativeImage 객체에서 변환)
     if (window.thumbnail) {
       try {
         console.log(`NativeImage에서 썸네일 변환 (${window.name})`);
         const dataUrl = window.thumbnail.toDataURL();
         setImageSrc(dataUrl);
+
+        // 로컬 스토리지에 저장 (다른 페이지로 이동해도 유지되도록)
+        saveThumbnail(window.id, dataUrl);
       } catch (error) {
         console.error("NativeImage 썸네일 처리 오류:", error);
-        setErrorMsg(
-          `오류: ${error instanceof Error ? error.message : String(error)}`
-        );
+        // 오류 메시지 표시하지 않고 window.name 사용
       }
       return;
     }
 
-    // 3. 썸네일이 없는 경우
-    setErrorMsg("썸네일이 없습니다");
+    // 4. 썸네일이 없는 경우 - 오류 메시지 표시하지 않음
+    console.log(`${window.name}의 썸네일이 없습니다.`);
   }, [window, window.thumbnailDataUrl, window.timestamp]);
 
-  // 이미지가 없으면 창 이름 또는 오류 표시
+  // 이미지가 없으면 창 이름 표시
   if (!imageSrc) {
     return (
       <div
@@ -57,13 +77,13 @@ const WindowThumbnail: React.FC<WindowThumbnailProps> = ({ window }) => {
       >
         <div
           style={{
-            color: errorMsg ? "#e74c3c" : "#fff",
+            color: "#fff",
             fontSize: "14px",
             textAlign: "center",
             padding: "10px",
           }}
         >
-          {errorMsg || window.name}
+          {window.name}
         </div>
       </div>
     );
@@ -94,7 +114,10 @@ const WindowThumbnail: React.FC<WindowThumbnailProps> = ({ window }) => {
         onError={(e) => {
           console.error(`이미지 로드 실패 (${window.name}):`, e);
           setImageSrc(null);
-          setErrorMsg("이미지 로드 실패");
+          // 이미지 로드 실패 메시지 표시하지 않음
+
+          // 로컬 스토리지에서 삭제 (문제가 있는 썸네일)
+          removeThumbnail(window.id);
         }}
       />
     </div>

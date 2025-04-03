@@ -28,10 +28,17 @@ const Timelapse: React.FC = () => {
     null
   );
 
+  // 최초 마운트 여부 확인을 위한 ref (컴포넌트 최상위 레벨에 선언)
+  const mountedRef = React.useRef(false);
+
   // 컴포넌트 마운트 시 창 목록 초기 로드만 수행
   useEffect(() => {
-    // 초기 창 목록 로드
-    refreshActiveWindows();
+    // 초기 창 목록 로드 - 최초 마운트 시에만 실행
+    if (!mountedRef.current) {
+      console.log("Timelapse: 최초 마운트 시 창 목록 로딩");
+      refreshActiveWindows();
+      mountedRef.current = true;
+    }
   }, []); // 의존성 배열을 빈 배열로 변경하여 마운트 시에만 실행
 
   // 타이머 관리
