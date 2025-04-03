@@ -1,9 +1,3 @@
-const { app, desktopCapturer, BrowserWindow, ipcMain } = require("electron");
-const path = require("path");
-const fs = require("fs");
-const os = require("os");
-const { spawn } = require("child_process");
-const windowManager = require("./window-manager");
 const captureModule = require("./capture");
 
 /**
