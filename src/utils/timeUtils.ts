@@ -12,5 +12,5 @@ export const formatTime = (seconds: number): string => {
     return num.toString().padStart(2, "0");
   };
 
-  return `${padZero(hours)} : ${padZero(minutes)} : ${padZero(secs)}`;
+  return `${padZero(hours)}:${padZero(minutes)}:${padZero(secs)}`;
 };

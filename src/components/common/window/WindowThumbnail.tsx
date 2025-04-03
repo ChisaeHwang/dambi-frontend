@@ -64,7 +64,7 @@ const WindowThumbnail: React.FC<WindowThumbnailProps> = ({ window }) => {
   // 이미지가 없으면 창 이름 표시
   if (!imageSrc) {
     return (
-      <div className="w-full h-full bg-[var(--bg-secondary)] flex justify-center items-center overflow-hidden">
+      <div className="w-full h-full bg-gradient-to-b from-[#2a2d36] to-[#24272e] flex justify-center items-center overflow-hidden shadow-inner">
         <div className="text-white text-sm text-center p-2.5">
           {window.name}
         </div>
@@ -74,7 +74,7 @@ const WindowThumbnail: React.FC<WindowThumbnailProps> = ({ window }) => {
 
   // 이미지가 있으면 이미지 표시
   return (
-    <div className="w-full h-full bg-[var(--bg-secondary)] flex justify-center items-center overflow-hidden">
+    <div className="w-full h-full bg-gradient-to-b from-[#2a2d36] to-[#24272e] flex justify-center items-center overflow-hidden shadow-inner">
       <img
         key={`img-${window.id}-${window.timestamp || Date.now()}`}
         src={imageSrc}

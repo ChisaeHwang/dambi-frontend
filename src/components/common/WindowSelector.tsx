@@ -115,23 +115,23 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
           activeWindows.map((window) => (
             <div
               key={`${window.id}-${window.timestamp}`}
-              className={`bg-[var(--input-bg)] rounded-lg overflow-hidden cursor-pointer ${
+              className={`rounded-lg overflow-hidden cursor-pointer ${
                 selectedWindowId === window.id
-                  ? "border-2 border-[var(--primary-color)] scale-[1.02]"
-                  : "border-2 border-transparent scale-100"
-              } transition-all duration-200 shadow-md`}
+                  ? "bg-gradient-to-br from-[#35395c] to-[#2d3249] scale-[1.02] shadow-lg ring-2 ring-[var(--primary-color)]"
+                  : "bg-gradient-to-br from-[#33363f] to-[#2a2d36] scale-100 hover:from-[#373a44] hover:to-[#2e313a]"
+              } transition-all duration-200`}
               onClick={() => handleWindowChange(window.id)}
             >
-              <div className="bg-[var(--bg-secondary)] aspect-video relative">
+              <div className="aspect-video relative overflow-hidden">
                 <WindowThumbnail window={window} />
 
                 {selectedWindowId === window.id && (
-                  <div className="absolute top-2 right-2 bg-[var(--primary-color)] rounded-full w-6 h-6 flex justify-center items-center text-white font-bold text-sm z-10">
+                  <div className="absolute top-2 right-2 bg-[var(--primary-color)] rounded-full w-6 h-6 flex justify-center items-center text-white font-bold text-sm z-10 shadow-md">
                     ✓
                   </div>
                 )}
               </div>
-              <div className="p-3">
+              <div className="p-3 bg-[rgba(0,0,0,0.15)]">
                 <div className="text-sm font-semibold text-white whitespace-nowrap overflow-hidden text-ellipsis">
                   {window.name}
                 </div>
