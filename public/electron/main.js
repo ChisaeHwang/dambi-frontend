@@ -513,83 +513,136 @@ class TimelapseCapture {
       fs.mkdirSync(outputDir, { recursive: true });
     }
 
-    // FFmpeg 품질 설정
-    const presetMap = {
-      low: "veryfast",
-      medium: "fast",
-      high: "medium",
-    };
-
+    // FFmpeg 품질 설정 - 간단화
     const crfMap = {
-      low: "28",
-      medium: "25",
+      low: "30",
+      medium: "26",
       high: "22",
     };
 
-    const preset = presetMap[quality] || "fast";
-    const crf = crfMap[quality] || "25";
+    const crf = crfMap[quality] || "26";
 
     // ffmpeg-static 패키지에서 ffmpeg 경로 가져오기
     const ffmpegPath = require("ffmpeg-static");
 
     console.log(`타임랩스 생성 시작: ${outputPath}`);
     console.log(
-      `설정: 속도=${speedFactor}x, 품질=${quality}, 프리셋=${preset}, CRF=${crf}, 원본 보존=${preserveOriginals}`
+      `설정: 속도=${speedFactor}x, 품질=${quality}, CRF=${crf}, 원본 보존=${preserveOriginals}`
     );
 
-    // 표준 해상도로 변환 (비디오 해상도가 2의 배수가 아닐 경우 대비)
-    const scaleFilter =
-      "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2";
+    let lastProgress = 0;
 
     return new Promise((resolve, reject) => {
       try {
-        // 향상된 FFmpeg 명령 - 속도 향상을 위한 추가 설정
-        const ffmpeg = spawn(ffmpegPath, [
+        // 타임랩스 생성 시작 알림
+        if (mainWindow) {
+          mainWindow.webContents.send("timelapse-progress", {
+            status: "start",
+            progress: 0,
+            stage: "초기화",
+          });
+        }
+
+        // 단순화된 FFmpeg 명령 - 소프트웨어 인코딩만 사용
+        const ffmpegArgs = [
           "-i",
           this.videoPath,
-          // 입력 비디오 디코딩 스레드 증가
+          // 스레드 최적화
           "-threads",
-          "8",
-          // 더 빠른 필터링
+          Math.max(4, os.cpus().length).toString(),
+          // 타임랩스 효과 (속도 증가) + 스케일링
           "-vf",
-          `${scaleFilter},setpts=PTS/${speedFactor}`,
+          `setpts=PTS/${speedFactor},scale=1280:720`,
           // 인코더 옵션
           "-c:v",
           "libx264",
           "-pix_fmt",
           "yuv420p",
           "-preset",
-          preset,
+          "ultrafast",
           "-crf",
           crf,
-          // 인코딩 속도 향상을 위한 옵션들
-          "-tune",
-          "fastdecode",
+          // 빠른 디코딩 최적화
           "-movflags",
           "+faststart",
-          // 쓰레딩 추가
-          "-cpu-used",
-          "8",
-          // GOP 크기 조정 (더 빠른 시크)
-          "-g",
-          "15",
-          "-an", // 오디오 제거
-          "-y", // 기존 파일 덮어쓰기
+          // 오디오 제거
+          "-an",
+          // 출력 파일 덮어쓰기
+          "-y",
           outputPath,
-        ]);
+        ];
+
+        console.log(`FFmpeg 명령: ${ffmpegArgs.join(" ")}`);
+
+        // 메인 윈도우에 초기 작업 시작 알림
+        if (mainWindow) {
+          mainWindow.webContents.send("timelapse-progress", {
+            status: "start",
+            progress: 5,
+            stage: "인코딩 시작 중...",
+          });
+        }
+
+        const ffmpeg = spawn(ffmpegPath, ffmpegArgs);
 
         ffmpeg.stdout.on("data", (data) => {
           console.log(`ffmpeg 출력: ${data}`);
         });
 
+        // 진행 상황 업데이트 간소화
+        let lastUpdateTime = Date.now();
+        const minUpdateInterval = 1000; // 1초마다 업데이트
+
         ffmpeg.stderr.on("data", (data) => {
-          // ffmpeg는 stderr로 진행 상황을 출력하므로 에러가 아님
-          console.log(`ffmpeg 정보: ${data}`);
+          const output = data.toString();
+          console.log(`ffmpeg 정보: ${output}`);
+
+          // 현재 시간 확인 (업데이트 간격 제한)
+          const currentTime = Date.now();
+          if (currentTime - lastUpdateTime < minUpdateInterval) {
+            return;
+          }
+
+          // 진행 상황 파싱 - 프레임 기반
+          const frameMatch = output.match(/frame=\s*(\d+)/);
+          if (frameMatch) {
+            const frame = parseInt(frameMatch[1]);
+
+            // 프레임 개수에 따라 진행률 추정
+            let progress = 0;
+            if (frame > 0) {
+              // 기본값으로 프레임 수에 따라 진행률 설정
+              // 최대 프레임 수를 예측하기 어려우므로 상한값을 가정
+              progress = Math.min(Math.floor((frame / 1000) * 100), 95);
+            }
+
+            // 진행률이 변경된 경우에만 업데이트
+            if (progress > lastProgress && mainWindow) {
+              lastProgress = progress;
+              lastUpdateTime = Date.now();
+
+              mainWindow.webContents.send("timelapse-progress", {
+                status: "processing",
+                progress: progress,
+                stage: "인코딩 중...",
+              });
+            }
+          }
         });
 
         ffmpeg.on("close", (code) => {
           if (code === 0) {
             console.log(`타임랩스 생성 완료: ${outputPath}`);
+
+            // 완료 상태 전송
+            if (mainWindow) {
+              mainWindow.webContents.send("timelapse-progress", {
+                status: "complete",
+                progress: 100,
+                stage: "완료",
+                outputPath,
+              });
+            }
 
             // 원본 파일은 기본적으로 보존
             if (
@@ -609,11 +662,33 @@ class TimelapseCapture {
           } else {
             const errorMsg = `타임랩스 생성 실패: FFmpeg 오류 코드 ${code}`;
             console.error(errorMsg);
+
+            // 에러 상태 전송
+            if (mainWindow) {
+              mainWindow.webContents.send("timelapse-progress", {
+                status: "error",
+                progress: 0,
+                stage: "오류",
+                error: errorMsg,
+              });
+            }
+
             reject(new Error(errorMsg));
           }
         });
       } catch (error) {
         console.error("타임랩스 생성 중 오류:", error);
+
+        // 에러 상태 전송
+        if (mainWindow) {
+          mainWindow.webContents.send("timelapse-progress", {
+            status: "error",
+            progress: 0,
+            stage: "오류",
+            error: error.message || String(error),
+          });
+        }
+
         reject(error);
       }
     });
@@ -740,6 +815,8 @@ ipcMain.handle("stop-capture", async () => {
 
 ipcMain.handle("generate-timelapse", async (event, options) => {
   try {
+    console.log("타임랩스 생성 요청 받음:", options);
+
     // 사용자 지정 저장 경로가 있는 경우
     if (options.outputPath) {
       // 파일명 생성 (타임스탬프 추가)
@@ -748,7 +825,10 @@ ipcMain.handle("generate-timelapse", async (event, options) => {
       options.outputPath = path.join(options.outputPath, fileName);
     }
 
-    return await timelapseCapture.generateTimelapse(options);
+    // 타임랩스 생성 요청
+    const result = await timelapseCapture.generateTimelapse(options);
+    console.log("타임랩스 생성 완료:", result);
+    return result;
   } catch (error) {
     console.error("타임랩스 생성 오류:", error);
     throw error;

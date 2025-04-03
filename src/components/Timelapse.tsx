@@ -21,6 +21,7 @@ const Timelapse: React.FC = () => {
     refreshActiveWindows,
     error,
     isGeneratingTimelapse,
+    timelapseProgress,
   } = useTimelapseGenerationCapture();
 
   const [showGeneratePrompt, setShowGeneratePrompt] = useState<boolean>(false);
@@ -176,6 +177,7 @@ const Timelapse: React.FC = () => {
             onGenerate={handleGenerateTimelapse}
             onCancel={() => setShowGeneratePrompt(false)}
             isGenerating={isGeneratingTimelapse}
+            progress={timelapseProgress}
           />
         )}
       </div>

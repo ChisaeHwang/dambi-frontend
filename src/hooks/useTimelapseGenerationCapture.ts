@@ -44,6 +44,15 @@ export interface WindowInfo {
   isScreen?: boolean;
 }
 
+// 타임랩스 생성 진행 상황 인터페이스
+export interface TimelapseProgress {
+  status: "start" | "processing" | "complete" | "error";
+  progress: number;
+  stage: string;
+  error?: string;
+  outputPath?: string;
+}
+
 // 일렉트론 환경 확인
 const isElectronEnv = () => {
   return (
@@ -93,6 +102,14 @@ export const useTimelapseGenerationCapture = () => {
   // 타임랩스 생성 로딩 상태 추가
   const [isGeneratingTimelapse, setIsGeneratingTimelapse] =
     useState<boolean>(false);
+  // 타임랩스 생성 진행 상황 추가
+  const [timelapseProgress, setTimelapseProgress] = useState<TimelapseProgress>(
+    {
+      status: "start",
+      progress: 0,
+      stage: "준비",
+    }
+  );
 
   // activeWindows 상태가 변경될 때마다 localStorage에 저장
   useEffect(() => {
@@ -170,6 +187,7 @@ export const useTimelapseGenerationCapture = () => {
     setElectronAvailable(electronEnv);
 
     let cleanup: (() => void) | null = null;
+    let progressCleanup: (() => void) | null = null;
 
     if (electronEnv) {
       // 캡처 상태 이벤트 리스너 등록
@@ -179,6 +197,25 @@ export const useTimelapseGenerationCapture = () => {
 
         if (status.error) {
           setError(status.error);
+        }
+      });
+
+      // 타임랩스 생성 진행 상황 이벤트 리스너 등록
+      progressCleanup = window.electron.onTimelapseProgress((progress) => {
+        setTimelapseProgress(progress);
+
+        // 상태에 따라 isGeneratingTimelapse 상태 갱신
+        if (progress.status === "start" || progress.status === "processing") {
+          setIsGeneratingTimelapse(true);
+        } else {
+          setIsGeneratingTimelapse(false);
+        }
+
+        // 에러 상태 처리
+        if (progress.status === "error" && progress.error) {
+          setError(progress.error);
+        } else if (progress.status === "complete") {
+          setError(null);
         }
       });
 
@@ -202,6 +239,9 @@ export const useTimelapseGenerationCapture = () => {
     return () => {
       if (cleanup) {
         cleanup();
+      }
+      if (progressCleanup) {
+        progressCleanup();
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -409,5 +449,6 @@ export const useTimelapseGenerationCapture = () => {
     setSaveFolderPath,
     selectSaveFolder,
     isGeneratingTimelapse,
+    timelapseProgress,
   };
 };

@@ -1,4 +1,7 @@
-import { TimelapseOptions } from "./hooks/useTimelapseGenerationCapture";
+import {
+  TimelapseOptions,
+  TimelapseProgress,
+} from "./hooks/useTimelapseGenerationCapture";
 
 // 캡처 상태 인터페이스
 interface CaptureStatus {
@@ -46,6 +49,9 @@ interface ElectronAPI {
 
   // 이벤트 리스너
   onCaptureStatus: (callback: (status: CaptureStatus) => void) => () => void;
+  onTimelapseProgress: (
+    callback: (progress: TimelapseProgress) => void
+  ) => () => void;
 }
 
 // 글로벌 window 객체에 일렉트론 API 추가
