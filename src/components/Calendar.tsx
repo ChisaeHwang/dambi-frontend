@@ -68,34 +68,8 @@ const Calendar: React.FC = () => {
   const selectedDateSessions = getSessionsForDate(selectedDate);
 
   return (
-    <div
-      className="calendar-container"
-      style={{
-        backgroundColor: "#36393f",
-        color: "#dcddde",
-        height: "100vh",
-        width: "100%",
-        display: "flex",
-        flexDirection: "column",
-        padding: "12px",
-        overflowX: "hidden",
-        overflowY: "auto",
-      }}
-    >
-      <div
-        className="calendar-card"
-        style={{
-          backgroundColor: "#2f3136",
-          borderRadius: "8px",
-          boxShadow: "0 2px 10px 0 rgba(0,0,0,.2)",
-          padding: "20px",
-          margin: "0 auto",
-          width: "98%",
-          maxWidth: "1400px",
-          minWidth: "auto",
-          marginBottom: "20px",
-        }}
-      >
+    <div className="bg-[var(--bg-primary)] text-[var(--text-normal)] h-screen w-full flex flex-col p-3 overflow-x-hidden overflow-y-auto">
+      <div className="bg-[var(--bg-secondary)] rounded-lg shadow-md p-5 mx-auto w-[98%] max-w-[1400px] min-w-auto mb-5">
         <CalendarHeader
           currentMonth={currentMonth}
           onPrevMonth={prevMonth}
