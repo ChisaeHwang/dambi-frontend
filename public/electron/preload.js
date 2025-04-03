@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld("electron", {
 
   // 타임랩스 캡처 관련 기능
   getActiveWindows: () => ipcRenderer.invoke("get-active-windows"),
+  getRecordingStatus: () => ipcRenderer.invoke("get-recording-status"),
   startCapture: (windowId, windowName) =>
     ipcRenderer.invoke("start-capture", windowId, windowName),
   stopCapture: () => ipcRenderer.invoke("stop-capture"),

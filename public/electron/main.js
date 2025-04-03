@@ -23,8 +23,8 @@ class TimelapseCapture {
     this.endTime = null;
     this.videoPath = null;
     this.captureConfig = {
-      fps: 10, // 캡처 프레임 속도 (낮추면 파일 크기 감소, 높이면 더 부드러움)
-      videoBitrate: 2500, // 비디오 비트레이트 (낮추면 파일 크기 감소)
+      fps: 15, // 캡처 프레임 속도 향상 (더 부드러운 결과물)
+      videoBitrate: 3000, // 비디오 비트레이트 (품질 향상)
       videoSize: {
         // 캡처 해상도
         width: 1280,
@@ -36,6 +36,7 @@ class TimelapseCapture {
     this.recordingDuration = 0;
     this.recordingInterval = null;
     this.statusUpdateInterval = null;
+    this.currentSource = null; // 현재 녹화 중인 소스 정보
   }
 
   async startCapture(windowId, windowName) {
@@ -109,12 +110,19 @@ class TimelapseCapture {
       try {
         // Electron 19 이상에서는 desktopCapturer API가 메인 프로세스에서도 사용 가능
         // electron-screen-recorder 패키지 활용
-        const { ScreenRecorder } = require("electron-screen-recorder");
+        const electronScreenRecorder = require("electron-screen-recorder");
+        console.log(
+          `[TimelapseCapture] 일렉트론 스크린 레코더 로드됨:`,
+          Object.keys(electronScreenRecorder)
+        );
 
-        console.log(`[TimelapseCapture] 일렉트론 스크린 레코더 사용 시도`);
+        // 올바른 방식으로 레코더 인스턴스 생성
+        const recorder = new electronScreenRecorder.default();
 
-        // 메인 프로세스에서 녹화 시작
-        const recorder = new ScreenRecorder();
+        console.log(
+          `[TimelapseCapture] 레코더 인스턴스 생성됨:`,
+          typeof recorder
+        );
 
         // 녹화 설정
         const recordOptions = {
@@ -152,6 +160,9 @@ class TimelapseCapture {
 
         this.emitStatusUpdate();
 
+        // 현재 녹화 중인 소스 정보 저장
+        this.currentSource = selectedSource;
+
         return { success: true, captureDir: this.captureDir };
       } catch (mainRecordingError) {
         // 메인 프로세스 녹화 실패 시 로그 출력 후 렌더러 프로세스 방식으로 폴백
@@ -165,7 +176,7 @@ class TimelapseCapture {
         const recorderWindow = new BrowserWindow({
           width: 800,
           height: 600,
-          show: isDev, // 개발 모드에서만 표시 (디버깅용)
+          show: false, // 항상 숨김 상태로 실행
           webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
@@ -280,11 +291,6 @@ class TimelapseCapture {
         fs.writeFileSync(recorderHtmlPath, recorderHtml);
         recorderWindow.loadFile(recorderHtmlPath);
 
-        // 개발자 도구 열기 (디버깅용)
-        if (isDev) {
-          recorderWindow.webContents.openDevTools();
-        }
-
         // 레코더 창 관련 이벤트 및 변수 설정
         this.recorderWindow = recorderWindow;
 
@@ -381,6 +387,9 @@ class TimelapseCapture {
           this.recorderWindow = null;
         });
 
+        // 현재 녹화 중인 소스 정보 저장
+        this.currentSource = selectedSource;
+
         return { success: true, captureDir: this.captureDir };
       }
     } catch (error) {
@@ -434,6 +443,7 @@ class TimelapseCapture {
         this.emitStatusUpdate();
 
         console.log(`[TimelapseCapture] 메인 프로세스 녹화 중지 완료`);
+        this.currentSource = null; // 녹화 중인 소스 정보 초기화
       }
       // 렌더러 프로세스(BrowserWindow) 기반 녹화인 경우
       else if (this.recorderWindow && !this.recorderWindow.isDestroyed()) {
@@ -506,18 +516,18 @@ class TimelapseCapture {
     // FFmpeg 품질 설정
     const presetMap = {
       low: "veryfast",
-      medium: "medium",
-      high: "slow",
+      medium: "fast",
+      high: "medium",
     };
 
     const crfMap = {
       low: "28",
-      medium: "23",
-      high: "18",
+      medium: "25",
+      high: "22",
     };
 
-    const preset = presetMap[quality] || "medium";
-    const crf = crfMap[quality] || "23";
+    const preset = presetMap[quality] || "fast";
+    const crf = crfMap[quality] || "25";
 
     // ffmpeg-static 패키지에서 ffmpeg 경로 가져오기
     const ffmpegPath = require("ffmpeg-static");
@@ -533,12 +543,17 @@ class TimelapseCapture {
 
     return new Promise((resolve, reject) => {
       try {
-        // 단순히 속도만 조절하는 FFmpeg 명령 사용
+        // 향상된 FFmpeg 명령 - 속도 향상을 위한 추가 설정
         const ffmpeg = spawn(ffmpegPath, [
           "-i",
           this.videoPath,
+          // 입력 비디오 디코딩 스레드 증가
+          "-threads",
+          "8",
+          // 더 빠른 필터링
           "-vf",
           `${scaleFilter},setpts=PTS/${speedFactor}`,
+          // 인코더 옵션
           "-c:v",
           "libx264",
           "-pix_fmt",
@@ -547,6 +562,17 @@ class TimelapseCapture {
           preset,
           "-crf",
           crf,
+          // 인코딩 속도 향상을 위한 옵션들
+          "-tune",
+          "fastdecode",
+          "-movflags",
+          "+faststart",
+          // 쓰레딩 추가
+          "-cpu-used",
+          "8",
+          // GOP 크기 조정 (더 빠른 시크)
+          "-g",
+          "15",
           "-an", // 오디오 제거
           "-y", // 기존 파일 덮어쓰기
           outputPath,
@@ -670,6 +696,20 @@ ipcMain.handle("get-active-windows", async () => {
     console.error("활성 창 목록 가져오기 오류:", error);
     throw error;
   }
+});
+
+// 녹화 상태 확인
+ipcMain.handle("get-recording-status", () => {
+  return {
+    isRecording: timelapseCapture.isCapturing,
+    duration: timelapseCapture.recordingDuration,
+    source: timelapseCapture.currentSource
+      ? {
+          id: timelapseCapture.currentSource.id,
+          name: timelapseCapture.currentSource.name,
+        }
+      : null,
+  };
 });
 
 ipcMain.handle("start-capture", async (event, windowId, windowName) => {
