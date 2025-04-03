@@ -219,6 +219,30 @@ class TimelapseGenerator {
     const { speedFactor, crf } = options;
     const cpuCount = Math.max(4, os.cpus().length);
 
+    // 필터 체인 구성 (속도 팩터에 따라 다른 방식 적용)
+    let filterChain;
+    let framerate = "30"; // 기본 출력 프레임 레이트
+
+    if (speedFactor <= 5) {
+      // 낮은 속도 팩터: 모든 프레임 유지하면서 속도 조절
+      // 필요한 경우 중간 프레임을 생성하여 부드럽게 만듬
+      filterChain = `fps=60,setpts=${
+        1 / speedFactor
+      }*PTS,scale=-2:1080:flags=lanczos`;
+      framerate = "60"; // 더 높은 프레임 레이트로 부드러운 결과
+    } else if (speedFactor <= 10) {
+      // 중간 속도 팩터: 균일하게 프레임 선택
+      // select 필터를 통해 일정한 간격으로 프레임 선택
+      filterChain = `select='not(mod(n,${Math.floor(
+        speedFactor / 2
+      )}))',setpts=N/(30*TB),scale=-2:1080:flags=lanczos`;
+    } else {
+      // 높은 속도 팩터: 키 프레임 우선 선택 (씬 변화 감지)
+      const sceneThreshold = Math.min(0.2, 0.5 / speedFactor); // 속도에 따른 임계값 조정
+      filterChain = `select='eq(pict_type,I) + gt(scene,${sceneThreshold})',setpts=N/(24*TB),scale=-2:1080:flags=lanczos`;
+      framerate = "24"; // 영화같은 느낌의 프레임 레이트
+    }
+
     return [
       // 입력 파일
       "-i",
@@ -228,11 +252,13 @@ class TimelapseGenerator {
       "-threads",
       cpuCount.toString(),
 
-      // 향상된 타임랩스 효과 + 스케일링 + 필터링
+      // 필터 체인 적용
       "-vf",
-      `setpts=PTS/${speedFactor},scale=-2:1080:flags=lanczos,fps=${
-        30 / speedFactor
-      }`,
+      filterChain,
+
+      // 출력 프레임 레이트 고정
+      "-r",
+      framerate,
 
       // 인코더 옵션 - 향상된 품질 설정
       "-c:v",
