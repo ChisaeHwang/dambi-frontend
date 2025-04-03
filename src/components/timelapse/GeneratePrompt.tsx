@@ -47,22 +47,13 @@ const GeneratePrompt: React.FC<GeneratePromptProps> = ({
   };
 
   return (
-    <div
-      className="generate-prompt"
-      style={{
-        padding: "20px",
-        marginTop: "20px",
-        backgroundColor: "#40444b",
-        borderRadius: "8px",
-      }}
-    >
+    <div className="p-5 mt-5 bg-[var(--input-bg)] rounded-lg">
       <p
-        style={{
-          fontSize: "16px",
-          marginBottom: "16px",
-          textAlign: "center",
-          color: progress?.status === "error" ? "#ed4245" : "#fff",
-        }}
+        className={`text-base mb-4 text-center ${
+          progress?.status === "error"
+            ? "text-[var(--text-danger)]"
+            : "text-white"
+        }`}
       >
         {getStatusMessage()}
       </p>
@@ -70,55 +61,23 @@ const GeneratePrompt: React.FC<GeneratePromptProps> = ({
       {isGenerating && progress && <TimelapseProgressBar progress={progress} />}
 
       {progress?.status === "error" && progress.error && (
-        <div
-          style={{
-            margin: "16px 0",
-            padding: "10px",
-            backgroundColor: "rgba(237, 66, 69, 0.1)",
-            borderRadius: "4px",
-            color: "#ed4245",
-            fontSize: "14px",
-          }}
-        >
+        <div className="my-4 p-2.5 bg-[rgba(237,66,69,0.1)] rounded text-[var(--text-danger)] text-sm">
           {formatErrorMessage(progress.error)}
         </div>
       )}
 
       {isGenerating && !progress && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            marginBottom: "16px",
-          }}
-        >
+        <div className="flex justify-center mb-4">
           <div className="loading-spinner"></div>
         </div>
       )}
 
-      <div
-        className="prompt-buttons"
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          gap: "12px",
-          marginTop: "16px",
-        }}
-      >
+      <div className="flex justify-center gap-3 mt-4">
         {progress?.status === "error" ? (
           // 오류 발생 시 다시 시도 버튼 표시
           <button
             onClick={onGenerate}
-            style={{
-              padding: "10px 20px",
-              borderRadius: "4px",
-              border: "none",
-              backgroundColor: "#5865f2",
-              color: "#fff",
-              cursor: "pointer",
-              fontSize: "14px",
-              minWidth: "120px",
-            }}
+            className="py-2.5 px-5 rounded border-none bg-[var(--primary-color)] text-white cursor-pointer text-sm min-w-[120px]"
           >
             다시 시도
           </button>
@@ -128,34 +87,22 @@ const GeneratePrompt: React.FC<GeneratePromptProps> = ({
             <button
               onClick={onGenerate}
               disabled={isGenerating}
-              style={{
-                padding: "10px 20px",
-                borderRadius: "4px",
-                border: "none",
-                backgroundColor: isGenerating ? "#36794e" : "#43b581",
-                color: "#fff",
-                cursor: isGenerating ? "default" : "pointer",
-                fontSize: "14px",
-                minWidth: "100px",
-                opacity: isGenerating ? 0.7 : 1,
-              }}
+              className={`py-2.5 px-5 rounded border-none text-white text-sm min-w-[100px] ${
+                isGenerating
+                  ? "bg-[#36794e] cursor-default opacity-70"
+                  : "bg-[var(--status-green)] cursor-pointer opacity-100"
+              }`}
             >
               예
             </button>
             <button
               onClick={onCancel}
               disabled={isGenerating}
-              style={{
-                padding: "10px 20px",
-                borderRadius: "4px",
-                border: "none",
-                backgroundColor: isGenerating ? "#a52e31" : "#ed4245",
-                color: "#fff",
-                cursor: isGenerating ? "default" : "pointer",
-                fontSize: "14px",
-                minWidth: "100px",
-                opacity: isGenerating ? 0.7 : 1,
-              }}
+              className={`py-2.5 px-5 rounded border-none text-white text-sm min-w-[100px] ${
+                isGenerating
+                  ? "bg-[#a52e31] cursor-default opacity-70"
+                  : "bg-[var(--text-danger)] cursor-pointer opacity-100"
+              }`}
             >
               아니오
             </button>

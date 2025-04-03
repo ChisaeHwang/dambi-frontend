@@ -12,59 +12,20 @@ const TimelapseControls: React.FC<TimelapseControlsProps> = ({
   onStop,
 }) => {
   return (
-    <div
-      className="controls"
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        gap: "16px",
-        marginTop: "20px",
-        marginBottom: "30px",
-      }}
-    >
+    <div className="flex justify-center gap-4 mt-5 mb-8">
       {!isCapturing ? (
         <button
           onClick={onStart}
-          style={{
-            padding: "12px 24px",
-            borderRadius: "4px",
-            border: "none",
-            backgroundColor: "#43b581",
-            color: "#fff",
-            cursor: "pointer",
-            fontSize: "16px",
-            fontWeight: "600",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "8px",
-            minWidth: "160px",
-            boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
-          }}
+          className="py-3 px-6 rounded border-none bg-[var(--status-green)] text-white cursor-pointer text-base font-semibold flex items-center justify-center gap-2 min-w-40 shadow-md"
         >
-          <span style={{ fontSize: "18px" }}>⏺</span> 녹화 시작
+          <span className="text-lg">⏺</span> 녹화 시작
         </button>
       ) : (
         <button
           onClick={onStop}
-          style={{
-            padding: "12px 24px",
-            borderRadius: "4px",
-            border: "none",
-            backgroundColor: "#ed4245",
-            color: "#fff",
-            cursor: "pointer",
-            fontSize: "16px",
-            fontWeight: "600",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "8px",
-            minWidth: "160px",
-            boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
-          }}
+          className="py-3 px-6 rounded border-none bg-[var(--text-danger)] text-white cursor-pointer text-base font-semibold flex items-center justify-center gap-2 min-w-40 shadow-md"
         >
-          <span style={{ fontSize: "18px" }}>⏹</span> 녹화 중지
+          <span className="text-lg">⏹</span> 녹화 중지
         </button>
       )}
     </div>

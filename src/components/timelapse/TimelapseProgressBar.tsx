@@ -19,76 +19,31 @@ const TimelapseProgressBar: React.FC<TimelapseProgressBarProps> = ({
   const getProgressColor = () => {
     switch (status) {
       case "processing":
-        return "#5865f2";
+        return "bg-[var(--primary-color)]";
       case "complete":
-        return "#43b581";
+        return "bg-[var(--status-green)]";
       case "error":
-        return "#ed4245";
+        return "bg-[var(--text-danger)]";
       default:
-        return "#4f545c";
+        return "bg-[var(--bg-accent)]";
     }
   };
 
   return (
-    <div
-      style={{
-        marginTop: "16px",
-        marginBottom: "16px",
-        width: "100%",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          marginBottom: "8px",
-        }}
-      >
-        <span
-          style={{
-            fontSize: "14px",
-            color: "#dcddde",
-          }}
-        >
-          {stage}
-        </span>
-        <span
-          style={{
-            fontSize: "14px",
-            color: "#dcddde",
-          }}
-        >
-          {percentage}%
-        </span>
+    <div className="mt-4 mb-4 w-full">
+      <div className="flex justify-between mb-2">
+        <span className="text-sm text-[var(--text-normal)]">{stage}</span>
+        <span className="text-sm text-[var(--text-normal)]">{percentage}%</span>
       </div>
-      <div
-        style={{
-          height: "8px",
-          width: "100%",
-          backgroundColor: "#40444b",
-          borderRadius: "4px",
-          overflow: "hidden",
-        }}
-      >
+      <div className="h-2 w-full bg-[var(--input-bg)] rounded overflow-hidden">
         <div
-          style={{
-            height: "100%",
-            width: `${percentage}%`,
-            backgroundColor: getProgressColor(),
-            borderRadius: "4px",
-            transition: "width 0.3s ease-in-out",
-          }}
+          className={`h-full rounded transition-all duration-300 ease-in-out ${getProgressColor()}`}
+          style={{ width: `${percentage}%` }}
         />
       </div>
 
       {status === "error" && progress.error && (
-        <div
-          style={{
-            marginTop: "8px",
-            color: "#ed4245",
-            fontSize: "14px",
-          }}
-        >
+        <div className="mt-2 text-[var(--text-danger)] text-sm">
           {progress.error}
         </div>
       )}

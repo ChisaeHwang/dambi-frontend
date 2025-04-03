@@ -81,80 +81,33 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
   };
 
   return (
-    <div className="form-group" style={{ marginBottom: "20px" }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "10px",
-        }}
-      >
-        <label
-          className="form-label"
-          style={{
-            fontSize: "16px",
-            fontWeight: "600",
-            color: "#fff",
-          }}
-        >
+    <div className="mb-5">
+      <div className="flex justify-between items-center mb-2.5">
+        <label className="text-base font-semibold text-white">
           녹화할 화면
         </label>
         <button
           onClick={handleRefresh}
           disabled={isLoadingWindows}
-          style={{
-            padding: "8px 16px",
-            borderRadius: "4px",
-            border: "none",
-            backgroundColor: "#4f545c",
-            color: "#fff",
-            cursor: isLoadingWindows ? "wait" : "pointer",
-            fontSize: "14px",
-            opacity: isLoadingWindows ? 0.7 : 1,
-          }}
+          className={`py-2 px-4 rounded border-none bg-[var(--bg-accent)] text-white text-sm ${
+            isLoadingWindows
+              ? "opacity-70 cursor-wait"
+              : "opacity-100 cursor-pointer"
+          }`}
         >
           새로고침
         </button>
       </div>
 
-      <div
-        className="windows-grid"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-          gap: "16px",
-          marginTop: "10px",
-        }}
-      >
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4 mt-2.5">
         {isLoadingWindows ? (
-          <div
-            style={{
-              gridColumn: "1 / -1",
-              padding: "20px",
-              textAlign: "center",
-              borderRadius: "4px",
-              backgroundColor: "#40444b",
-              color: "#dcddde",
-            }}
-          >
+          <div className="col-span-full p-5 text-center rounded bg-[var(--input-bg)] text-[var(--text-normal)]">
             창 목록 불러오는 중...
           </div>
         ) : activeWindows.length === 0 ? (
-          <div
-            style={{
-              gridColumn: "1 / -1",
-              padding: "20px",
-              textAlign: "center",
-              borderRadius: "4px",
-              backgroundColor: "#40444b",
-              color: "#dcddde",
-            }}
-          >
+          <div className="col-span-full p-5 text-center rounded bg-[var(--input-bg)] text-[var(--text-normal)]">
             녹화할 수 있는 창이 없습니다.
-            <div
-              style={{ marginTop: "10px", fontSize: "12px", color: "#a0a0a0" }}
-            >
+            <div className="mt-2.5 text-xs text-[#a0a0a0]">
               다른 앱을 실행하고 새로고침 버튼을 클릭하세요.
             </div>
           </div>
@@ -162,74 +115,24 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
           activeWindows.map((window) => (
             <div
               key={`${window.id}-${window.timestamp}`}
-              className={`window-card ${
-                selectedWindowId === window.id ? "selected" : ""
-              }`}
-              style={{
-                backgroundColor: "#40444b",
-                borderRadius: "8px",
-                overflow: "hidden",
-                cursor: "pointer",
-                border:
-                  selectedWindowId === window.id
-                    ? "2px solid #5865f2"
-                    : "2px solid transparent",
-                transition: "border-color 0.2s, transform 0.2s",
-                transform:
-                  selectedWindowId === window.id ? "scale(1.02)" : "scale(1)",
-                boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
-              }}
+              className={`bg-[var(--input-bg)] rounded-lg overflow-hidden cursor-pointer ${
+                selectedWindowId === window.id
+                  ? "border-2 border-[var(--primary-color)] scale-[1.02]"
+                  : "border-2 border-transparent scale-100"
+              } transition-all duration-200 shadow-md`}
               onClick={() => handleWindowChange(window.id)}
             >
-              <div
-                className="thumbnail"
-                style={{
-                  backgroundColor: "#2f3136",
-                  aspectRatio: "16/9",
-                  position: "relative",
-                }}
-              >
+              <div className="bg-[var(--bg-secondary)] aspect-video relative">
                 <WindowThumbnail window={window} />
 
                 {selectedWindowId === window.id && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "8px",
-                      right: "8px",
-                      backgroundColor: "#5865f2",
-                      borderRadius: "50%",
-                      width: "24px",
-                      height: "24px",
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      color: "white",
-                      fontWeight: "bold",
-                      fontSize: "14px",
-                      zIndex: 10,
-                    }}
-                  >
+                  <div className="absolute top-2 right-2 bg-[var(--primary-color)] rounded-full w-6 h-6 flex justify-center items-center text-white font-bold text-sm z-10">
                     ✓
                   </div>
                 )}
               </div>
-              <div
-                className="window-info"
-                style={{
-                  padding: "12px",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: "14px",
-                    fontWeight: "600",
-                    color: "#fff",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
+              <div className="p-3">
+                <div className="text-sm font-semibold text-white whitespace-nowrap overflow-hidden text-ellipsis">
                   {window.name}
                 </div>
               </div>

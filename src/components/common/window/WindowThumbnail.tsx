@@ -64,25 +64,8 @@ const WindowThumbnail: React.FC<WindowThumbnailProps> = ({ window }) => {
   // 이미지가 없으면 창 이름 표시
   if (!imageSrc) {
     return (
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          backgroundColor: "#2f3136",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            color: "#fff",
-            fontSize: "14px",
-            textAlign: "center",
-            padding: "10px",
-          }}
-        >
+      <div className="w-full h-full bg-[var(--bg-secondary)] flex justify-center items-center overflow-hidden">
+        <div className="text-white text-sm text-center p-2.5">
           {window.name}
         </div>
       </div>
@@ -91,26 +74,12 @@ const WindowThumbnail: React.FC<WindowThumbnailProps> = ({ window }) => {
 
   // 이미지가 있으면 이미지 표시
   return (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        backgroundColor: "#2f3136",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        overflow: "hidden",
-      }}
-    >
+    <div className="w-full h-full bg-[var(--bg-secondary)] flex justify-center items-center overflow-hidden">
       <img
         key={`img-${window.id}-${window.timestamp || Date.now()}`}
         src={imageSrc}
         alt={window.name}
-        style={{
-          width: "100%",
-          height: "100%",
-          objectFit: "contain",
-        }}
+        className="w-full h-full object-contain"
         onError={(e) => {
           console.error(`이미지 로드 실패 (${window.name}):`, e);
           setImageSrc(null);

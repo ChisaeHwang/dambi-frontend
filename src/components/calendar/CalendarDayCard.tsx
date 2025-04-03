@@ -6,6 +6,7 @@ interface CalendarDayCardProps {
   isToday: boolean;
   isSelected: boolean;
   sessionsCount: number;
+  totalWorkTime: number; // 총 작업 시간 (분)
   onSelectDate: (date: Date) => void;
 }
 
@@ -15,57 +16,69 @@ const CalendarDayCard: React.FC<CalendarDayCardProps> = ({
   isToday,
   isSelected,
   sessionsCount,
+  totalWorkTime,
   onSelectDate,
-}) => (
-  <div
-    className={`calendar-day ${
-      isCurrentMonth ? "current-month" : "other-month"
-    } ${isToday ? "today" : ""} ${isSelected ? "selected" : ""}`}
-    onClick={() => onSelectDate(date)}
-    style={{
-      padding: "8px",
-      border: "1px solid var(--border-color)",
-      backgroundColor: isSelected
-        ? "var(--bg-modifier-selected)"
-        : isToday
-        ? "var(--bg-modifier-active)"
-        : "var(--bg-primary)",
-      color: isCurrentMonth ? "var(--text-normal)" : "var(--text-muted)",
-      cursor: "pointer",
-      borderRadius: "4px",
-      position: "relative",
-      minHeight: "90px",
-    }}
-  >
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        width: "24px",
-        height: "24px",
-        borderRadius: "50%",
-        marginBottom: "4px",
-        fontWeight: isToday ? "bold" : "normal",
-        backgroundColor: isToday ? "var(--brand-experiment)" : "transparent",
-        color: isToday ? "white" : "inherit",
-      }}
-    >
-      {date.getDate()}
-    </div>
+}) => {
+  // 작업 시간에 따른 배경 색상 강도 계산
+  const getWorkTimeIntensityClass = () => {
+    if (!isCurrentMonth || totalWorkTime === 0) return "";
 
-    {isCurrentMonth && sessionsCount > 0 && (
+    // 작업 시간이 많을수록 더 진한 색상 (4단계)
+    if (totalWorkTime > 300) return "bg-[#5865f233]"; // 5시간 이상
+    if (totalWorkTime > 180) return "bg-[#5865f226]"; // 3시간 이상
+    if (totalWorkTime > 60) return "bg-[#5865f219]"; // 1시간 이상
+    return "bg-[#5865f20d]"; // 1시간 미만
+  };
+
+  // 작업 시간 포맷팅 (시:분)
+  const formatWorkTime = () => {
+    const hours = Math.floor(totalWorkTime / 60);
+    const minutes = totalWorkTime % 60;
+
+    if (hours === 0) {
+      return `${minutes}분`;
+    }
+
+    return `${hours}시간 ${minutes > 0 ? `${minutes}분` : ""}`;
+  };
+
+  return (
+    <div
+      onClick={() => onSelectDate(date)}
+      className={`p-2 border border-[var(--border-color)] ${
+        isSelected
+          ? "bg-[var(--bg-modifier-selected)]"
+          : isToday
+          ? "bg-[var(--bg-modifier-active)]"
+          : "bg-[var(--bg-primary)]"
+      } ${getWorkTimeIntensityClass()} ${
+        isCurrentMonth
+          ? "text-[var(--text-normal)]"
+          : "text-[var(--text-muted)]"
+      } cursor-pointer rounded min-h-[90px] relative`}
+    >
       <div
-        style={{
-          fontSize: "0.8rem",
-          color: "var(--brand-experiment)",
-          marginTop: "4px",
-        }}
+        className={`flex justify-center items-center w-6 h-6 rounded-full mb-1 ${
+          isToday
+            ? "bg-[var(--primary-color)] text-white font-bold"
+            : "bg-transparent font-normal"
+        }`}
       >
-        {sessionsCount} 작업
+        {date.getDate()}
       </div>
-    )}
-  </div>
-);
+
+      {isCurrentMonth && sessionsCount > 0 && (
+        <>
+          <div className="text-xs text-[var(--primary-color)] mt-1">
+            {sessionsCount}개 작업
+          </div>
+          <div className="text-xs text-[var(--text-positive)] mt-0.5 font-medium">
+            {formatWorkTime()}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
 
 export default CalendarDayCard;
