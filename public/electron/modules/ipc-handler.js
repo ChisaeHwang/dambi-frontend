@@ -1,6 +1,6 @@
 const { ipcMain, dialog } = require("electron");
 const windowManager = require("./window-manager");
-const timelapseCapture = require("./timelapse-capture");
+const captureModule = require("./capture");
 
 /**
  * IPC 이벤트 처리를 담당하는 클래스
@@ -44,24 +44,23 @@ class IpcHandler {
    * 타임랩스 캡처 관련 핸들러 등록
    */
   _registerTimelapseCaptureHandlers() {
+    const { captureManager } = captureModule;
+
     // 활성 창 목록 가져오기
     ipcMain.handle("get-active-windows", async () => {
-      return await timelapseCapture.getActiveWindows();
+      return await captureManager.getActiveWindows();
     });
 
     // 녹화 상태 확인
     ipcMain.handle("get-recording-status", () => {
-      return timelapseCapture.getRecordingStatus();
+      return captureManager.getRecordingStatus();
     });
 
     // 캡처 시작
     ipcMain.handle("start-capture", async (event, windowId, windowName) => {
       try {
         console.log(`[IPC] 캡처 시작 요청 받음: ${windowId}, ${windowName}`);
-        const result = await timelapseCapture.startCapture(
-          windowId,
-          windowName
-        );
+        const result = await captureManager.startCapture(windowId, windowName);
         console.log(`[IPC] 캡처 시작 결과:`, result);
         return result;
       } catch (error) {
@@ -74,7 +73,7 @@ class IpcHandler {
     ipcMain.handle("stop-capture", async () => {
       try {
         console.log(`[IPC] 캡처 중지 요청 받음`);
-        const result = timelapseCapture.stopCapture();
+        const result = captureManager.stopCapture();
         console.log(`[IPC] 캡처 중지 결과:`, result);
         return result;
       } catch (error) {
@@ -87,20 +86,7 @@ class IpcHandler {
     ipcMain.handle("generate-timelapse", async (event, options) => {
       try {
         console.log("타임랩스 생성 요청 받음:", options);
-
-        // 사용자 지정 저장 경로가 있는 경우
-        if (options.outputPath) {
-          // 파일명 생성 (타임스탬프 추가)
-          const fileName = `timelapse_${Date.now()}.mp4`;
-          // 전체 경로 설정
-          options.outputPath = require("path").join(
-            options.outputPath,
-            fileName
-          );
-        }
-
-        // 타임랩스 생성 요청
-        const result = await timelapseCapture.generateTimelapse(options);
+        const result = await captureManager.generateTimelapse(options);
         console.log("타임랩스 생성 완료:", result);
         return result;
       } catch (error) {
