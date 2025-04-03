@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useTimelapseGenerationCapture } from "../hooks/useTimelapseGenerationCapture";
 import { formatTime } from "../utils/timeUtils";
 import WindowSelector from "./common/WindowSelector";
-import SpeedSelector from "./common/SpeedSelector";
 import TimelapseTimer from "./timelapse/TimelapseTimer";
 import TimelapseControls from "./timelapse/TimelapseControls";
 import GeneratePrompt from "./timelapse/GeneratePrompt";
@@ -15,7 +14,6 @@ const Timelapse: React.FC = () => {
     stopCapture,
     generateTimelapse,
     timelapseOptions,
-    changeTimelapseOptions,
     selectedWindowId,
     activeWindows,
     isLoadingWindows,
@@ -29,7 +27,6 @@ const Timelapse: React.FC = () => {
   const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(
     null
   );
-  const [selectedSpeedFactor, setSelectedSpeedFactor] = useState<number>(3); // 기본 3배속
 
   // 컴포넌트 마운트 시 창 목록 초기 로드만 수행
   useEffect(() => {
@@ -65,11 +62,7 @@ const Timelapse: React.FC = () => {
   // 타임랩스 생성 핸들러
   const handleGenerateTimelapse = async () => {
     try {
-      const options = {
-        ...timelapseOptions,
-        speedFactor: selectedSpeedFactor,
-      };
-      const path = await generateTimelapse(options);
+      const path = await generateTimelapse(timelapseOptions);
       alert(`타임랩스가 생성되었습니다: ${path}`);
       setShowGeneratePrompt(false);
     } catch (error: any) {
@@ -79,12 +72,6 @@ const Timelapse: React.FC = () => {
     }
   };
 
-  // 배속 변경 핸들러
-  const handleSpeedFactorChange = (speed: number) => {
-    setSelectedSpeedFactor(speed);
-    changeTimelapseOptions({ speedFactor: speed });
-  };
-
   // 창 선택 핸들러
   const handleWindowChange = (windowId: string) => {
     changeSelectedWindow(windowId);
@@ -92,9 +79,6 @@ const Timelapse: React.FC = () => {
 
   // 작업 시간 포맷팅 (00:00:00 형식)
   const formattedTime = formatTime(workTime);
-
-  // 속도 옵션
-  const speedOptions = [3, 6, 9, 20];
 
   return (
     <div
@@ -162,12 +146,6 @@ const Timelapse: React.FC = () => {
               onWindowChange={handleWindowChange}
               isLoadingWindows={isLoadingWindows}
               onRefreshWindows={refreshActiveWindows}
-            />
-
-            <SpeedSelector
-              selectedSpeed={selectedSpeedFactor}
-              speedOptions={speedOptions}
-              onSpeedChange={handleSpeedFactorChange}
             />
           </div>
         )}

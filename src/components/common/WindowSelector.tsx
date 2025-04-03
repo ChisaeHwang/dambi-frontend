@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import type { WindowInfo } from "../../hooks/useTimelapseGenerationCapture";
 import WindowThumbnail from "./window/WindowThumbnail";
 
@@ -17,54 +17,54 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
   isLoadingWindows,
   onRefreshWindows,
 }) => {
-  // 새로고침 핸들러
-  const handleRefresh = () => {
-    onRefreshWindows();
-  };
+  // 컴포넌트 마운트 또는 새로고침 버튼 클릭 시에도 선택 상태 유지
+  useEffect(() => {
+    // selectedWindowId가 현재 활성 창 목록에 없는 경우, 첫 번째 창을 선택
+    if (
+      selectedWindowId &&
+      !activeWindows.some((window) => window.id === selectedWindowId) &&
+      activeWindows.length > 0
+    ) {
+      onWindowChange(activeWindows[0].id);
+    }
+  }, [activeWindows, selectedWindowId, onWindowChange]);
 
   return (
-    <div className="setting-section" style={{ marginBottom: "16px" }}>
+    <div className="form-group" style={{ marginBottom: "20px" }}>
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: "8px",
+          marginBottom: "10px",
         }}
       >
-        <h3
+        <label
+          className="form-label"
           style={{
-            color: "#fff",
             fontSize: "16px",
-            margin: 0,
+            fontWeight: "600",
+            color: "#fff",
           }}
         >
           녹화할 화면
-        </h3>
-        <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-          {isLoadingWindows && (
-            <span style={{ color: "#a0a0a0", fontSize: "12px" }}>
-              새로고침 중...
-            </span>
-          )}
-          <button
-            onClick={handleRefresh}
-            style={{
-              padding: "4px 12px",
-              borderRadius: "4px",
-              border: "none",
-              backgroundColor: "#4f545c",
-              color: "#fff",
-              cursor: "pointer",
-              fontSize: "12px",
-              display: "flex",
-              alignItems: "center",
-            }}
-            disabled={isLoadingWindows}
-          >
-            새로고침
-          </button>
-        </div>
+        </label>
+        <button
+          onClick={onRefreshWindows}
+          disabled={isLoadingWindows}
+          style={{
+            padding: "8px 16px",
+            borderRadius: "4px",
+            border: "none",
+            backgroundColor: "#4f545c",
+            color: "#fff",
+            cursor: isLoadingWindows ? "wait" : "pointer",
+            fontSize: "14px",
+            opacity: isLoadingWindows ? 0.7 : 1,
+          }}
+        >
+          새로고침
+        </button>
       </div>
 
       <div
@@ -72,74 +72,134 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-          gap: "12px",
-          marginTop: "12px",
+          gap: "16px",
+          marginTop: "10px",
         }}
       >
-        {activeWindows.length === 0 ? (
+        {isLoadingWindows ? (
           <div
             style={{
               gridColumn: "1 / -1",
-              textAlign: "center",
               padding: "20px",
-              color: "#a0a0a0",
+              textAlign: "center",
+              borderRadius: "4px",
+              backgroundColor: "#40444b",
+              color: "#dcddde",
             }}
           >
-            표시할 창이 없습니다. 새로고침을 눌러보세요.
+            창 목록 불러오는 중...
+          </div>
+        ) : activeWindows.length === 0 ? (
+          <div
+            style={{
+              gridColumn: "1 / -1",
+              padding: "20px",
+              textAlign: "center",
+              borderRadius: "4px",
+              backgroundColor: "#40444b",
+              color: "#dcddde",
+            }}
+          >
+            창 목록이 없습니다
           </div>
         ) : (
-          activeWindows.map((window, index) => (
+          activeWindows.map((window) => (
             <div
-              key={`window-${window.id}-${index}-${
-                window.timestamp || Date.now()
+              key={`${window.id}-${window.timestamp}`}
+              className={`window-card ${
+                selectedWindowId === window.id ? "selected" : ""
               }`}
-              onClick={() => onWindowChange(window.id)}
               style={{
-                backgroundColor:
-                  selectedWindowId === window.id ? "#5865f2" : "#4f545c",
-                borderRadius: "6px",
-                padding: "10px",
+                backgroundColor: "#40444b",
+                borderRadius: "8px",
+                overflow: "hidden",
                 cursor: "pointer",
-                transition: "all 0.2s ease",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                textAlign: "center",
-                boxShadow:
+                border:
                   selectedWindowId === window.id
-                    ? "0 0 8px rgba(88, 101, 242, 0.5)"
-                    : "none",
+                    ? "2px solid #5865f2"
+                    : "2px solid transparent",
+                transition: "border-color 0.2s, transform 0.2s",
                 transform:
                   selectedWindowId === window.id ? "scale(1.02)" : "scale(1)",
+                boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
               }}
+              onClick={() => onWindowChange(window.id)}
             >
               <div
+                className="thumbnail"
                 style={{
-                  width: "100%",
-                  height: "140px",
                   backgroundColor: "#2f3136",
-                  marginBottom: "10px",
+                  aspectRatio: "16/9",
                   display: "flex",
-                  alignItems: "center",
                   justifyContent: "center",
-                  borderRadius: "4px",
-                  overflow: "hidden",
+                  alignItems: "center",
                   position: "relative",
                 }}
               >
-                <WindowThumbnail window={window} />
+                {window.thumbnailDataUrl ? (
+                  <img
+                    src={window.thumbnailDataUrl}
+                    alt={window.name}
+                    style={{
+                      maxWidth: "100%",
+                      maxHeight: "100%",
+                      objectFit: "cover",
+                      width: "100%",
+                      height: "100%",
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      color: "#a0a0a0",
+                      fontSize: "14px",
+                      padding: "40px",
+                      textAlign: "center",
+                    }}
+                  >
+                    {window.isScreen ? "전체 화면" : "썸네일이 없습니다"}
+                  </div>
+                )}
+                {selectedWindowId === window.id && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "8px",
+                      right: "8px",
+                      backgroundColor: "#5865f2",
+                      borderRadius: "50%",
+                      width: "24px",
+                      height: "24px",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      color: "white",
+                      fontWeight: "bold",
+                      fontSize: "14px",
+                    }}
+                  >
+                    ✓
+                  </div>
+                )}
               </div>
               <div
+                className="window-info"
                 style={{
-                  color: "#fff",
-                  fontSize: "13px",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  width: "100%",
-                  whiteSpace: "nowrap",
+                  padding: "12px",
                 }}
               >
-                {window.name}
+                <div
+                  style={{
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    color: "#fff",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {window.name}
+                </div>
               </div>
             </div>
           ))

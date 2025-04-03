@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useTimelapseGenerationCapture } from "../hooks/useTimelapseGenerationCapture";
 import WindowSelector from "./common/WindowSelector";
 import SpeedSelector from "./common/SpeedSelector";
@@ -18,7 +18,7 @@ const Settings: React.FC = () => {
   } = useTimelapseGenerationCapture();
 
   // 컴포넌트 마운트 시 창 목록 초기 로드만 수행
-  React.useEffect(() => {
+  useEffect(() => {
     // 초기 창 목록 로드
     refreshActiveWindows();
   }, []);
@@ -35,7 +35,10 @@ const Settings: React.FC = () => {
 
   // 설정 저장 핸들러
   const handleSaveSettings = () => {
-    // 설정 저장 로직 (로컬 스토리지나 백엔드로 전송)
+    // 현재 타임랩스 옵션을 로컬 스토리지에 저장
+    localStorage.setItem("timelapseOptions", JSON.stringify(timelapseOptions));
+    localStorage.setItem("selectedWindowId", selectedWindowId);
+
     alert("설정이 저장되었습니다.");
   };
 
@@ -57,12 +60,13 @@ const Settings: React.FC = () => {
       style={{
         backgroundColor: "#36393f",
         color: "#dcddde",
-        minHeight: "100vh",
-        width: "100%", // 가로 스크롤 방지
+        height: "100vh",
+        width: "100%",
         display: "flex",
         flexDirection: "column",
         padding: "12px",
         overflowX: "hidden", // 가로 스크롤 방지
+        overflowY: "auto", // 세로 스크롤 추가
       }}
     >
       <div
@@ -72,10 +76,12 @@ const Settings: React.FC = () => {
           borderRadius: "8px",
           boxShadow: "0 2px 10px 0 rgba(0,0,0,.2)",
           padding: "20px",
-          width: "98%", // 여백 더 줄임
-          maxWidth: "1400px", // 최대 너비 증가
-          minWidth: "auto", // 최소 너비 제거하여 가로 스크롤 방지
+          width: "98%",
+          maxWidth: "1400px",
+          minWidth: "auto",
           margin: "0 auto",
+          marginBottom: "20px", // 하단 여백 추가
+          overflow: "visible", // 내부 컨텐츠가 넘치지 않도록
         }}
       >
         <h2
@@ -310,7 +316,7 @@ const Settings: React.FC = () => {
               fontSize: "14px",
               fontWeight: "500",
               transition: "background-color 0.2s",
-              maxWidth: "240px", // 버튼 너비 증가
+              maxWidth: "240px",
               width: "100%",
               minWidth: "180px",
             }}
