@@ -54,7 +54,7 @@ const AppTitleBar: React.FC = () => {
 
   return (
     <div
-      className="flex items-center justify-between h-8 bg-[var(--bg-tertiary)] pl-4 select-none"
+      className="app-title-bar"
       style={{ WebkitAppRegion: "drag" } as CSSProperties}
     >
       <div className="flex items-center">

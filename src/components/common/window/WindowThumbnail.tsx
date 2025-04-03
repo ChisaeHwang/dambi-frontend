@@ -10,8 +10,6 @@ interface WindowThumbnailProps {
   window: WindowInfo;
 }
 
-// 로컬 스토리지 키 접두사
-const THUMBNAIL_STORAGE_PREFIX = "window_thumbnail_";
 
 const WindowThumbnail: React.FC<WindowThumbnailProps> = ({ window }) => {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
