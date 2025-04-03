@@ -4,7 +4,6 @@ import { TimelapseOptions } from "./hooks/useTimelapseGenerationCapture";
 interface CaptureStatus {
   isCapturing: boolean;
   duration: number;
-  frameCount: number;
   error?: string;
 }
 

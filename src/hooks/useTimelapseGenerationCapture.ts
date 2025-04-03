@@ -233,8 +233,24 @@ export const useTimelapseGenerationCapture = () => {
 
       console.log(`선택된 창 이름: ${windowName}`);
 
-      // ID와 이름 모두 전달
-      window.electron.startCapture(selectedWindowId, windowName);
+      try {
+        // ID와 이름 모두 전달하고 그 결과를 로그로 출력
+        window.electron
+          .startCapture(selectedWindowId, windowName)
+          .then((result: any) => {
+            console.log("캡처 시작 결과:", result);
+            if (!result.success) {
+              setError(result.error || "캡처 시작 실패");
+            }
+          })
+          .catch((err: Error) => {
+            console.error("캡처 시작 오류:", err);
+            setError(err.message || "캡처 시작 중 오류 발생");
+          });
+      } catch (error) {
+        console.error("캡처 시작 예외:", error);
+        setError(String(error));
+      }
     } else {
       console.log("모의 환경: 캡처 시작");
       setIsCapturing(true);
@@ -244,7 +260,19 @@ export const useTimelapseGenerationCapture = () => {
   // 캡처 중지
   const stopCapture = () => {
     if (electronAvailable) {
-      window.electron.stopCapture();
+      console.log("캡처 중지 요청");
+      window.electron
+        .stopCapture()
+        .then((result: any) => {
+          console.log("캡처 중지 결과:", result);
+          if (!result.success) {
+            setError(result.error || "캡처 중지 실패");
+          }
+        })
+        .catch((err: Error) => {
+          console.error("캡처 중지 오류:", err);
+          setError(err.message || "캡처 중지 중 오류 발생");
+        });
     } else {
       console.log("모의 환경: 캡처 중지");
       setIsCapturing(false);
