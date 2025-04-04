@@ -20,15 +20,20 @@ const Timelapse: React.FC = () => {
     changeSelectedWindow,
     refreshActiveWindows,
     error,
+    isGeneratingTimelapse,
+    timelapseProgress,
+    changeTimelapseOptions,
   } = useTimelapseGenerationCapture();
 
+  // 상태 관리
   const [showGeneratePrompt, setShowGeneratePrompt] = useState<boolean>(false);
   const [workTime, setWorkTime] = useState<number>(0);
   const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(
     null
   );
+  const [isPaused, setIsPaused] = useState<boolean>(false);
 
-  // 최초 마운트 여부 확인을 위한 ref (컴포넌트 최상위 레벨에 선언)
+  // 최초 마운트 여부 확인을 위한 ref
   const mountedRef = React.useRef(false);
 
   // 컴포넌트 마운트 시 창 목록 초기 로드만 수행
@@ -39,7 +44,7 @@ const Timelapse: React.FC = () => {
       refreshActiveWindows();
       mountedRef.current = true;
     }
-  }, []); // 의존성 배열을 빈 배열로 변경하여 마운트 시에만 실행
+  }, [refreshActiveWindows]);
 
   // 타이머 관리
   useEffect(() => {
@@ -58,20 +63,54 @@ const Timelapse: React.FC = () => {
     };
   }, [isCapturing, timerInterval]);
 
+  // 캡처 시작 핸들러
+  const handleStartCapture = () => {
+    if (isPaused) {
+      // 일시 중지 상태에서 다시 시작
+      setIsPaused(false);
+      setShowGeneratePrompt(false);
+      startCapture();
+    } else {
+      // 새로운 캡처 시작
+      startCapture();
+    }
+  };
+
   // 캡처 중지 핸들러
   const handleStopCapture = () => {
     stopCapture();
     if (duration > 0) {
+      setIsPaused(true);
       setShowGeneratePrompt(true);
     }
   };
 
+  // 캡처 취소 핸들러
+  const handleCancelCapture = () => {
+    setIsPaused(false);
+    setShowGeneratePrompt(false);
+    setWorkTime(0);
+  };
+
   // 타임랩스 생성 핸들러
-  const handleGenerateTimelapse = async () => {
+  const handleGenerateTimelapse = async (speedFactor: number) => {
     try {
-      const path = await generateTimelapse(timelapseOptions);
-      alert(`타임랩스가 생성되었습니다: ${path}`);
+      // 사용자가 선택한 속도 값으로 옵션 업데이트
+      const updatedOptions = {
+        ...timelapseOptions,
+        speedFactor: speedFactor,
+      };
+
+      // 생성 시작
+      const path = await generateTimelapse(updatedOptions);
+
+      // 생성 완료 후 상태 초기화
       setShowGeneratePrompt(false);
+      setIsPaused(false);
+      setWorkTime(0);
+
+      // 성공 메시지
+      alert(`타임랩스가 생성되었습니다: ${path}`);
     } catch (error: any) {
       alert(
         `타임랩스 생성 실패: ${error instanceof Error ? error.message : error}`
@@ -81,72 +120,32 @@ const Timelapse: React.FC = () => {
 
   // 창 선택 핸들러
   const handleWindowChange = (windowId: string) => {
-    changeSelectedWindow(windowId);
+    try {
+      if (!windowId) return;
+      changeSelectedWindow(windowId);
+    } catch (error) {
+      console.error("Timelapse: 창 선택 변경 중 오류 발생", error);
+    }
   };
 
   // 작업 시간 포맷팅 (00:00:00 형식)
   const formattedTime = formatTime(workTime);
 
   return (
-    <div
-      className="workspace-container"
-      style={{
-        backgroundColor: "#36393f",
-        color: "#dcddde",
-        height: "100%",
-        width: "100%",
-        display: "flex",
-        flexDirection: "column",
-        padding: "12px",
-        overflow: "hidden", // 전체 컨테이너에서는 스크롤 제거
-      }}
-    >
-      <div
-        className="card"
-        style={{
-          backgroundColor: "#2f3136",
-          borderRadius: "8px",
-          boxShadow: "0 2px 10px 0 rgba(0,0,0,.2)",
-          padding: "20px",
-          margin: "0 auto",
-          width: "98%",
-          maxWidth: "1400px",
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          overflow: "auto", // 카드 내부에만 스크롤 허용
-        }}
-      >
-        <h2
-          className="section-title"
-          style={{
-            color: "#fff",
-            fontSize: "20px",
-            marginBottom: "16px",
-            textAlign: "center",
-            fontWeight: "600",
-          }}
-        >
+    <div className="bg-[var(--bg-primary)] text-[var(--text-normal)] h-full w-full flex flex-col p-3 overflow-hidden">
+      <div className="bg-[var(--bg-secondary)] rounded-lg shadow-md p-5 mx-auto w-[98%] max-w-[1400px] h-full flex flex-col overflow-auto">
+        <h2 className="text-white text-xl mb-4 text-center font-semibold">
           워크스페이스
         </h2>
 
         {error && (
-          <div
-            style={{
-              color: "#ed4245",
-              backgroundColor: "rgba(237, 66, 69, 0.1)",
-              padding: "10px",
-              borderRadius: "4px",
-              marginBottom: "16px",
-              textAlign: "center",
-            }}
-          >
+          <div className="text-[var(--text-danger)] bg-[rgba(237,66,69,0.1)] p-2.5 rounded mb-4 text-center">
             {error}
           </div>
         )}
 
-        {!isCapturing && !showGeneratePrompt && (
-          <div className="settings" style={{ marginBottom: "16px" }}>
+        {!isCapturing && !isPaused && (
+          <div className="mb-4">
             <WindowSelector
               activeWindows={activeWindows}
               selectedWindowId={selectedWindowId}
@@ -159,16 +158,24 @@ const Timelapse: React.FC = () => {
 
         <TimelapseTimer formattedTime={formattedTime} />
 
-        <TimelapseControls
-          isCapturing={isCapturing}
-          onStart={startCapture}
-          onStop={handleStopCapture}
-        />
+        {!showGeneratePrompt && (
+          <TimelapseControls
+            isCapturing={isCapturing}
+            onStart={handleStartCapture}
+            onStop={handleStopCapture}
+            isPaused={isPaused}
+          />
+        )}
 
         {showGeneratePrompt && (
           <GeneratePrompt
             onGenerate={handleGenerateTimelapse}
-            onCancel={() => setShowGeneratePrompt(false)}
+            onCancel={handleCancelCapture}
+            onResumeCapture={handleStartCapture}
+            isGenerating={isGeneratingTimelapse}
+            progress={timelapseProgress}
+            duration={duration}
+            defaultSpeedFactor={timelapseOptions.speedFactor}
           />
         )}
       </div>

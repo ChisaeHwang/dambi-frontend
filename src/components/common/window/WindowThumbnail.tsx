@@ -10,18 +10,13 @@ interface WindowThumbnailProps {
   window: WindowInfo;
 }
 
-// 로컬 스토리지 키 접두사
-const THUMBNAIL_STORAGE_PREFIX = "window_thumbnail_";
-
 const WindowThumbnail: React.FC<WindowThumbnailProps> = ({ window }) => {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // 썸네일 데이터가 변경될 때마다 업데이트
   useEffect(() => {
     // 상태 초기화
     setImageSrc(null);
-    setErrorMsg(null);
 
     // 1. 먼저 직접 Base64로 인코딩된 데이터를 확인
     if (window.thumbnailDataUrl) {
@@ -64,25 +59,8 @@ const WindowThumbnail: React.FC<WindowThumbnailProps> = ({ window }) => {
   // 이미지가 없으면 창 이름 표시
   if (!imageSrc) {
     return (
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          backgroundColor: "#2f3136",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            color: "#fff",
-            fontSize: "14px",
-            textAlign: "center",
-            padding: "10px",
-          }}
-        >
+      <div className="w-full h-full bg-gradient-to-b from-[#2a2d36] to-[#24272e] flex justify-center items-center overflow-hidden shadow-inner">
+        <div className="text-white text-sm text-center p-2.5">
           {window.name}
         </div>
       </div>
@@ -91,26 +69,12 @@ const WindowThumbnail: React.FC<WindowThumbnailProps> = ({ window }) => {
 
   // 이미지가 있으면 이미지 표시
   return (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        backgroundColor: "#2f3136",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        overflow: "hidden",
-      }}
-    >
+    <div className="w-full h-full bg-gradient-to-b from-[#2a2d36] to-[#24272e] flex justify-center items-center overflow-hidden shadow-inner">
       <img
         key={`img-${window.id}-${window.timestamp || Date.now()}`}
         src={imageSrc}
         alt={window.name}
-        style={{
-          width: "100%",
-          height: "100%",
-          objectFit: "contain",
-        }}
+        className="w-full h-full object-contain"
         onError={(e) => {
           console.error(`이미지 로드 실패 (${window.name}):`, e);
           setImageSrc(null);

@@ -77,7 +77,7 @@ export const saveThumbnail = (
       thumbnailData
     );
   } catch (error) {
-    console.warn("썸네일 데이터 저장 실패 (데이터 크기가 클 수 있음):", error);
+    console.warn("썸네일 데이터 저장 실패 (데이터 크기가 너무 큼):", error);
   }
 };
 

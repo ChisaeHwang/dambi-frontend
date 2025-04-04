@@ -20,30 +20,43 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
 }) => {
   // 컴포넌트 마운트 시 로컬 스토리지에서 선택된 창 ID 확인
   useEffect(() => {
+    // 활성 창 목록이 비어있으면 처리하지 않음
+    if (activeWindows.length === 0) {
+      return;
+    }
+
+    // 이미 선택된 창이 있으면 검증 (활성 창 목록에 있는지 확인)
+    if (
+      selectedWindowId &&
+      activeWindows.some((window) => window.id === selectedWindowId)
+    ) {
+      // 이미 유효한 선택이 있으므로 처리 불필요
+      return;
+    }
+
+    // 로컬 스토리지에서 저장된 ID 확인
     const savedWindowId = localStorage.getItem(STORAGE_KEYS.SELECTED_WINDOW_ID);
 
-    // 저장된 ID가 있고, 현재 선택된 ID와 다르며, 활성 창 목록에 있는 경우
+    // 저장된 ID가 있고, 활성 창 목록에 있는 경우에만 처리
     if (
       savedWindowId &&
-      savedWindowId !== selectedWindowId &&
       activeWindows.some((window) => window.id === savedWindowId)
     ) {
-      console.log("로컬 스토리지에 저장된 창 ID로 복원:", savedWindowId);
+      // 이전 선택 내용 복원
       onWindowChange(savedWindowId);
+    } else if (activeWindows.length > 0) {
+      // 저장된 ID가 없거나 유효하지 않으면 첫 번째 창으로 설정
+      onWindowChange(activeWindows[0].id);
     }
-  }, [activeWindows, onWindowChange]);
+  }, [activeWindows, selectedWindowId, onWindowChange]);
 
   // 새로고침 버튼 처리기
-  const handleRefreshWindows = () => {
-    // 현재 선택된 ID를 기억
-    const currentSelectedId = selectedWindowId;
-
-    // 창 목록 새로고침
-    onRefreshWindows();
-
-    // 새로고침 후에도 기존 선택 상태를 유지하기 위해 로컬 스토리지에 강제로 저장
-    if (currentSelectedId) {
-      localStorage.setItem(STORAGE_KEYS.SELECTED_WINDOW_ID, currentSelectedId);
+  const handleRefresh = () => {
+    try {
+      // 부모 컴포넌트의 새로고침 함수 호출
+      onRefreshWindows();
+    } catch (error) {
+      console.error("창 목록 새로고침 중 오류 발생:", error);
     }
   };
 
@@ -51,104 +64,50 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
   const handleWindowChange = (windowId: string) => {
     if (!windowId) return; // 유효하지 않은 ID 방지
 
-    // 로컬 스토리지와 상태 모두 업데이트
-    localStorage.setItem(STORAGE_KEYS.SELECTED_WINDOW_ID, windowId);
-    onWindowChange(windowId);
+    // 이미 선택된 창이면 중복 이벤트 방지
+    if (windowId === selectedWindowId) {
+      return;
+    }
 
-    // 디버깅을 위한 로그
-    console.log("창 선택 변경:", windowId);
+    try {
+      // 로컬 스토리지에 저장
+      localStorage.setItem(STORAGE_KEYS.SELECTED_WINDOW_ID, windowId);
+
+      // 부모 컴포넌트에 알림
+      onWindowChange(windowId);
+    } catch (error) {
+      console.error("WindowSelector: 창 선택 변경 중 오류 발생", error);
+    }
   };
 
-  // 활성 창 목록이 변경될 때 선택 상태 확인
-  useEffect(() => {
-    // 현재 선택된 창이 활성 창 목록에 없는 경우, 첫 번째 창 선택
-    if (
-      selectedWindowId &&
-      !activeWindows.some((window) => window.id === selectedWindowId) &&
-      activeWindows.length > 0
-    ) {
-      const newWindowId = activeWindows[0].id;
-      console.log("선택한 창이 목록에 없어 첫 번째 창으로 변경:", newWindowId);
-      localStorage.setItem(STORAGE_KEYS.SELECTED_WINDOW_ID, newWindowId);
-      onWindowChange(newWindowId);
-    }
-  }, [activeWindows, selectedWindowId, onWindowChange]);
-
   return (
-    <div className="form-group" style={{ marginBottom: "20px" }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "10px",
-        }}
-      >
-        <label
-          className="form-label"
-          style={{
-            fontSize: "16px",
-            fontWeight: "600",
-            color: "#fff",
-          }}
-        >
+    <div className="mb-5">
+      <div className="flex justify-between items-center mb-2.5">
+        <label className="text-base font-semibold text-white">
           녹화할 화면
         </label>
         <button
-          onClick={handleRefreshWindows}
+          onClick={handleRefresh}
           disabled={isLoadingWindows}
-          style={{
-            padding: "8px 16px",
-            borderRadius: "4px",
-            border: "none",
-            backgroundColor: "#4f545c",
-            color: "#fff",
-            cursor: isLoadingWindows ? "wait" : "pointer",
-            fontSize: "14px",
-            opacity: isLoadingWindows ? 0.7 : 1,
-          }}
+          className={`py-2 px-4 rounded border-none bg-[var(--bg-accent)] text-white text-sm ${
+            isLoadingWindows
+              ? "opacity-70 cursor-wait"
+              : "opacity-100 cursor-pointer"
+          }`}
         >
           새로고침
         </button>
       </div>
 
-      <div
-        className="windows-grid"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-          gap: "16px",
-          marginTop: "10px",
-        }}
-      >
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4 mt-2.5">
         {isLoadingWindows ? (
-          <div
-            style={{
-              gridColumn: "1 / -1",
-              padding: "20px",
-              textAlign: "center",
-              borderRadius: "4px",
-              backgroundColor: "#40444b",
-              color: "#dcddde",
-            }}
-          >
+          <div className="col-span-full p-5 text-center rounded bg-[var(--input-bg)] text-[var(--text-normal)]">
             창 목록 불러오는 중...
           </div>
         ) : activeWindows.length === 0 ? (
-          <div
-            style={{
-              gridColumn: "1 / -1",
-              padding: "20px",
-              textAlign: "center",
-              borderRadius: "4px",
-              backgroundColor: "#40444b",
-              color: "#dcddde",
-            }}
-          >
+          <div className="col-span-full p-5 text-center rounded bg-[var(--input-bg)] text-[var(--text-normal)]">
             녹화할 수 있는 창이 없습니다.
-            <div
-              style={{ marginTop: "10px", fontSize: "12px", color: "#a0a0a0" }}
-            >
+            <div className="mt-2.5 text-xs text-[#a0a0a0]">
               다른 앱을 실행하고 새로고침 버튼을 클릭하세요.
             </div>
           </div>
@@ -156,74 +115,24 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
           activeWindows.map((window) => (
             <div
               key={`${window.id}-${window.timestamp}`}
-              className={`window-card ${
-                selectedWindowId === window.id ? "selected" : ""
-              }`}
-              style={{
-                backgroundColor: "#40444b",
-                borderRadius: "8px",
-                overflow: "hidden",
-                cursor: "pointer",
-                border:
-                  selectedWindowId === window.id
-                    ? "2px solid #5865f2"
-                    : "2px solid transparent",
-                transition: "border-color 0.2s, transform 0.2s",
-                transform:
-                  selectedWindowId === window.id ? "scale(1.02)" : "scale(1)",
-                boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
-              }}
+              className={`rounded-lg overflow-hidden cursor-pointer ${
+                selectedWindowId === window.id
+                  ? "bg-gradient-to-br from-[#35395c] to-[#2d3249] scale-[1.02] shadow-lg ring-2 ring-[var(--primary-color)]"
+                  : "bg-gradient-to-br from-[#33363f] to-[#2a2d36] scale-100 hover:from-[#373a44] hover:to-[#2e313a]"
+              } transition-all duration-200`}
               onClick={() => handleWindowChange(window.id)}
             >
-              <div
-                className="thumbnail"
-                style={{
-                  backgroundColor: "#2f3136",
-                  aspectRatio: "16/9",
-                  position: "relative",
-                }}
-              >
+              <div className="aspect-video relative overflow-hidden">
                 <WindowThumbnail window={window} />
 
                 {selectedWindowId === window.id && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "8px",
-                      right: "8px",
-                      backgroundColor: "#5865f2",
-                      borderRadius: "50%",
-                      width: "24px",
-                      height: "24px",
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      color: "white",
-                      fontWeight: "bold",
-                      fontSize: "14px",
-                      zIndex: 10,
-                    }}
-                  >
+                  <div className="absolute top-2 right-2 bg-[var(--primary-color)] rounded-full w-6 h-6 flex justify-center items-center text-white font-bold text-sm z-10 shadow-md">
                     ✓
                   </div>
                 )}
               </div>
-              <div
-                className="window-info"
-                style={{
-                  padding: "12px",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: "14px",
-                    fontWeight: "600",
-                    color: "#fff",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
+              <div className="p-3 bg-[rgba(0,0,0,0.15)]">
+                <div className="text-sm font-semibold text-white whitespace-nowrap overflow-hidden text-ellipsis">
                   {window.name}
                 </div>
               </div>

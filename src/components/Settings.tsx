@@ -1,43 +1,21 @@
 import React, { useEffect } from "react";
 import { useTimelapseGenerationCapture } from "../hooks/useTimelapseGenerationCapture";
-import WindowSelector from "./common/WindowSelector";
 import SpeedSelector from "./common/SpeedSelector";
 
 const Settings: React.FC = () => {
   const {
     timelapseOptions,
-    selectedWindowId,
-    activeWindows,
-    isLoadingWindows,
     changeTimelapseOptions,
-    changeSelectedWindow,
-    refreshActiveWindows,
     saveFolderPath,
-    setSaveFolderPath,
     selectSaveFolder,
   } = useTimelapseGenerationCapture();
 
   // 최초 마운트 여부 확인을 위한 ref
   const mountedRef = React.useRef(false);
 
-  // 컴포넌트 마운트 시 창 목록 초기 로드만 수행
-  useEffect(() => {
-    // 초기 창 목록 로드 - 최초 마운트 시에만 실행
-    if (!mountedRef.current) {
-      console.log("Settings: 최초 마운트 시 창 목록 로딩");
-      refreshActiveWindows();
-      mountedRef.current = true;
-    }
-  }, []);
-
   // 배속 변경 핸들러
   const handleSpeedChange = (speed: number) => {
     changeTimelapseOptions({ speedFactor: speed });
-  };
-
-  // 창 선택 핸들러
-  const handleWindowChange = (windowId: string) => {
-    changeSelectedWindow(windowId);
   };
 
   // 설정 저장 핸들러
@@ -62,52 +40,14 @@ const Settings: React.FC = () => {
   const speedOptions = [3, 6, 9, 20];
 
   return (
-    <div
-      className="settings-container"
-      style={{
-        backgroundColor: "#36393f",
-        color: "#dcddde",
-        height: "100vh",
-        width: "100%",
-        display: "flex",
-        flexDirection: "column",
-        padding: "12px",
-        overflowX: "hidden", // 가로 스크롤 방지
-        overflowY: "auto", // 세로 스크롤 추가
-      }}
-    >
-      <div
-        className="card"
-        style={{
-          backgroundColor: "#2f3136",
-          borderRadius: "8px",
-          boxShadow: "0 2px 10px 0 rgba(0,0,0,.2)",
-          padding: "20px",
-          width: "98%",
-          maxWidth: "1400px",
-          minWidth: "auto",
-          margin: "0 auto",
-          marginBottom: "20px", // 하단 여백 추가
-          overflow: "visible", // 내부 컨텐츠가 넘치지 않도록
-        }}
-      >
-        <h2
-          className="section-title"
-          style={{
-            color: "#fff",
-            fontSize: "20px",
-            marginBottom: "16px",
-            textAlign: "center",
-            fontWeight: "600",
-          }}
-        >
+    <div className="bg-[var(--bg-primary)] text-[var(--text-normal)] h-screen w-full flex flex-col p-3 overflow-x-hidden overflow-y-auto">
+      <div className="bg-[var(--bg-secondary)] rounded-lg shadow-md p-5 w-[98%] max-w-[1400px] min-w-auto mx-auto mb-5 overflow-visible">
+        <h2 className="text-white text-xl mb-4 text-center font-semibold">
           설정
         </h2>
 
-        <div className="settings-section" style={{ marginBottom: "16px" }}>
-          <h3 style={{ color: "#fff", fontSize: "16px", marginBottom: "16px" }}>
-            타임랩스 설정
-          </h3>
+        <div className="mb-4">
+          <h3 className="text-white text-base mb-4">타임랩스 설정</h3>
 
           <SpeedSelector
             selectedSpeed={timelapseOptions.speedFactor}
@@ -115,46 +55,17 @@ const Settings: React.FC = () => {
             onSpeedChange={handleSpeedChange}
           />
 
-          <WindowSelector
-            activeWindows={activeWindows}
-            selectedWindowId={selectedWindowId}
-            onWindowChange={handleWindowChange}
-            isLoadingWindows={isLoadingWindows}
-            onRefreshWindows={refreshActiveWindows}
-          />
-
-          <div className="form-group" style={{ marginBottom: "20px" }}>
-            <label
-              className="form-label"
-              style={{
-                display: "block",
-                marginBottom: "10px",
-                fontSize: "14px",
-              }}
-            >
-              출력 품질
-            </label>
-            <div
-              className="quality-options"
-              style={{ display: "flex", gap: "10px" }}
-            >
+          <div className="mb-5">
+            <label className="block mb-2.5 text-sm">출력 품질</label>
+            <div className="flex gap-2.5">
               {["low", "medium", "high"].map((quality) => (
                 <button
                   key={quality}
-                  style={{
-                    padding: "8px 16px",
-                    borderRadius: "4px",
-                    border: "none",
-                    backgroundColor:
-                      timelapseOptions.outputQuality === quality
-                        ? "#5865f2"
-                        : "#4f545c",
-                    color: "#fff",
-                    cursor: "pointer",
-                    transition: "background-color 0.2s",
-                    fontSize: "14px",
-                    minWidth: "80px",
-                  }}
+                  className={`py-2 px-4 rounded border-none cursor-pointer transition-colors duration-200 text-sm min-w-20 text-white ${
+                    timelapseOptions.outputQuality === quality
+                      ? "bg-[var(--primary-color)]"
+                      : "bg-[var(--bg-accent)]"
+                  }`}
                   onClick={() =>
                     changeTimelapseOptions({ outputQuality: quality as any })
                   }
@@ -170,84 +81,32 @@ const Settings: React.FC = () => {
           </div>
 
           {/* 저장 경로 설정 */}
-          <div className="form-group" style={{ marginBottom: "20px" }}>
-            <label
-              className="form-label"
-              style={{
-                display: "block",
-                marginBottom: "10px",
-                fontSize: "14px",
-              }}
-            >
-              타임랩스 저장 위치
-            </label>
-            <div
-              className="path-selector"
-              style={{
-                display: "flex",
-                gap: "10px",
-                alignItems: "center",
-              }}
-            >
+          <div className="mb-5">
+            <label className="block mb-2.5 text-sm">타임랩스 저장 위치</label>
+            <div className="flex gap-2.5 items-center">
               <input
                 type="text"
                 value={saveFolderPath || "기본 위치 (내 비디오 폴더)"}
                 readOnly
-                style={{
-                  flex: 1,
-                  padding: "10px",
-                  borderRadius: "4px",
-                  border: "1px solid #4f545c",
-                  backgroundColor: "#40444b",
-                  color: "#dcddde",
-                  fontSize: "14px",
-                }}
+                className="flex-1 py-2.5 px-2.5 rounded border border-[var(--bg-accent)] bg-[var(--input-bg)] text-[var(--text-normal)] text-sm"
               />
               <button
                 onClick={handleSelectFolder}
-                style={{
-                  padding: "10px 16px",
-                  borderRadius: "4px",
-                  border: "none",
-                  backgroundColor: "#4f545c",
-                  color: "#fff",
-                  cursor: "pointer",
-                  fontSize: "14px",
-                  whiteSpace: "nowrap",
-                }}
+                className="py-2.5 px-4 rounded border-none bg-[var(--bg-accent)] text-white cursor-pointer text-sm whitespace-nowrap"
               >
                 폴더 선택
               </button>
             </div>
-            <div
-              style={{
-                fontSize: "12px",
-                color: "#a0a0a0",
-                marginTop: "6px",
-              }}
-            >
+            <div className="text-xs text-[#a0a0a0] mt-1.5">
               타임랩스 영상이 저장될 폴더를 선택하세요. 기본값은 시스템의 비디오
               폴더입니다.
             </div>
           </div>
 
           {/* 원본 이미지 보존 설정 */}
-          <div className="form-group" style={{ marginBottom: "20px" }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <label
-                className="form-label"
-                style={{
-                  fontSize: "14px",
-                }}
-              >
-                원본 캡처 이미지 보존
-              </label>
+          <div className="mb-5">
+            <div className="flex justify-between items-center">
+              <label className="text-sm">원본 캡처 이미지 보존</label>
 
               <div className="toggle-switch">
                 <input
@@ -259,50 +118,27 @@ const Settings: React.FC = () => {
                       preserveOriginals: e.target.checked,
                     })
                   }
-                  style={{ display: "none" }}
+                  className="hidden"
                 />
                 <label
                   htmlFor="preserveOriginals"
-                  style={{
-                    display: "inline-block",
-                    width: "46px",
-                    height: "24px",
-                    backgroundColor:
-                      timelapseOptions.preserveOriginals !== false
-                        ? "#5865f2"
-                        : "#72767d",
-                    borderRadius: "12px",
-                    position: "relative",
-                    cursor: "pointer",
-                    transition: "background-color 0.2s",
-                  }}
+                  className={`inline-block w-[46px] h-6 rounded-full relative cursor-pointer transition-colors duration-200 ${
+                    timelapseOptions.preserveOriginals !== false
+                      ? "bg-[var(--primary-color)]"
+                      : "bg-[#72767d]"
+                  }`}
                 >
                   <span
-                    style={{
-                      display: "block",
-                      width: "18px",
-                      height: "18px",
-                      backgroundColor: "#fff",
-                      borderRadius: "50%",
-                      position: "absolute",
-                      top: "3px",
-                      left:
-                        timelapseOptions.preserveOriginals !== false
-                          ? "25px"
-                          : "3px",
-                      transition: "left 0.2s",
-                    }}
+                    className={`block w-[18px] h-[18px] bg-white rounded-full absolute top-[3px] transition-all duration-200 ${
+                      timelapseOptions.preserveOriginals !== false
+                        ? "left-[25px]"
+                        : "left-[3px]"
+                    }`}
                   />
                 </label>
               </div>
             </div>
-            <div
-              style={{
-                fontSize: "12px",
-                color: "#a0a0a0",
-                marginTop: "6px",
-              }}
-            >
+            <div className="text-xs text-[#a0a0a0] mt-1.5">
               타임랩스 생성 후 원본 캡처 이미지를 보존할지 여부를 설정합니다.
               보존하면 디스크 공간을 더 많이 사용하지만 필요할 때 다시
               타임랩스를 만들 수 있습니다.
@@ -310,23 +146,10 @@ const Settings: React.FC = () => {
           </div>
         </div>
 
-        <div className="form-actions" style={{ textAlign: "center" }}>
+        <div className="text-center">
           <button
             onClick={handleSaveSettings}
-            style={{
-              padding: "12px 24px",
-              borderRadius: "4px",
-              border: "none",
-              backgroundColor: "#5865f2",
-              color: "#fff",
-              cursor: "pointer",
-              fontSize: "14px",
-              fontWeight: "500",
-              transition: "background-color 0.2s",
-              maxWidth: "240px",
-              width: "100%",
-              minWidth: "180px",
-            }}
+            className="py-3 px-6 rounded border-none bg-[var(--primary-color)] text-white cursor-pointer text-sm font-medium transition-colors duration-200 max-w-60 w-full min-w-[180px]"
           >
             저장
           </button>

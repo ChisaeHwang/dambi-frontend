@@ -48,6 +48,12 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
         const cloneDate = new Date(startDate);
         const dateSessionsCount = getSessionsForDate(cloneDate).length;
 
+        // 세션에서 총 작업 시간 계산
+        const totalWorkTime = getSessionsForDate(cloneDate).reduce(
+          (total, session) => total + session.duration,
+          0
+        );
+
         const isCurrentMonth = cloneDate.getMonth() === currentMonth.getMonth();
         const isToday =
           cloneDate.getDate() === new Date().getDate() &&
@@ -66,6 +72,7 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
             isToday={isToday}
             isSelected={isSelected}
             sessionsCount={dateSessionsCount}
+            totalWorkTime={totalWorkTime}
             onSelectDate={onSelectDate}
           />
         );
@@ -75,16 +82,7 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
       }
 
       days.push(
-        <div
-          key={startDate.toString()}
-          className="calendar-week"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(7, 1fr)",
-            gap: "4px",
-            marginBottom: "4px",
-          }}
-        >
+        <div key={startDate.toString()} className="grid grid-cols-7 gap-1 mb-1">
           {week}
         </div>
       );
@@ -96,25 +94,9 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
   return (
     <>
       {/* 요일 표시 */}
-      <div
-        className="day-headers"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(7, 1fr)",
-          gap: "4px",
-          marginBottom: "8px",
-          textAlign: "center",
-        }}
-      >
+      <div className="grid grid-cols-7 gap-1 mb-2 text-center">
         {weekDays.map((day) => (
-          <div
-            key={day}
-            style={{
-              padding: "8px",
-              fontWeight: "bold",
-              color: "#fff",
-            }}
-          >
+          <div key={day} className="py-2 font-bold text-white">
             {day}
           </div>
         ))}

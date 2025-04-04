@@ -17,35 +17,30 @@ const SessionsList: React.FC<SessionsListProps> = ({
     return `${hours}시간 ${mins}분`;
   };
 
+  // 모든 세션의 총 작업 시간 계산
+  const totalWorkTime = sessions.reduce(
+    (total, session) => total + session.duration,
+    0
+  );
+
   return (
-    <div
-      className="selected-date-info"
-      style={{
-        marginTop: "20px",
-        borderTop: "1px solid #40444b",
-        paddingTop: "16px",
-      }}
-    >
-      <h3
-        style={{
-          color: "#fff",
-          fontSize: "16px",
-          marginBottom: "12px",
-        }}
-      >
-        {`${selectedDate.getFullYear()}년 ${
-          selectedDate.getMonth() + 1
-        }월 ${selectedDate.getDate()}일 작업`}
-      </h3>
+    <div className="mt-5 border-t border-[var(--input-bg)] pt-4">
+      <div className="flex justify-between items-center mb-3">
+        <h3 className="text-white text-base">
+          {`${selectedDate.getFullYear()}년 ${
+            selectedDate.getMonth() + 1
+          }월 ${selectedDate.getDate()}일 작업`}
+        </h3>
+
+        {sessions.length > 0 && (
+          <div className="text-sm text-[var(--text-positive)] font-medium bg-[var(--bg-modifier-accent)] py-1 px-3 rounded-full">
+            총 {formatSessionTime(totalWorkTime)}
+          </div>
+        )}
+      </div>
 
       {sessions.length === 0 ? (
-        <div
-          style={{
-            padding: "16px",
-            textAlign: "center",
-            color: "var(--text-muted)",
-          }}
-        >
+        <div className="py-4 text-center text-[var(--text-muted)]">
           이 날짜에 기록된 작업이 없습니다.
         </div>
       ) : (
@@ -53,42 +48,15 @@ const SessionsList: React.FC<SessionsListProps> = ({
           {sessions.map((session) => (
             <div
               key={session.id}
-              style={{
-                padding: "12px",
-                marginBottom: "8px",
-                backgroundColor: "var(--bg-secondary)",
-                borderRadius: "8px",
-                borderLeft: "4px solid var(--brand-experiment)",
-              }}
+              className="p-3 mb-2 bg-[var(--bg-secondary)] rounded-lg border-l-4 border-l-[var(--primary-color)]"
             >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: "8px",
-                }}
-              >
-                <span style={{ fontWeight: "bold" }}>{session.title}</span>
-                <span
-                  style={{
-                    fontSize: "0.8rem",
-                    backgroundColor: "var(--bg-modifier-accent)",
-                    padding: "2px 8px",
-                    borderRadius: "12px",
-                    color: "var(--text-muted)",
-                  }}
-                >
+              <div className="flex justify-between mb-2">
+                <span className="font-bold">{session.title}</span>
+                <span className="text-xs bg-[var(--bg-modifier-accent)] px-2 py-0.5 rounded-full text-[var(--text-muted)]">
                   {session.category}
                 </span>
               </div>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  fontSize: "0.9rem",
-                  color: "var(--text-muted)",
-                }}
-              >
+              <div className="flex justify-between text-sm text-[var(--text-muted)]">
                 <span>
                   {session.date.getHours().toString().padStart(2, "0")}:
                   {session.date.getMinutes().toString().padStart(2, "0")}
@@ -97,6 +65,36 @@ const SessionsList: React.FC<SessionsListProps> = ({
               </div>
             </div>
           ))}
+
+          {/* 작업 시간 분포 차트 */}
+          <div className="mt-6 p-3 bg-[var(--bg-secondary)] rounded-lg">
+            <h4 className="text-white text-sm mb-3">작업 시간 분포</h4>
+            <div className="flex items-end h-32 space-x-1">
+              {sessions.map((session, index) => {
+                // 전체 작업 시간 중 비율 계산 (최대 높이 100%)
+                const heightPercentage = Math.max(
+                  10, // 최소 높이
+                  Math.floor((session.duration / totalWorkTime) * 100)
+                );
+
+                return (
+                  <div
+                    key={index}
+                    className="flex flex-col items-center flex-1"
+                  >
+                    <div
+                      className="w-full bg-[var(--primary-color)] rounded-t"
+                      style={{ height: `${heightPercentage}%` }}
+                    ></div>
+                    <div className="text-[10px] text-[var(--text-muted)] mt-1 overflow-hidden text-ellipsis w-full text-center">
+                      {session.date.getHours()}:
+                      {session.date.getMinutes().toString().padStart(2, "0")}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
     </div>

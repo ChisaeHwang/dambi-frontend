@@ -6,41 +6,9 @@ export interface TimelapseTimerProps {
 
 const TimelapseTimer: React.FC<TimelapseTimerProps> = ({ formattedTime }) => {
   return (
-    <div
-      className="timer-section"
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        marginBottom: "20px",
-        marginTop: "20px",
-        flexGrow: 1,
-      }}
-    >
-      <div
-        className="timer-display"
-        style={{
-          padding: "40px",
-          borderRadius: "8px",
-          backgroundColor: "#202225",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          width: "60%",
-          maxWidth: "400px",
-          minHeight: "120px",
-          boxShadow: "0 2px 10px 0 rgba(0,0,0,.2)",
-        }}
-      >
-        <span
-          style={{
-            fontSize: "48px",
-            fontFamily: "monospace",
-            color: "#fff",
-            fontWeight: "600",
-            letterSpacing: "2px",
-          }}
-        >
+    <div className="flex justify-center items-center my-5 flex-grow">
+      <div className="p-8 rounded-lg bg-[var(--bg-tertiary)] flex justify-center items-center w-[300px] h-[120px] shadow-md">
+        <span className="text-4xl font-mono text-white font-semibold tracking-[0.2em]">
           {formattedTime}
         </span>
       </div>

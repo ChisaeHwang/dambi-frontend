@@ -31,4 +31,16 @@ contextBridge.exposeInMainWorld("electron", {
       ipcRenderer.removeListener("capture-status", captureStatusHandler);
     };
   },
+
+  // 타임랩스 생성 진행 상황 이벤트 리스너
+  onTimelapseProgress: (callback) => {
+    // IPC 이벤트 리스너 등록
+    const progressHandler = (_, progress) => callback(progress);
+    ipcRenderer.on("timelapse-progress", progressHandler);
+
+    // 클린업 함수 반환 (이벤트 리스너 제거용)
+    return () => {
+      ipcRenderer.removeListener("timelapse-progress", progressHandler);
+    };
+  },
 });

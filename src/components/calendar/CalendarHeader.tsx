@@ -11,59 +11,22 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
   onPrevMonth,
   onNextMonth,
 }) => (
-  <div
-    className="calendar-header"
-    style={{
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: "16px",
-    }}
-  >
-    <h2
-      style={{
-        color: "#fff",
-        fontSize: "20px",
-        margin: 0,
-        fontWeight: "600",
-      }}
-    >
-      작업 캘린더
-    </h2>
-    <div className="month-navigation" style={{ display: "flex", gap: "8px" }}>
-      <div
-        style={{
-          color: "#fff",
-          fontSize: "16px",
-          fontWeight: "500",
-        }}
-      >
+  <div className="flex justify-between items-center mb-4">
+    <h2 className="text-white text-xl font-semibold m-0">작업 캘린더</h2>
+    <div className="flex gap-2">
+      <div className="text-white text-base font-medium">
         {`${currentMonth.getFullYear()}년 ${currentMonth.getMonth() + 1}월`}
       </div>
-      <div style={{ display: "flex", gap: "4px" }}>
+      <div className="flex gap-1">
         <button
           onClick={onPrevMonth}
-          style={{
-            backgroundColor: "#4f545c",
-            border: "none",
-            borderRadius: "4px",
-            color: "white",
-            padding: "4px 8px",
-            cursor: "pointer",
-          }}
+          className="bg-[var(--bg-accent)] border-none rounded text-white py-1 px-2 cursor-pointer"
         >
           이전
         </button>
         <button
           onClick={onNextMonth}
-          style={{
-            backgroundColor: "#4f545c",
-            border: "none",
-            borderRadius: "4px",
-            color: "white",
-            padding: "4px 8px",
-            cursor: "pointer",
-          }}
+          className="bg-[var(--bg-accent)] border-none rounded text-white py-1 px-2 cursor-pointer"
         >
           다음
         </button>

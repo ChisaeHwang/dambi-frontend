@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import "./App.css";
 import Timelapse from "./components/Timelapse";
 import Calendar from "./components/Calendar";
 import Settings from "./components/Settings";
@@ -21,10 +20,8 @@ function App() {
         {/* 심플한 아이콘 사이드바 */}
         <div className="w-[72px] py-3 flex flex-col items-center bg-[var(--bg-tertiary)] shadow-sm">
           <div
-            className={`w-12 h-12 mb-2 flex items-center justify-center rounded-full bg-[var(--bg-secondary)] text-[var(--text-muted)] cursor-pointer transition-all duration-200 hover:bg-[var(--bg-accent)] hover:text-[var(--text-normal)] hover:rounded-2xl hover:-translate-y-0.5 ${
-              currentPage === "workspace"
-                ? "bg-[var(--primary-color)] text-white rounded-2xl relative"
-                : ""
+            className={`icon-button ${
+              currentPage === "workspace" ? "active" : ""
             }`}
             onClick={() => setCurrentPage("workspace")}
             title="워크스페이스"
@@ -44,10 +41,8 @@ function App() {
             </div>
           </div>
           <div
-            className={`w-12 h-12 mb-2 flex items-center justify-center rounded-full bg-[var(--bg-secondary)] text-[var(--text-muted)] cursor-pointer transition-all duration-200 hover:bg-[var(--bg-accent)] hover:text-[var(--text-normal)] hover:rounded-2xl hover:-translate-y-0.5 ${
-              currentPage === "calendar"
-                ? "bg-[var(--primary-color)] text-white rounded-2xl relative"
-                : ""
+            className={`icon-button ${
+              currentPage === "calendar" ? "active" : ""
             }`}
             onClick={() => setCurrentPage("calendar")}
             title="작업 캘린더"
@@ -67,10 +62,8 @@ function App() {
             </div>
           </div>
           <div
-            className={`w-12 h-12 mb-2 flex items-center justify-center rounded-full bg-[var(--bg-secondary)] text-[var(--text-muted)] cursor-pointer transition-all duration-200 hover:bg-[var(--bg-accent)] hover:text-[var(--text-normal)] hover:rounded-2xl hover:-translate-y-0.5 ${
-              currentPage === "settings"
-                ? "bg-[var(--primary-color)] text-white rounded-2xl relative"
-                : ""
+            className={`icon-button ${
+              currentPage === "settings" ? "active" : ""
             }`}
             onClick={() => setCurrentPage("settings")}
             title="설정"
@@ -94,26 +87,23 @@ function App() {
         {/* 메인 컨텐츠 영역 - 모든 컴포넌트를 항상 렌더링하고 display로 제어 */}
         <main className="flex-1 overflow-hidden bg-[var(--bg-primary)]">
           <div
-            style={{
-              display: currentPage === "workspace" ? "block" : "none",
-              height: "100%",
-            }}
+            className={`h-full ${
+              currentPage === "workspace" ? "block" : "hidden"
+            }`}
           >
             <Timelapse />
           </div>
           <div
-            style={{
-              display: currentPage === "calendar" ? "block" : "none",
-              height: "100%",
-            }}
+            className={`h-full ${
+              currentPage === "calendar" ? "block" : "hidden"
+            }`}
           >
             <Calendar />
           </div>
           <div
-            style={{
-              display: currentPage === "settings" ? "block" : "none",
-              height: "100%",
-            }}
+            className={`h-full ${
+              currentPage === "settings" ? "block" : "hidden"
+            }`}
           >
             <Settings />
           </div>

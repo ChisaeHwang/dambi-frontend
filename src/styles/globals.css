@@ -1,241 +1,154 @@
+/* Tailwind 지시어 */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* Pretendard 폰트 import */
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css");
 
-:root {
-  /* 메인 컬러 */
-  --primary-color: #5865f2;
-  --primary-hover: #4752c4;
+@layer base {
+  :root {
+    /* 메인 컬러 */
+    --primary-color: #5865f2;
+    --primary-color-dark: #4752c4;
+    --success-color: #3ba55c;
+    --danger-color: #ed4245;
+    --warning-color: #faa61a;
 
-  /* 배경색 */
-  --bg-primary: #36393f;
-  --bg-secondary: #2f3136;
-  --bg-tertiary: #202225;
+    /* 배경 */
+    --bg-primary: #36393f;
+    --bg-secondary: #2f3136;
+    --bg-tertiary: #202225;
+    --bg-accent: #4f545c;
 
-  /* 텍스트 색상 */
-  --text-normal: #dcddde;
-  --text-muted: #8e9297;
-  --text-positive: #3ba55c;
-  --text-warning: #faa61a;
-  --text-danger: #ed4245;
+    /* 텍스트 */
+    --text-normal: #dcddde;
+    --text-muted: #a3a6aa;
+    --text-link: #00b0f4;
+    --text-positive: #3ba55c;
+    --text-warning: #faa61a;
+    --text-danger: #ed4245;
 
-  /* 상태 색상 */
-  --status-green: #3ba55c;
-  --status-red: #ed4245;
+    /* 상태 색상 */
+    --status-green: #3ba55c;
+    --status-yellow: #faa61a;
+    --status-red: #ed4245;
+    --status-purple: #5865f2;
 
-  /* UI 요소 */
-  --input-bg: #40444b;
-  --input-border: #202225;
-  --sidebar-bg: #2f3136;
-  --header-bg: #36393f;
-  --header-border: #26282c;
+    /* 상호작용 요소 */
+    --brand-experiment: #5865f2;
+    --brand-experiment-hover: #4752c4;
 
-  /* 그림자 */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
-  --shadow-md: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
-  --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.19), 0 6px 6px rgba(0, 0, 0, 0.23);
+    /* 정리 */
+    --border-color: #42454a;
+    --radius-sm: 3px;
+    --radius-md: 5px;
+    --radius-lg: 8px;
 
-  /* 둥근 모서리 */
-  --radius-sm: 3px;
-  --radius-md: 5px;
-  --radius-lg: 8px;
-}
+    /* 공통 요소 수정자 */
+    --bg-modifier-hover: rgba(79, 84, 92, 0.16);
+    --bg-modifier-active: rgba(79, 84, 92, 0.24);
+    --bg-modifier-selected: rgba(79, 84, 92, 0.32);
+    --bg-modifier-accent: rgba(79, 84, 92, 0.48);
 
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
-}
+    /* UI 요소 */
+    --input-bg: #40444b;
+    --input-border: #202225;
+    --sidebar-bg: #2f3136;
+    --header-bg: #36393f;
+    --header-border: #26282c;
 
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui,
-    Roboto, sans-serif;
-  font-size: 16px;
-  background-color: var(--bg-tertiary);
-  color: var(--text-normal);
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-/* 스크롤바 스타일링 */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--bg-tertiary);
-}
-
-::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-}
-
-a {
-  color: var(--primary-color);
-  text-decoration: none;
-}
-
-button {
-  cursor: pointer;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui,
-    Roboto, sans-serif;
-}
-
-input,
-select {
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui,
-    Roboto, sans-serif;
-}
-
-/* 맞춤 컴포넌트 스타일 */
-.app-title-bar {
-  background-color: var(--bg-tertiary);
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 16px;
-  -webkit-app-region: drag;
-}
-
-.app-title-bar-controls {
-  -webkit-app-region: no-drag;
-}
-
-.app-container {
-  display: flex;
-  height: calc(100vh - 28px);
-}
-
-.sidebar {
-  background-color: var(--bg-secondary);
-  width: 240px;
-  flex-shrink: 0;
-  overflow-y: auto;
-}
-
-.main-content {
-  flex: 1;
-  background-color: var(--bg-primary);
-  overflow-y: auto;
-  padding: 20px;
-}
-
-.custom-button {
-  background-color: var(--primary-color);
-  color: white;
-  border: none;
-  border-radius: var(--radius-md);
-  padding: 10px 16px;
-  font-weight: 500;
-  transition: background-color 0.2s ease;
-}
-
-.custom-button:hover {
-  background-color: var(--primary-hover);
-}
-
-.custom-button.secondary {
-  background-color: var(--bg-secondary);
-}
-
-.custom-button.secondary:hover {
-  background-color: var(--bg-primary);
-}
-
-.custom-button.danger {
-  background-color: var(--status-red);
-}
-
-.custom-button.danger:hover {
-  background-color: #a12d2f;
-}
-
-.form-input {
-  background-color: var(--input-bg);
-  border: 1px solid var(--input-border);
-  color: var(--text-normal);
-  padding: 10px 12px;
-  border-radius: var(--radius-md);
-  outline: none;
-  transition: border-color 0.2s ease;
-  width: 100%;
-}
-
-.form-input:focus {
-  border-color: var(--primary-color);
-}
-
-.form-group {
-  margin-bottom: 16px;
-}
-
-.form-label {
-  display: block;
-  margin-bottom: 8px;
-  color: var(--text-normal);
-  font-weight: 500;
-}
-
-.card {
-  background-color: var(--bg-secondary);
-  border-radius: var(--radius-md);
-  padding: 16px;
-  margin-bottom: 16px;
-  box-shadow: var(--shadow-sm);
-}
-
-.section-title {
-  color: var(--text-normal);
-  font-size: 1.2rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
-}
-
-/* 사이드바 탭 */
-.sidebar-tab {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  padding: 10px;
-  background-color: transparent;
-  color: var(--text-muted);
-  border: none;
-  border-radius: var(--radius-md);
-  text-align: left;
-  font-size: 16px;
-  transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-.sidebar-tab:hover {
-  background-color: rgba(79, 84, 92, 0.16);
-  color: var(--text-normal);
-}
-
-.sidebar-tab.active {
-  background-color: var(--bg-tertiary);
-  color: var(--text-normal);
-  font-weight: 600;
-}
-
-/* 애니메이션 */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
+    /* 그림자 */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+    --shadow-md: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
+    --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.19), 0 6px 6px rgba(0, 0, 0, 0.23);
   }
-  to {
-    opacity: 1;
+
+  html,
+  body {
+    @apply max-w-full overflow-x-hidden bg-[var(--bg-tertiary)] text-[var(--text-normal)] select-none;
+    font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui,
+      Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* 스크롤바 스타일링 */
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-[var(--bg-accent)] rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-[var(--bg-modifier-accent)];
+  }
+
+  a {
+    @apply text-[var(--primary-color)] no-underline;
   }
 }
 
-.fade-in {
-  animation: fadeIn 0.3s ease;
+@layer components {
+  .app-title-bar {
+    @apply bg-[var(--bg-tertiary)] h-8 flex items-center justify-between px-4 select-none;
+  }
+
+  .icon-button {
+    @apply w-12 h-12 mb-2 flex items-center justify-center rounded-full bg-[var(--bg-secondary)] text-[var(--text-muted)] cursor-pointer relative transition-all duration-200 hover:bg-[var(--bg-accent)] hover:text-[var(--text-normal)] hover:rounded-2xl hover:-translate-y-0.5;
+  }
+
+  .icon-button.active {
+    @apply bg-[var(--primary-color)] text-white rounded-2xl;
+  }
+
+  .custom-button {
+    @apply py-2 px-4 rounded-[var(--radius-md)] font-medium text-sm border-none cursor-pointer transition-all duration-200 bg-[var(--brand-experiment)] text-white hover:bg-[var(--brand-experiment-hover)] active:translate-y-px disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .custom-button.secondary {
+    @apply bg-[var(--bg-accent)] text-[var(--text-normal)] hover:bg-[#5c636b];
+  }
+
+  .custom-button.danger {
+    @apply bg-[var(--danger-color)] hover:bg-[#c73235];
+  }
+
+  .custom-button.confirm {
+    @apply bg-[var(--success-color)];
+  }
+
+  .custom-button.cancel {
+    @apply bg-[var(--danger-color)];
+  }
+
+  .card {
+    @apply bg-[var(--bg-secondary)] rounded-[var(--radius-lg)] p-4 w-full max-w-[1000px] shadow-md mb-4;
+  }
+
+  .form-group {
+    @apply mb-4 text-left;
+  }
+
+  .form-label {
+    @apply block mb-2 font-medium text-[var(--text-normal)] text-sm;
+  }
+
+  .form-input {
+    @apply w-full py-2.5 px-3 rounded-[var(--radius-md)] border border-[var(--border-color)] bg-[var(--bg-tertiary)] text-[var(--text-normal)] text-sm transition-all focus:outline-none focus:border-[var(--primary-color)] focus:shadow-[0_0_0_2px_rgba(88,101,242,0.3)] disabled:opacity-70 disabled:cursor-not-allowed;
+  }
+
+  .section-title {
+    @apply text-lg font-semibold mt-0 mb-4 pb-2 border-b border-[var(--border-color)] text-[var(--text-normal)] text-left;
+  }
+
+  .loading-spinner {
+    @apply border-4 border-[rgba(0,0,0,0.1)] w-9 h-9 rounded-full border-l-[#43b581] animate-spin;
+  }
 }
