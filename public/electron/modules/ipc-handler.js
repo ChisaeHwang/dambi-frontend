@@ -94,6 +94,26 @@ class IpcHandler {
         throw error;
       }
     });
+
+    // 타임랩스 옵션 업데이트
+    ipcMain.handle("update-timelapse-options", async (event, options) => {
+      try {
+        console.log("타임랩스 옵션 업데이트 요청 받음:", options);
+        // 옵션 업데이트 처리 (필요시 captureManager에 해당 기능 추가)
+        if (options && typeof options === "object") {
+          // 여기서 captureManager 또는 다른 모듈에 옵션을 전달
+          // 실제 기능은 이후 구현이 필요할 수 있음
+          if (captureManager.updateTimelapseOptions) {
+            await captureManager.updateTimelapseOptions(options);
+          }
+          return { success: true };
+        }
+        return { success: false, error: "잘못된 옵션 형식" };
+      } catch (error) {
+        console.error("타임랩스 옵션 업데이트 오류:", error);
+        return { success: false, error: error.message };
+      }
+    });
   }
 
   /**

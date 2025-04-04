@@ -16,6 +16,8 @@ contextBridge.exposeInMainWorld("electron", {
   stopCapture: () => ipcRenderer.invoke("stop-capture"),
   generateTimelapse: (options) =>
     ipcRenderer.invoke("generate-timelapse", options),
+  updateTimelapseOptions: (options) =>
+    ipcRenderer.invoke("update-timelapse-options", options),
 
   // 파일 시스템 기능
   selectSaveFolder: () => ipcRenderer.invoke("select-save-folder"),

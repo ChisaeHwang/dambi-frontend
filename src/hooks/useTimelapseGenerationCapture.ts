@@ -260,6 +260,20 @@ export const useTimelapseGenerationCapture = () => {
       // 옵션 변경 시 로컬 스토리지에 저장
       saveToLocalStorage(STORAGE_KEYS.TIMELAPSE_OPTIONS, newOptions);
 
+      // 일렉트론 환경이 있는 경우 메인 프로세스에도 설정 변경 전달
+      if (electronAvailable && window.electron) {
+        // 메인 프로세스에 설정 변경 알림 (일렉트론 IPC 호출)
+        try {
+          console.log("일렉트론에 타임랩스 옵션 업데이트:", newOptions);
+          // 비동기적으로 처리하되 오류는 무시 (사용자 경험 방해 방지)
+          window.electron.updateTimelapseOptions?.(newOptions).catch((err) => {
+            console.error("타임랩스 옵션 업데이트 오류:", err);
+          });
+        } catch (error) {
+          console.error("타임랩스 옵션 업데이트 중 오류:", error);
+        }
+      }
+
       return newOptions;
     });
   };
