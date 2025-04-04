@@ -65,6 +65,14 @@ const Timelapse: React.FC = () => {
 
   // 캡처 시작 핸들러
   const handleStartCapture = () => {
+    // 타임랩스가 비활성화되었는지 확인
+    if (timelapseOptions.enabled === false) {
+      alert(
+        "타임랩스 기능이 비활성화되어 있습니다. 설정에서 타임랩스를 활성화해주세요."
+      );
+      return;
+    }
+
     if (isPaused) {
       // 일시 중지 상태에서 다시 시작
       setIsPaused(false);
@@ -132,8 +140,8 @@ const Timelapse: React.FC = () => {
   const formattedTime = formatTime(workTime);
 
   return (
-    <div className="bg-[var(--bg-primary)] text-[var(--text-normal)] h-full w-full flex flex-col p-3 overflow-hidden">
-      <div className="bg-[var(--bg-secondary)] rounded-lg shadow-md p-5 mx-auto w-[98%] max-w-[1400px] h-full flex flex-col overflow-auto">
+    <div className="bg-[var(--bg-primary)] text-[var(--text-normal)] h-screen w-full flex flex-col p-3">
+      <div className="bg-[var(--bg-secondary)] rounded-lg shadow-md p-5 mx-auto w-[98%] max-w-[1400px] min-w-auto h-[calc(100vh-30px)] overflow-y-auto">
         <h2 className="text-white text-xl mb-4 text-center font-semibold">
           워크스페이스
         </h2>
@@ -176,6 +184,7 @@ const Timelapse: React.FC = () => {
             progress={timelapseProgress}
             duration={duration}
             defaultSpeedFactor={timelapseOptions.speedFactor}
+            timelapseEnabled={timelapseOptions.enabled !== false}
           />
         )}
       </div>

@@ -10,6 +10,7 @@ interface GeneratePromptProps {
   progress: TimelapseProgress;
   duration: number;
   defaultSpeedFactor: number;
+  timelapseEnabled?: boolean;
 }
 
 const GeneratePrompt: React.FC<GeneratePromptProps> = ({
@@ -20,6 +21,7 @@ const GeneratePrompt: React.FC<GeneratePromptProps> = ({
   progress,
   duration,
   defaultSpeedFactor,
+  timelapseEnabled = true,
 }) => {
   const [selectedSpeed, setSelectedSpeed] =
     useState<number>(defaultSpeedFactor);
@@ -114,7 +116,23 @@ const GeneratePrompt: React.FC<GeneratePromptProps> = ({
 
   return (
     <div className="mt-5 p-5 bg-[var(--bg-accent)] rounded-lg shadow-md text-center">
-      {isGenerating ? (
+      {!timelapseEnabled ? (
+        <div className="py-4">
+          <h3 className="text-lg font-semibold mb-3">
+            타임랩스가 비활성화되었습니다
+          </h3>
+          <p className="text-sm text-[var(--text-muted)] mb-4">
+            타임랩스 기능이 꺼져 있어 작업 화면이 저장되지 않았습니다. 설정에서
+            타임랩스를 활성화해주세요.
+          </p>
+          <button
+            onClick={onCancel}
+            className="py-2.5 px-5 rounded border-none bg-[var(--bg-secondary)] text-[var(--text-normal)] font-medium cursor-pointer text-sm transition-colors duration-200 hover:bg-[var(--bg-hover)]"
+          >
+            확인
+          </button>
+        </div>
+      ) : isGenerating ? (
         <div>
           <h3 className="text-lg font-semibold mb-3">타임랩스 생성 중...</h3>
           <div className="w-full h-2 bg-[var(--bg-secondary)] rounded-full overflow-hidden mb-2">

@@ -134,8 +134,8 @@ const Calendar: React.FC = () => {
   };
 
   return (
-    <div className="bg-[var(--bg-primary)] text-[var(--text-normal)] h-screen w-full flex flex-col p-3 overflow-x-hidden overflow-y-auto">
-      <div className="bg-[var(--bg-secondary)] rounded-lg shadow-md p-5 mx-auto w-[98%] max-w-[1400px] min-w-auto mb-5">
+    <div className="bg-[var(--bg-primary)] text-[var(--text-normal)] h-screen w-full flex flex-col p-3">
+      <div className="bg-[var(--bg-secondary)] rounded-lg shadow-md p-5 mx-auto w-[98%] max-w-[1400px] min-w-auto mb-5 h-[calc(100vh-30px)] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <CalendarHeader
             currentMonth={currentMonth}

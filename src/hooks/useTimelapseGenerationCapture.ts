@@ -18,6 +18,7 @@ export interface TimelapseOptions {
   outputFormat: "mp4" | "gif";
   outputPath?: string; // 출력 경로
   preserveOriginals?: boolean; // 원본 이미지 보존 여부
+  enabled?: boolean; // 타임랩스 활성화 여부
 }
 
 // 캡처 상태 인터페이스
@@ -74,6 +75,7 @@ export const useTimelapseGenerationCapture = () => {
           outputQuality: "medium",
           outputFormat: "mp4",
           preserveOriginals: true, // 기본적으로 원본 파일 보존
+          enabled: true, // 기본적으로 타임랩스 활성화
         }
       );
     }
