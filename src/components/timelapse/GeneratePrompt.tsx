@@ -1,20 +1,67 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { TimelapseProgress } from "../../hooks/useTimelapseGenerationCapture";
 import TimelapseProgressBar from "./TimelapseProgressBar";
 
 interface GeneratePromptProps {
-  onGenerate: () => void;
+  onGenerate: (speedFactor: number) => void;
   onCancel: () => void;
-  isGenerating?: boolean;
-  progress?: TimelapseProgress;
+  onResumeCapture: () => void;
+  isGenerating: boolean;
+  progress: {
+    status: string;
+    progress: number;
+    stage: string;
+  };
+  duration: number;
+  defaultSpeedFactor: number;
 }
 
 const GeneratePrompt: React.FC<GeneratePromptProps> = ({
   onGenerate,
   onCancel,
-  isGenerating = false,
+  onResumeCapture,
+  isGenerating,
   progress,
+  duration,
+  defaultSpeedFactor,
 }) => {
+  const [selectedSpeed, setSelectedSpeed] =
+    useState<number>(defaultSpeedFactor);
+  const [estimatedDuration, setEstimatedDuration] = useState<string>("");
+
+  // 속도 옵션
+  const speedOptions = [3, 6, 9, 20];
+
+  // 녹화 시간을 기반으로 타임랩스 예상 시간 계산
+  useEffect(() => {
+    if (duration > 0 && selectedSpeed > 0) {
+      // 타임랩스 시간 = 원본 시간 / 속도
+      const timelapseSeconds = Math.max(Math.ceil(duration / selectedSpeed), 1);
+
+      // 예상 시간 포맷팅
+      const minutes = Math.floor(timelapseSeconds / 60);
+      const seconds = timelapseSeconds % 60;
+
+      let timeText = "";
+      if (minutes > 0) {
+        timeText += `${minutes}분 `;
+      }
+      timeText += `${seconds}초`;
+
+      setEstimatedDuration(timeText);
+    }
+  }, [duration, selectedSpeed]);
+
+  // 속도 변경 핸들러
+  const handleSpeedChange = (speed: number) => {
+    setSelectedSpeed(speed);
+  };
+
+  // 타임랩스 생성 핸들러
+  const handleGenerate = () => {
+    onGenerate(selectedSpeed);
+  };
+
   // 사용자 친화적인 상태 메시지 생성
   const getStatusMessage = () => {
     if (!isGenerating) return "타임랩스를 만드시겠습니까?";
@@ -47,68 +94,85 @@ const GeneratePrompt: React.FC<GeneratePromptProps> = ({
   };
 
   return (
-    <div className="p-5 mt-5 bg-[var(--input-bg)] rounded-lg">
-      <p
-        className={`text-base mb-4 text-center ${
-          progress?.status === "error"
-            ? "text-[var(--text-danger)]"
-            : "text-white"
-        }`}
-      >
-        {getStatusMessage()}
-      </p>
-
-      {isGenerating && progress && <TimelapseProgressBar progress={progress} />}
-
-      {progress?.status === "error" && progress.error && (
-        <div className="my-4 p-2.5 bg-[rgba(237,66,69,0.1)] rounded text-[var(--text-danger)] text-sm">
-          {formatErrorMessage(progress.error)}
+    <div className="mt-5 p-5 bg-[var(--bg-accent)] rounded-lg shadow-md text-center">
+      {isGenerating ? (
+        <div>
+          <h3 className="text-lg font-semibold mb-3">타임랩스 생성 중...</h3>
+          <div className="w-full h-2 bg-[var(--bg-secondary)] rounded-full overflow-hidden mb-2">
+            <div
+              className="h-full bg-[var(--primary-color)] transition-all duration-300 ease-in-out"
+              style={{ width: `${progress.progress}%` }}
+            ></div>
+          </div>
+          <p className="text-sm text-[var(--text-muted)]">{progress.stage}</p>
         </div>
-      )}
+      ) : (
+        <div>
+          <h3 className="text-lg font-semibold mb-4">녹화 작업 완료</h3>
 
-      {isGenerating && !progress && (
-        <div className="flex justify-center mb-4">
-          <div className="loading-spinner"></div>
-        </div>
-      )}
+          <div className="mb-5">
+            <p className="text-sm text-[var(--text-muted)] mb-4">
+              녹화를 다시 시작하거나, 타임랩스를 생성할 수 있습니다.
+            </p>
 
-      <div className="flex justify-center gap-3 mt-4">
-        {progress?.status === "error" ? (
-          // 오류 발생 시 다시 시도 버튼 표시
-          <button
-            onClick={onGenerate}
-            className="py-2.5 px-5 rounded border-none bg-[var(--primary-color)] text-white cursor-pointer text-sm min-w-[120px]"
-          >
-            다시 시도
-          </button>
-        ) : (
-          // 일반 상태일 때 예/아니오 버튼 표시
-          <>
+            <div className="mb-5">
+              <label className="block mb-2 text-sm font-medium">
+                타임랩스 속도
+              </label>
+              <div className="flex gap-2 justify-center">
+                {speedOptions.map((speed) => (
+                  <button
+                    key={speed}
+                    className={`py-2 px-4 rounded border-none cursor-pointer transition-colors duration-200 text-sm ${
+                      selectedSpeed === speed
+                        ? "bg-[var(--primary-color)] text-white"
+                        : "bg-[var(--bg-secondary)] text-[var(--text-normal)] hover:bg-[var(--bg-accent)]"
+                    }`}
+                    onClick={() => handleSpeedChange(speed)}
+                  >
+                    {speed}x
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {estimatedDuration && (
+              <div className="mb-5 py-3 px-4 bg-[var(--bg-secondary)] rounded-lg">
+                <p className="text-sm">
+                  <span className="font-medium">예상 타임랩스 길이:</span>{" "}
+                  <span className="text-[var(--primary-color)] font-semibold">
+                    {estimatedDuration}
+                  </span>
+                </p>
+                <p className="text-xs text-[var(--text-muted)] mt-1">
+                  {selectedSpeed}배속으로 처리 시 예상 시간입니다
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-center space-x-3">
             <button
-              onClick={onGenerate}
-              disabled={isGenerating}
-              className={`py-2.5 px-5 rounded border-none text-white text-sm min-w-[100px] ${
-                isGenerating
-                  ? "bg-[#36794e] cursor-default opacity-70"
-                  : "bg-[var(--status-green)] cursor-pointer opacity-100"
-              }`}
+              onClick={onResumeCapture}
+              className="py-2.5 px-5 rounded border border-[var(--primary-color)] bg-transparent text-[var(--primary-color)] font-medium cursor-pointer text-sm transition-colors duration-200 hover:bg-[rgba(var(--primary-color-rgb),0.1)]"
             >
-              예
+              다시 녹화
+            </button>
+            <button
+              onClick={handleGenerate}
+              className="py-2.5 px-5 rounded border-none bg-[var(--primary-color)] text-white font-medium cursor-pointer text-sm transition-colors duration-200 hover:bg-[var(--primary-color-hover)]"
+            >
+              타임랩스 생성
             </button>
             <button
               onClick={onCancel}
-              disabled={isGenerating}
-              className={`py-2.5 px-5 rounded border-none text-white text-sm min-w-[100px] ${
-                isGenerating
-                  ? "bg-[#a52e31] cursor-default opacity-70"
-                  : "bg-[var(--text-danger)] cursor-pointer opacity-100"
-              }`}
+              className="py-2.5 px-5 rounded border-none bg-[var(--bg-secondary)] text-[var(--text-normal)] font-medium cursor-pointer text-sm transition-colors duration-200 hover:bg-[var(--bg-hover)]"
             >
-              아니오
+              취소
             </button>
-          </>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

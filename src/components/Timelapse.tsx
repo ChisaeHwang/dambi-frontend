@@ -22,15 +22,18 @@ const Timelapse: React.FC = () => {
     error,
     isGeneratingTimelapse,
     timelapseProgress,
+    changeTimelapseOptions,
   } = useTimelapseGenerationCapture();
 
+  // 상태 관리
   const [showGeneratePrompt, setShowGeneratePrompt] = useState<boolean>(false);
   const [workTime, setWorkTime] = useState<number>(0);
   const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(
     null
   );
+  const [isPaused, setIsPaused] = useState<boolean>(false);
 
-  // 최초 마운트 여부 확인을 위한 ref (컴포넌트 최상위 레벨에 선언)
+  // 최초 마운트 여부 확인을 위한 ref
   const mountedRef = React.useRef(false);
 
   // 컴포넌트 마운트 시 창 목록 초기 로드만 수행
@@ -41,7 +44,7 @@ const Timelapse: React.FC = () => {
       refreshActiveWindows();
       mountedRef.current = true;
     }
-  }, [refreshActiveWindows]); // refreshActiveWindows 의존성 추가
+  }, [refreshActiveWindows]);
 
   // 타이머 관리
   useEffect(() => {
@@ -60,19 +63,53 @@ const Timelapse: React.FC = () => {
     };
   }, [isCapturing, timerInterval]);
 
+  // 캡처 시작 핸들러
+  const handleStartCapture = () => {
+    if (isPaused) {
+      // 일시 중지 상태에서 다시 시작
+      setIsPaused(false);
+      setShowGeneratePrompt(false);
+      startCapture();
+    } else {
+      // 새로운 캡처 시작
+      startCapture();
+    }
+  };
+
   // 캡처 중지 핸들러
   const handleStopCapture = () => {
     stopCapture();
     if (duration > 0) {
+      setIsPaused(true);
       setShowGeneratePrompt(true);
     }
   };
 
+  // 캡처 취소 핸들러
+  const handleCancelCapture = () => {
+    setIsPaused(false);
+    setShowGeneratePrompt(false);
+    setWorkTime(0);
+  };
+
   // 타임랩스 생성 핸들러
-  const handleGenerateTimelapse = async () => {
+  const handleGenerateTimelapse = async (speedFactor: number) => {
     try {
-      const path = await generateTimelapse(timelapseOptions);
+      // 사용자가 선택한 속도 값으로 옵션 업데이트
+      const updatedOptions = {
+        ...timelapseOptions,
+        speedFactor: speedFactor,
+      };
+
+      // 생성 시작
+      const path = await generateTimelapse(updatedOptions);
+
+      // 생성 완료 후 상태 초기화
       setShowGeneratePrompt(false);
+      setIsPaused(false);
+      setWorkTime(0);
+
+      // 성공 메시지
       alert(`타임랩스가 생성되었습니다: ${path}`);
     } catch (error: any) {
       alert(
@@ -107,7 +144,7 @@ const Timelapse: React.FC = () => {
           </div>
         )}
 
-        {!isCapturing && !showGeneratePrompt && (
+        {!isCapturing && !isPaused && (
           <div className="mb-4">
             <WindowSelector
               activeWindows={activeWindows}
@@ -121,18 +158,24 @@ const Timelapse: React.FC = () => {
 
         <TimelapseTimer formattedTime={formattedTime} />
 
-        <TimelapseControls
-          isCapturing={isCapturing}
-          onStart={startCapture}
-          onStop={handleStopCapture}
-        />
+        {!showGeneratePrompt && (
+          <TimelapseControls
+            isCapturing={isCapturing}
+            onStart={handleStartCapture}
+            onStop={handleStopCapture}
+            isPaused={isPaused}
+          />
+        )}
 
         {showGeneratePrompt && (
           <GeneratePrompt
             onGenerate={handleGenerateTimelapse}
-            onCancel={() => setShowGeneratePrompt(false)}
+            onCancel={handleCancelCapture}
+            onResumeCapture={handleStartCapture}
             isGenerating={isGeneratingTimelapse}
             progress={timelapseProgress}
+            duration={duration}
+            defaultSpeedFactor={timelapseOptions.speedFactor}
           />
         )}
       </div>

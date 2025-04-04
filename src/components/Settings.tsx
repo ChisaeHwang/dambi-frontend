@@ -1,17 +1,11 @@
 import React, { useEffect } from "react";
 import { useTimelapseGenerationCapture } from "../hooks/useTimelapseGenerationCapture";
-import WindowSelector from "./common/WindowSelector";
 import SpeedSelector from "./common/SpeedSelector";
 
 const Settings: React.FC = () => {
   const {
     timelapseOptions,
-    selectedWindowId,
-    activeWindows,
-    isLoadingWindows,
     changeTimelapseOptions,
-    changeSelectedWindow,
-    refreshActiveWindows,
     saveFolderPath,
     selectSaveFolder,
   } = useTimelapseGenerationCapture();
@@ -19,29 +13,9 @@ const Settings: React.FC = () => {
   // 최초 마운트 여부 확인을 위한 ref
   const mountedRef = React.useRef(false);
 
-  // 컴포넌트 마운트 시 창 목록 초기 로드만 수행
-  useEffect(() => {
-    // 초기 창 목록 로드 - 최초 마운트 시에만 실행
-    if (!mountedRef.current) {
-      console.log("Settings: 최초 마운트 시 창 목록 로딩");
-      refreshActiveWindows();
-      mountedRef.current = true;
-    }
-  }, [refreshActiveWindows]);
-
   // 배속 변경 핸들러
   const handleSpeedChange = (speed: number) => {
     changeTimelapseOptions({ speedFactor: speed });
-  };
-
-  // 창 선택 핸들러
-  const handleWindowChange = (windowId: string) => {
-    try {
-      if (!windowId) return;
-      changeSelectedWindow(windowId);
-    } catch (error) {
-      console.error("Settings: 창 선택 변경 중 오류 발생", error);
-    }
   };
 
   // 설정 저장 핸들러
@@ -79,14 +53,6 @@ const Settings: React.FC = () => {
             selectedSpeed={timelapseOptions.speedFactor}
             speedOptions={speedOptions}
             onSpeedChange={handleSpeedChange}
-          />
-
-          <WindowSelector
-            activeWindows={activeWindows}
-            selectedWindowId={selectedWindowId}
-            onWindowChange={handleWindowChange}
-            isLoadingWindows={isLoadingWindows}
-            onRefreshWindows={refreshActiveWindows}
           />
 
           <div className="mb-5">
