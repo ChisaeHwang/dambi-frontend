@@ -7,11 +7,7 @@ interface GeneratePromptProps {
   onCancel: () => void;
   onResumeCapture: () => void;
   isGenerating: boolean;
-  progress: {
-    status: string;
-    progress: number;
-    stage: string;
-  };
+  progress: TimelapseProgress;
   duration: number;
   defaultSpeedFactor: number;
 }
@@ -34,9 +30,29 @@ const GeneratePrompt: React.FC<GeneratePromptProps> = ({
 
   // 녹화 시간을 기반으로 타임랩스 예상 시간 계산
   useEffect(() => {
-    if (duration > 0 && selectedSpeed > 0) {
+    console.log("Duration(초):", duration, "Speed:", selectedSpeed); // 디버깅용
+
+    if (duration && duration > 0 && selectedSpeed > 0) {
+      // duration이 밀리초 단위로 들어오는 경우를 대비해 초 단위로 변환
+      // 00:01:14는 74초
+      let durationInSeconds = duration;
+      // 만약 duration이 비정상적으로 크다면 밀리초 단위일 수 있음
+      if (duration > 10000) {
+        durationInSeconds = Math.floor(duration / 1000);
+      }
+
       // 타임랩스 시간 = 원본 시간 / 속도
-      const timelapseSeconds = Math.max(Math.ceil(duration / selectedSpeed), 1);
+      const timelapseSeconds = Math.max(
+        Math.ceil(durationInSeconds / selectedSpeed),
+        1
+      );
+
+      console.log(
+        "원본 시간(초):",
+        durationInSeconds,
+        "타임랩스 시간(초):",
+        timelapseSeconds
+      );
 
       // 예상 시간 포맷팅
       const minutes = Math.floor(timelapseSeconds / 60);
@@ -48,7 +64,10 @@ const GeneratePrompt: React.FC<GeneratePromptProps> = ({
       }
       timeText += `${seconds}초`;
 
+      console.log("Estimated Duration:", timeText); // 디버깅용
       setEstimatedDuration(timeText);
+    } else {
+      setEstimatedDuration("");
     }
   }, [duration, selectedSpeed]);
 
@@ -136,12 +155,12 @@ const GeneratePrompt: React.FC<GeneratePromptProps> = ({
               </div>
             </div>
 
-            {estimatedDuration && (
+            {duration > 0 && (
               <div className="mb-5 py-3 px-4 bg-[var(--bg-secondary)] rounded-lg">
                 <p className="text-sm">
                   <span className="font-medium">예상 타임랩스 길이:</span>{" "}
                   <span className="text-[var(--primary-color)] font-semibold">
-                    {estimatedDuration}
+                    {estimatedDuration || "계산 중..."}
                   </span>
                 </p>
                 <p className="text-xs text-[var(--text-muted)] mt-1">
