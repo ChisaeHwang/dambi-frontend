@@ -1,25 +1,24 @@
 import React, { useState, useEffect } from "react";
 import { TimelapseProgress } from "../../hooks/useTimelapseGenerationCapture";
-import TimelapseProgressBar from "./TimelapseProgressBar";
 
 interface GeneratePromptProps {
   onGenerate: (speedFactor: number) => void;
   onCancel: () => void;
-  onResumeCapture: () => void;
   isGenerating: boolean;
   progress: TimelapseProgress;
   duration: number;
   defaultSpeedFactor: number;
+  timelapseEnabled?: boolean;
 }
 
 const GeneratePrompt: React.FC<GeneratePromptProps> = ({
   onGenerate,
   onCancel,
-  onResumeCapture,
   isGenerating,
   progress,
   duration,
   defaultSpeedFactor,
+  timelapseEnabled = true,
 }) => {
   const [selectedSpeed, setSelectedSpeed] =
     useState<number>(defaultSpeedFactor);
@@ -81,40 +80,25 @@ const GeneratePrompt: React.FC<GeneratePromptProps> = ({
     onGenerate(selectedSpeed);
   };
 
-  // 사용자 친화적인 상태 메시지 생성
-  const getStatusMessage = () => {
-    if (!isGenerating) return "타임랩스를 만드시겠습니까?";
-
-    if (!progress) return "타임랩스 생성 준비 중...";
-
-    switch (progress.status) {
-      case "start":
-        return "타임랩스 생성 초기화 중...";
-      case "processing":
-        return `타임랩스 생성 중... (${progress.progress}%)`;
-      case "complete":
-        return "타임랩스 생성 완료!";
-      case "error":
-        return "타임랩스 생성 중 오류가 발생했습니다";
-      default:
-        return `타임랩스 생성 중... (${progress?.stage || ""})`;
-    }
-  };
-
-  // 사용자 친화적인 오류 메시지 변환
-  const formatErrorMessage = (error?: string) => {
-    if (!error) return "";
-
-    if (error.includes("FFmpeg 오류 코드")) {
-      return "비디오 변환 중 오류가 발생했습니다. 다른 설정으로 다시 시도해보세요.";
-    }
-
-    return error;
-  };
-
   return (
     <div className="mt-5 p-5 bg-[var(--bg-accent)] rounded-lg shadow-md text-center">
-      {isGenerating ? (
+      {!timelapseEnabled ? (
+        <div className="py-4">
+          <h3 className="text-lg font-semibold mb-3">
+            타임랩스가 비활성화되었습니다
+          </h3>
+          <p className="text-sm text-[var(--text-muted)] mb-4">
+            타임랩스 기능이 꺼져 있어 작업 화면이 저장되지 않았습니다. 설정에서
+            타임랩스를 활성화해주세요.
+          </p>
+          <button
+            onClick={onCancel}
+            className="py-2.5 px-5 rounded border-none bg-[var(--bg-secondary)] text-[var(--text-normal)] font-medium cursor-pointer text-sm transition-colors duration-200 hover:bg-[var(--bg-hover)]"
+          >
+            확인
+          </button>
+        </div>
+      ) : isGenerating ? (
         <div>
           <h3 className="text-lg font-semibold mb-3">타임랩스 생성 중...</h3>
           <div className="w-full h-2 bg-[var(--bg-secondary)] rounded-full overflow-hidden mb-2">
@@ -131,7 +115,7 @@ const GeneratePrompt: React.FC<GeneratePromptProps> = ({
 
           <div className="mb-5">
             <p className="text-sm text-[var(--text-muted)] mb-4">
-              녹화를 다시 시작하거나, 타임랩스를 생성할 수 있습니다.
+              녹화된 영상으로 타임랩스를 생성할 수 있습니다.
             </p>
 
             <div className="mb-5">
@@ -171,12 +155,6 @@ const GeneratePrompt: React.FC<GeneratePromptProps> = ({
           </div>
 
           <div className="flex justify-center space-x-3">
-            <button
-              onClick={onResumeCapture}
-              className="py-2.5 px-5 rounded border border-[var(--primary-color)] bg-transparent text-[var(--primary-color)] font-medium cursor-pointer text-sm transition-colors duration-200 hover:bg-[rgba(var(--primary-color-rgb),0.1)]"
-            >
-              다시 녹화
-            </button>
             <button
               onClick={handleGenerate}
               className="py-2.5 px-5 rounded border-none bg-[var(--primary-color)] text-white font-medium cursor-pointer text-sm transition-colors duration-200 hover:bg-[var(--primary-color-hover)]"

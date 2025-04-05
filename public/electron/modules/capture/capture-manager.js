@@ -21,6 +21,11 @@ class CaptureManager {
     this.recordingInterval = null;
     this.statusUpdateInterval = null;
     this.currentSource = null; // 현재 녹화 중인 소스 정보
+
+    // 타임랩스 활성화 상태 초기값 (기본값: 활성화)
+    this.timelapseEnabled = true;
+
+    // 캡처 프레임 버퍼
   }
 
   /**
@@ -50,21 +55,28 @@ class CaptureManager {
 
   /**
    * 캡처 시작
-   * @param {string} windowId - 캡처할 윈도우 ID
-   * @param {string} windowName - 캡처할 윈도우 이름
+   * @param {string} windowId - 캡처할 창 ID
+   * @param {string} windowName - 캡처할 창 이름
    * @returns {Promise<Object>} 캡처 시작 결과
    */
   async startCapture(windowId, windowName) {
-    // 캡처를 이미 진행 중이면 중지
-    if (this.isCapturing) {
-      this.stopCapture();
-    }
-
-    console.log(
-      `[CaptureManager] 캡처 시작: windowId=${windowId}, windowName=${windowName}`
-    );
-
     try {
+      // 이미 캡처 중인 경우 중지
+      if (this.isCapturing) {
+        this.stopCapture();
+      }
+
+      // 타임랩스 비활성화 상태 확인
+      if (this.timelapseEnabled === false) {
+        console.log("타임랩스가 비활성화되어 있어 캡처를 시작할 수 없습니다.");
+        this.emitStatusUpdate({
+          error: "타임랩스가 비활성화되어 있습니다. 설정에서 활성화해주세요.",
+        });
+        return { success: false, error: "타임랩스가 비활성화되어 있습니다" };
+      }
+
+      console.log(`캡처 시작: ${windowId}, ${windowName}`);
+
       // 1. 캡처 디렉토리 및 파일 경로 생성
       const captureInfo = storageManager.createCaptureDirectory();
       this.captureDir = captureInfo.captureDir;
@@ -323,6 +335,30 @@ class CaptureManager {
    */
   getTimelapseQualityOptions() {
     return timelapseGenerator.getQualityOptions();
+  }
+
+  /**
+   * 타임랩스 옵션 업데이트
+   * @param {Object} options - 업데이트할 타임랩스 옵션
+   * @returns {Promise<boolean>} 업데이트 성공 여부
+   */
+  async updateTimelapseOptions(options) {
+    try {
+      console.log("타임랩스 옵션 업데이트:", options);
+
+      // 여기서 필요한 옵션을 내부 상태에 저장하거나 적용할 수 있음
+      // 예: 활성화 상태를 캡처 관련 클래스에 저장
+      if (options.hasOwnProperty("enabled")) {
+        // 타임랩스 활성화 상태 저장
+        this.timelapseEnabled = options.enabled !== false;
+        console.log(`타임랩스 활성화 상태 변경: ${this.timelapseEnabled}`);
+      }
+
+      return true;
+    } catch (error) {
+      console.error("타임랩스 옵션 업데이트 오류:", error);
+      return false;
+    }
   }
 
   /**

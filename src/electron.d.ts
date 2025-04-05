@@ -43,6 +43,10 @@ interface ElectronAPI {
   ) => Promise<{ success: boolean; captureDir: string }>;
   stopCapture: () => Promise<{ success: boolean; totalFrames: number }>;
   generateTimelapse: (options: TimelapseOptions) => Promise<string>;
+  // 타임랩스 옵션 업데이트
+  updateTimelapseOptions: (
+    options: Partial<TimelapseOptions>
+  ) => Promise<{ success: boolean; error?: string }>;
 
   // 파일 시스템 기능
   selectSaveFolder: () => Promise<DialogResult>;

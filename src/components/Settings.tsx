@@ -40,14 +40,55 @@ const Settings: React.FC = () => {
   const speedOptions = [3, 6, 9, 20];
 
   return (
-    <div className="bg-[var(--bg-primary)] text-[var(--text-normal)] h-screen w-full flex flex-col p-3 overflow-x-hidden overflow-y-auto">
-      <div className="bg-[var(--bg-secondary)] rounded-lg shadow-md p-5 w-[98%] max-w-[1400px] min-w-auto mx-auto mb-5 overflow-visible">
+    <div className="bg-[var(--bg-primary)] text-[var(--text-normal)] h-screen w-full flex flex-col p-3">
+      <div className="bg-[var(--bg-secondary)] rounded-lg shadow-md p-5 w-[98%] max-w-[1400px] min-w-auto mx-auto mb-5 h-[calc(100vh-30px)] overflow-y-auto">
         <h2 className="text-white text-xl mb-4 text-center font-semibold">
           설정
         </h2>
 
         <div className="mb-4">
           <h3 className="text-white text-base mb-4">타임랩스 설정</h3>
+
+          {/* 타임랩스 ON/OFF 토글 */}
+          <div className="mb-5">
+            <div className="flex justify-between items-center">
+              <label className="text-sm">타임랩스 활성화</label>
+
+              <div className="toggle-switch">
+                <input
+                  type="checkbox"
+                  id="timelapseEnabled"
+                  checked={timelapseOptions.enabled !== false}
+                  onChange={(e) =>
+                    changeTimelapseOptions({
+                      enabled: e.target.checked,
+                    })
+                  }
+                  className="hidden"
+                />
+                <label
+                  htmlFor="timelapseEnabled"
+                  className={`inline-block w-[46px] h-6 rounded-full relative cursor-pointer transition-colors duration-200 ${
+                    timelapseOptions.enabled !== false
+                      ? "bg-[var(--primary-color)]"
+                      : "bg-[#72767d]"
+                  }`}
+                >
+                  <span
+                    className={`block w-[18px] h-[18px] bg-white rounded-full absolute top-[3px] transition-all duration-200 ${
+                      timelapseOptions.enabled !== false
+                        ? "left-[25px]"
+                        : "left-[3px]"
+                    }`}
+                  />
+                </label>
+              </div>
+            </div>
+            <div className="text-xs text-[#a0a0a0] mt-1.5">
+              타임랩스 기능을 켜거나 끕니다. 끄면 작업 중 화면 캡처가 저장되지
+              않습니다.
+            </div>
+          </div>
 
           <SpeedSelector
             selectedSpeed={timelapseOptions.speedFactor}

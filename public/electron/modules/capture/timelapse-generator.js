@@ -215,31 +215,59 @@ class TimelapseGenerator {
    * @returns {Array<string>} FFmpeg 명령행 인자
    */
   _buildFfmpegArgs(inputPath, outputPath, options) {
-    const { speedFactor, crf } = options;
+    const { speedFactor, crf, blurRegions = [] } = options;
     const cpuCount = Math.max(4, os.cpus().length);
 
     // 필터 체인 구성 (속도 팩터에 따라 다른 방식 적용)
     let filterChain;
     let framerate = "30"; // 기본 출력 프레임 레이트
 
+    // 기본 속도 필터 생성
+    let speedFilter;
     if (speedFactor <= 5) {
       // 낮은 속도 팩터: 모든 프레임 유지하면서 속도 조절
       // 필요한 경우 중간 프레임을 생성하여 부드럽게 만듬
-      filterChain = `fps=60,setpts=${
-        1 / speedFactor
-      }*PTS,scale=-2:1080:flags=lanczos`;
+      speedFilter = `fps=60,setpts=${1 / speedFactor}*PTS`;
       framerate = "60"; // 더 높은 프레임 레이트로 부드러운 결과
     } else if (speedFactor <= 10) {
       // 중간 속도 팩터: 균일하게 프레임 선택
       // select 필터를 통해 일정한 간격으로 프레임 선택
-      filterChain = `select='not(mod(n,${Math.floor(
+      speedFilter = `select='not(mod(n,${Math.floor(
         speedFactor / 2
-      )}))',setpts=N/(30*TB),scale=-2:1080:flags=lanczos`;
+      )}))',setpts=N/(30*TB)`;
     } else {
       // 높은 속도 팩터: 키 프레임 우선 선택 (씬 변화 감지)
       const sceneThreshold = Math.min(0.2, 0.5 / speedFactor); // 속도에 따른 임계값 조정
-      filterChain = `select='eq(pict_type,I) + gt(scene,${sceneThreshold})',setpts=N/(24*TB),scale=-2:1080:flags=lanczos`;
+      speedFilter = `select='eq(pict_type,I) + gt(scene,${sceneThreshold})',setpts=N/(24*TB)`;
       framerate = "24"; // 영화같은 느낌의 프레임 레이트
+    }
+
+    // 블러 영역 필터 구성
+    const blurFilters = [];
+    if (blurRegions && blurRegions.length > 0) {
+      // 각 블러 영역에 대해 boxblur 필터 생성
+      blurRegions.forEach((region, index) => {
+        // 좌표 및 크기 계산 (비율 있는 경우 해상도에 맞춰 조정)
+        const x = Math.round(region.x);
+        const y = Math.round(region.y);
+        const width = Math.round(region.width);
+        const height = Math.round(region.height);
+
+        // boxblur 필터: 강도 20, 반복 2회 적용
+        blurFilters.push(`boxblur=20:2:enable='between(X,${x},${x + width})
+         * between(Y,${y},${y + height})'`);
+      });
+    }
+
+    // 최종 필터 체인 구성
+    if (blurFilters.length > 0) {
+      // 블러 필터와 속도 필터를 결합
+      filterChain = `${speedFilter},${blurFilters.join(
+        ","
+      )},scale=-2:1080:flags=lanczos`;
+    } else {
+      // 기존 방식대로 속도 필터만 적용
+      filterChain = `${speedFilter},scale=-2:1080:flags=lanczos`;
     }
 
     return [

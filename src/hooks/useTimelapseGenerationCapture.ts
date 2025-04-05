@@ -11,6 +11,15 @@ interface NativeImage {
   getSize: () => { width: number; height: number };
 }
 
+// 블러 영역 인터페이스
+export interface BlurRegion {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 // 타임랩스 옵션 인터페이스
 export interface TimelapseOptions {
   speedFactor: number; // 배속 요소 (3, 6, 9, 20 등)
@@ -18,6 +27,8 @@ export interface TimelapseOptions {
   outputFormat: "mp4" | "gif";
   outputPath?: string; // 출력 경로
   preserveOriginals?: boolean; // 원본 이미지 보존 여부
+  enabled?: boolean; // 타임랩스 활성화 여부
+  blurRegions?: BlurRegion[]; // 블러 처리할 영역 목록
 }
 
 // 캡처 상태 인터페이스
@@ -74,6 +85,8 @@ export const useTimelapseGenerationCapture = () => {
           outputQuality: "medium",
           outputFormat: "mp4",
           preserveOriginals: true, // 기본적으로 원본 파일 보존
+          enabled: true, // 기본적으로 타임랩스 활성화
+          blurRegions: [], // 기본적으로 블러 영역 없음
         }
       );
     }
@@ -250,6 +263,29 @@ export const useTimelapseGenerationCapture = () => {
   // 타임랩스 옵션 변경 핸들러
   const changeTimelapseOptions = (options: Partial<TimelapseOptions>) => {
     setTimelapseOptions((prev) => {
+      // 이전 값과 동일한지 비교 (블러 영역의 경우 깊은 비교 필요)
+      if (options.blurRegions) {
+        const prevBlurRegions = prev.blurRegions || [];
+        const newBlurRegions = options.blurRegions;
+
+        // 이전 블러 영역과 새 블러 영역이 같으면 업데이트하지 않음
+        if (
+          JSON.stringify(prevBlurRegions) === JSON.stringify(newBlurRegions)
+        ) {
+          // 다른 변경된 옵션이 없다면 이전 상태 그대로 반환
+          const hasOtherChanges = Object.keys(options).some(
+            (key) =>
+              key !== "blurRegions" &&
+              options[key as keyof TimelapseOptions] !==
+                prev[key as keyof TimelapseOptions]
+          );
+
+          if (!hasOtherChanges) {
+            return prev; // 변경 사항이 없으면 이전 상태 그대로 반환
+          }
+        }
+      }
+
       const newOptions = {
         ...prev,
         ...options,
@@ -257,6 +293,20 @@ export const useTimelapseGenerationCapture = () => {
 
       // 옵션 변경 시 로컬 스토리지에 저장
       saveToLocalStorage(STORAGE_KEYS.TIMELAPSE_OPTIONS, newOptions);
+
+      // 일렉트론 환경이 있는 경우 메인 프로세스에도 설정 변경 전달
+      if (electronAvailable && window.electron) {
+        // 메인 프로세스에 설정 변경 알림 (일렉트론 IPC 호출)
+        try {
+          console.log("일렉트론에 타임랩스 옵션 업데이트:", newOptions);
+          // 비동기적으로 처리하되 오류는 무시 (사용자 경험 방해 방지)
+          window.electron.updateTimelapseOptions?.(newOptions).catch((err) => {
+            console.error("타임랩스 옵션 업데이트 오류:", err);
+          });
+        } catch (error) {
+          console.error("타임랩스 옵션 업데이트 중 오류:", error);
+        }
+      }
 
       return newOptions;
     });
