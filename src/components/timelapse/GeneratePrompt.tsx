@@ -5,7 +5,6 @@ import TimelapseProgressBar from "./TimelapseProgressBar";
 interface GeneratePromptProps {
   onGenerate: (speedFactor: number) => void;
   onCancel: () => void;
-  onResumeCapture: () => void;
   isGenerating: boolean;
   progress: TimelapseProgress;
   duration: number;
@@ -16,7 +15,6 @@ interface GeneratePromptProps {
 const GeneratePrompt: React.FC<GeneratePromptProps> = ({
   onGenerate,
   onCancel,
-  onResumeCapture,
   isGenerating,
   progress,
   duration,
@@ -149,7 +147,7 @@ const GeneratePrompt: React.FC<GeneratePromptProps> = ({
 
           <div className="mb-5">
             <p className="text-sm text-[var(--text-muted)] mb-4">
-              녹화를 다시 시작하거나, 타임랩스를 생성할 수 있습니다.
+              녹화된 영상으로 타임랩스를 생성할 수 있습니다.
             </p>
 
             <div className="mb-5">
@@ -189,12 +187,6 @@ const GeneratePrompt: React.FC<GeneratePromptProps> = ({
           </div>
 
           <div className="flex justify-center space-x-3">
-            <button
-              onClick={onResumeCapture}
-              className="py-2.5 px-5 rounded border border-[var(--primary-color)] bg-transparent text-[var(--primary-color)] font-medium cursor-pointer text-sm transition-colors duration-200 hover:bg-[rgba(var(--primary-color-rgb),0.1)]"
-            >
-              다시 녹화
-            </button>
             <button
               onClick={handleGenerate}
               className="py-2.5 px-5 rounded border-none bg-[var(--primary-color)] text-white font-medium cursor-pointer text-sm transition-colors duration-200 hover:bg-[var(--primary-color-hover)]"

@@ -179,7 +179,6 @@ const Timelapse: React.FC = () => {
           <GeneratePrompt
             onGenerate={handleGenerateTimelapse}
             onCancel={handleCancelCapture}
-            onResumeCapture={handleStartCapture}
             isGenerating={isGeneratingTimelapse}
             progress={timelapseProgress}
             duration={duration}
