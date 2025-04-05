@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { TimelapseProgress } from "../../hooks/useTimelapseGenerationCapture";
-import TimelapseProgressBar from "./TimelapseProgressBar";
 
 interface GeneratePromptProps {
   onGenerate: (speedFactor: number) => void;
@@ -79,37 +78,6 @@ const GeneratePrompt: React.FC<GeneratePromptProps> = ({
   // 타임랩스 생성 핸들러
   const handleGenerate = () => {
     onGenerate(selectedSpeed);
-  };
-
-  // 사용자 친화적인 상태 메시지 생성
-  const getStatusMessage = () => {
-    if (!isGenerating) return "타임랩스를 만드시겠습니까?";
-
-    if (!progress) return "타임랩스 생성 준비 중...";
-
-    switch (progress.status) {
-      case "start":
-        return "타임랩스 생성 초기화 중...";
-      case "processing":
-        return `타임랩스 생성 중... (${progress.progress}%)`;
-      case "complete":
-        return "타임랩스 생성 완료!";
-      case "error":
-        return "타임랩스 생성 중 오류가 발생했습니다";
-      default:
-        return `타임랩스 생성 중... (${progress?.stage || ""})`;
-    }
-  };
-
-  // 사용자 친화적인 오류 메시지 변환
-  const formatErrorMessage = (error?: string) => {
-    if (!error) return "";
-
-    if (error.includes("FFmpeg 오류 코드")) {
-      return "비디오 변환 중 오류가 발생했습니다. 다른 설정으로 다시 시도해보세요.";
-    }
-
-    return error;
   };
 
   return (

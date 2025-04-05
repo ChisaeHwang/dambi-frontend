@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { useTimelapseGenerationCapture } from "../hooks/useTimelapseGenerationCapture";
+import {
+  useTimelapseGenerationCapture,
+  BlurRegion,
+} from "../hooks/useTimelapseGenerationCapture";
 import { formatTime } from "../utils/timeUtils";
 import WindowSelector from "./common/WindowSelector";
 import TimelapseTimer from "./timelapse/TimelapseTimer";
 import TimelapseControls from "./timelapse/TimelapseControls";
 import GeneratePrompt from "./timelapse/GeneratePrompt";
+import BlurRegionSelector from "./timelapse/BlurRegionSelector";
 
 const Timelapse: React.FC = () => {
   const {
@@ -33,6 +37,12 @@ const Timelapse: React.FC = () => {
   );
   const [isPaused, setIsPaused] = useState<boolean>(false);
 
+  // 블러 영역 관리
+  const [blurRegions, setBlurRegions] = useState<BlurRegion[]>(
+    timelapseOptions.blurRegions || []
+  );
+  const [showBlurSelector, setShowBlurSelector] = useState<boolean>(false);
+
   // 최초 마운트 여부 확인을 위한 ref
   const mountedRef = React.useRef(false);
 
@@ -45,6 +55,15 @@ const Timelapse: React.FC = () => {
       mountedRef.current = true;
     }
   }, [refreshActiveWindows]);
+
+  // 블러 영역이 변경될 때 타임랩스 옵션 업데이트
+  useEffect(() => {
+    if (blurRegions.length > 0) {
+      changeTimelapseOptions({
+        blurRegions: [...blurRegions],
+      });
+    }
+  }, [blurRegions, changeTimelapseOptions]);
 
   // 타이머 관리
   useEffect(() => {
@@ -82,6 +101,9 @@ const Timelapse: React.FC = () => {
       // 새로운 캡처 시작
       startCapture();
     }
+
+    // 블러 선택기 닫기
+    setShowBlurSelector(false);
   };
 
   // 캡처 중지 핸들러
@@ -103,10 +125,11 @@ const Timelapse: React.FC = () => {
   // 타임랩스 생성 핸들러
   const handleGenerateTimelapse = async (speedFactor: number) => {
     try {
-      // 사용자가 선택한 속도 값으로 옵션 업데이트
+      // 사용자가 선택한 속도 값과 블러 영역으로 옵션 업데이트
       const updatedOptions = {
         ...timelapseOptions,
-        speedFactor: speedFactor,
+        speedFactor,
+        blurRegions: [...blurRegions],
       };
 
       // 생성 시작
@@ -136,8 +159,26 @@ const Timelapse: React.FC = () => {
     }
   };
 
+  // 블러 영역 변경 핸들러
+  const handleBlurRegionsChange = (regions: BlurRegion[]) => {
+    setBlurRegions(regions);
+  };
+
+  // 블러 선택기 토글
+  const toggleBlurSelector = () => {
+    setShowBlurSelector(!showBlurSelector);
+  };
+
   // 작업 시간 포맷팅 (00:00:00 형식)
   const formattedTime = formatTime(workTime);
+
+  // 현재 선택된 창의 썸네일 URL 찾기
+  const selectedWindow = activeWindows.find(
+    (window) => window.id === selectedWindowId
+  );
+  const thumbnailUrl = selectedWindow?.thumbnailDataUrl || "";
+  const thumbnailWidth = selectedWindow?.thumbnailWidth || 320;
+  const thumbnailHeight = selectedWindow?.thumbnailHeight || 240;
 
   return (
     <div className="bg-[var(--bg-primary)] text-[var(--text-normal)] h-screen w-full flex flex-col p-3">
@@ -161,6 +202,49 @@ const Timelapse: React.FC = () => {
               isLoadingWindows={isLoadingWindows}
               onRefreshWindows={refreshActiveWindows}
             />
+
+            {selectedWindowId && (
+              <div className="mt-4 text-center">
+                <button
+                  onClick={toggleBlurSelector}
+                  className="py-2 px-4 bg-[var(--bg-accent)] text-[var(--text-normal)] rounded hover:bg-[var(--bg-hover)] transition-colors duration-200"
+                >
+                  {showBlurSelector
+                    ? "블러 영역 설정 닫기"
+                    : "블러 영역 설정하기"}
+                </button>
+
+                {showBlurSelector && (
+                  <div className="mt-4 p-4 bg-[var(--bg-primary)] rounded-lg mx-auto max-w-[800px]">
+                    <h3 className="text-lg font-medium mb-3">
+                      블러 처리할 영역 선택
+                    </h3>
+                    <p className="text-sm text-[var(--text-muted)] mb-4">
+                      블러 처리할 영역을 드래그하여 설정하세요. 타임랩스 생성 시
+                      선택한 영역은 블러 처리됩니다.
+                    </p>
+
+                    <BlurRegionSelector
+                      thumbnailUrl={thumbnailUrl}
+                      thumbnailWidth={thumbnailWidth}
+                      thumbnailHeight={thumbnailHeight}
+                      regions={blurRegions}
+                      onRegionsChange={handleBlurRegionsChange}
+                      isEditable={!isCapturing}
+                    />
+
+                    <div className="mt-4 text-right">
+                      <button
+                        onClick={toggleBlurSelector}
+                        className="py-1.5 px-3 bg-[var(--primary-color)] text-white rounded hover:bg-[var(--primary-color-hover)] transition-colors duration-200"
+                      >
+                        완료
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

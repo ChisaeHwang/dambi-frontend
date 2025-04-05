@@ -11,6 +11,15 @@ interface NativeImage {
   getSize: () => { width: number; height: number };
 }
 
+// 블러 영역 인터페이스
+export interface BlurRegion {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 // 타임랩스 옵션 인터페이스
 export interface TimelapseOptions {
   speedFactor: number; // 배속 요소 (3, 6, 9, 20 등)
@@ -19,6 +28,7 @@ export interface TimelapseOptions {
   outputPath?: string; // 출력 경로
   preserveOriginals?: boolean; // 원본 이미지 보존 여부
   enabled?: boolean; // 타임랩스 활성화 여부
+  blurRegions?: BlurRegion[]; // 블러 처리할 영역 목록
 }
 
 // 캡처 상태 인터페이스
@@ -76,6 +86,7 @@ export const useTimelapseGenerationCapture = () => {
           outputFormat: "mp4",
           preserveOriginals: true, // 기본적으로 원본 파일 보존
           enabled: true, // 기본적으로 타임랩스 활성화
+          blurRegions: [], // 기본적으로 블러 영역 없음
         }
       );
     }
