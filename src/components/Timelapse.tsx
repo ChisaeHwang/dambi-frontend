@@ -58,12 +58,18 @@ const Timelapse: React.FC = () => {
 
   // 블러 영역이 변경될 때 타임랩스 옵션 업데이트
   useEffect(() => {
-    if (blurRegions.length > 0) {
+    // 현재 options.blurRegions와 상태의 blurRegions가 다를 때만 업데이트
+    const currentBlurRegions = timelapseOptions.blurRegions || [];
+    const isChanged =
+      JSON.stringify(currentBlurRegions) !== JSON.stringify(blurRegions);
+
+    if (blurRegions.length > 0 && isChanged) {
       changeTimelapseOptions({
+        ...timelapseOptions,
         blurRegions: [...blurRegions],
       });
     }
-  }, [blurRegions, changeTimelapseOptions]);
+  }, [blurRegions, timelapseOptions, changeTimelapseOptions]);
 
   // 타이머 관리
   useEffect(() => {
@@ -215,30 +221,41 @@ const Timelapse: React.FC = () => {
                 </button>
 
                 {showBlurSelector && (
-                  <div className="mt-4 p-4 bg-[var(--bg-primary)] rounded-lg mx-auto max-w-[800px]">
-                    <h3 className="text-lg font-medium mb-3">
+                  <div className="mt-4 p-6 bg-[var(--bg-primary)] rounded-lg mx-auto max-w-[90%]">
+                    <h3 className="text-xl font-semibold mb-3 text-[var(--primary-color)]">
                       블러 처리할 영역 선택
                     </h3>
-                    <p className="text-sm text-[var(--text-muted)] mb-4">
+                    <p className="text-sm text-[var(--text-muted)] mb-5">
                       블러 처리할 영역을 드래그하여 설정하세요. 타임랩스 생성 시
                       선택한 영역은 블러 처리됩니다.
                     </p>
 
-                    <BlurRegionSelector
-                      thumbnailUrl={thumbnailUrl}
-                      thumbnailWidth={thumbnailWidth}
-                      thumbnailHeight={thumbnailHeight}
-                      regions={blurRegions}
-                      onRegionsChange={handleBlurRegionsChange}
-                      isEditable={!isCapturing}
-                    />
+                    <div className="bg-[var(--bg-secondary)] p-4 rounded-md shadow-inner">
+                      <BlurRegionSelector
+                        thumbnailUrl={thumbnailUrl}
+                        thumbnailWidth={thumbnailWidth}
+                        thumbnailHeight={thumbnailHeight}
+                        regions={blurRegions}
+                        onRegionsChange={handleBlurRegionsChange}
+                        isEditable={!isCapturing}
+                      />
+                    </div>
 
-                    <div className="mt-4 text-right">
+                    <div className="mt-5 flex justify-end space-x-3">
                       <button
                         onClick={toggleBlurSelector}
-                        className="py-1.5 px-3 bg-[var(--primary-color)] text-white rounded hover:bg-[var(--primary-color-hover)] transition-colors duration-200"
+                        className="py-2 px-5 bg-[var(--primary-color)] text-white rounded hover:bg-[var(--primary-color-hover)] transition-colors duration-200 font-medium"
                       >
                         완료
+                      </button>
+                      <button
+                        onClick={() => {
+                          setBlurRegions([]);
+                          console.log("블러 영역 모두 삭제");
+                        }}
+                        className="py-2 px-5 bg-[var(--bg-secondary)] text-[var(--text-normal)] rounded hover:bg-[var(--bg-hover)] transition-colors duration-200"
+                      >
+                        모두 삭제
                       </button>
                     </div>
                   </div>

@@ -263,6 +263,29 @@ export const useTimelapseGenerationCapture = () => {
   // 타임랩스 옵션 변경 핸들러
   const changeTimelapseOptions = (options: Partial<TimelapseOptions>) => {
     setTimelapseOptions((prev) => {
+      // 이전 값과 동일한지 비교 (블러 영역의 경우 깊은 비교 필요)
+      if (options.blurRegions) {
+        const prevBlurRegions = prev.blurRegions || [];
+        const newBlurRegions = options.blurRegions;
+
+        // 이전 블러 영역과 새 블러 영역이 같으면 업데이트하지 않음
+        if (
+          JSON.stringify(prevBlurRegions) === JSON.stringify(newBlurRegions)
+        ) {
+          // 다른 변경된 옵션이 없다면 이전 상태 그대로 반환
+          const hasOtherChanges = Object.keys(options).some(
+            (key) =>
+              key !== "blurRegions" &&
+              options[key as keyof TimelapseOptions] !==
+                prev[key as keyof TimelapseOptions]
+          );
+
+          if (!hasOtherChanges) {
+            return prev; // 변경 사항이 없으면 이전 상태 그대로 반환
+          }
+        }
+      }
+
       const newOptions = {
         ...prev,
         ...options,

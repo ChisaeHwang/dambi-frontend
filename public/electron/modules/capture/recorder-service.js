@@ -28,7 +28,7 @@ class RecorderService {
     try {
       const sources = await desktopCapturer.getSources({
         types: ["window", "screen"],
-        thumbnailSize: { width: 150, height: 150 },
+        thumbnailSize: { width: 300, height: 300 },
       });
 
       // 각 소스에 대해 필요한 정보만 추출
@@ -57,7 +57,7 @@ class RecorderService {
   async findCaptureSource(windowId) {
     const sources = await desktopCapturer.getSources({
       types: ["window", "screen"],
-      thumbnailSize: { width: 128, height: 128 },
+      thumbnailSize: { width: 300, height: 300 },
     });
 
     console.log(
