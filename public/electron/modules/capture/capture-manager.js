@@ -185,30 +185,32 @@ class CaptureManager {
     // 메타데이터에서 원본 비디오 해상도 가져오기
     try {
       const metadata = storageManager.getMetadata(this.metadataPath);
+
+      console.log("==========================================");
+      console.log("타임랩스 생성 옵션:", JSON.stringify(options, null, 2));
+
+      // 메타데이터에서 해상도 정보 확인
       if (metadata && metadata.videoSize) {
         const origWidth = metadata.videoSize.width;
         const origHeight = metadata.videoSize.height;
 
-        console.log("==========================================");
         console.log(`원본 녹화 해상도 정보: ${origWidth}x${origHeight}`);
         console.log(
           `옵션에 지정된 해상도: ${options.videoWidth || "없음"}x${
             options.videoHeight || "없음"
           }`
         );
+        console.log(
+          `썸네일 해상도: ${options.thumbnailWidth || "없음"}x${
+            options.thumbnailHeight || "없음"
+          }`
+        );
 
-        // 옵션에 실제 캡처 해상도 추가
+        // 옵션에 실제 캡처 해상도 추가 (메타데이터 값 우선)
         options.videoWidth = origWidth;
         options.videoHeight = origHeight;
-
-        console.log(
-          `최종 사용 해상도: ${options.videoWidth}x${options.videoHeight}`
-        );
-        console.log("==========================================");
       } else {
-        console.log(
-          "원본 녹화 해상도 정보가 메타데이터에 없음, 기본값 사용 예정"
-        );
+        console.log("원본 녹화 해상도 정보가 메타데이터에 없음");
 
         // 현재 캡처 설정에서 해상도 가져오기 시도
         const currentConfig = recorderService.getCaptureConfig();
@@ -218,8 +220,41 @@ class CaptureManager {
           );
           options.videoWidth = currentConfig.videoSize.width;
           options.videoHeight = currentConfig.videoSize.height;
+        } else {
+          console.log("해상도 정보를 찾을 수 없어 기본값 사용");
         }
       }
+
+      // 해상도 비율 분석 및 로깅
+      if (
+        options.videoWidth &&
+        options.videoHeight &&
+        options.thumbnailWidth &&
+        options.thumbnailHeight
+      ) {
+        const videoAspect = options.videoWidth / options.videoHeight;
+        const thumbnailAspect =
+          options.thumbnailWidth / options.thumbnailHeight;
+
+        console.log(`비디오 종횡비: ${videoAspect.toFixed(3)}`);
+        console.log(`썸네일 종횡비: ${thumbnailAspect.toFixed(3)}`);
+        console.log(
+          `종횡비 차이: ${Math.abs(videoAspect - thumbnailAspect).toFixed(3)}`
+        );
+
+        if (Math.abs(videoAspect - thumbnailAspect) > 0.01) {
+          console.log(
+            "⚠️ 주의: 비디오와 썸네일의 종횡비가 다릅니다. 블러 위치가 정확하지 않을 수 있습니다."
+          );
+        }
+      }
+
+      console.log(
+        `최종 사용 해상도: ${options.videoWidth || "알 수 없음"}x${
+          options.videoHeight || "알 수 없음"
+        }`
+      );
+      console.log("==========================================");
     } catch (error) {
       console.warn("메타데이터 읽기 실패, 기본 해상도 사용:", error);
     }

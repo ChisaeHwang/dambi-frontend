@@ -287,10 +287,51 @@ class TimelapseGenerator {
     console.log(`원본 비디오 해상도: ${videoWidth}x${videoHeight}`);
     console.log(`썸네일 해상도: ${thumbnailWidth}x${thumbnailHeight}`);
 
-    // 스케일링 비율 계산 - 더 정확하게 계산
-    // 썸네일에서 실제 비디오 해상도로 변환하는 비율
-    const scaleX = videoWidth / thumbnailWidth;
-    const scaleY = videoHeight / thumbnailHeight;
+    // 종횡비 확인
+    const videoAspectRatio = videoWidth / videoHeight;
+    const thumbnailAspectRatio = thumbnailWidth / thumbnailHeight;
+
+    console.log(`비디오 종횡비: ${videoAspectRatio.toFixed(3)}`);
+    console.log(`썸네일 종횡비: ${thumbnailAspectRatio.toFixed(3)}`);
+
+    // 종횡비 차이 확인
+    const aspectRatioDifference = Math.abs(
+      videoAspectRatio - thumbnailAspectRatio
+    );
+    console.log(`종횡비 차이: ${aspectRatioDifference.toFixed(3)}`);
+
+    // 스케일링 비율 계산 - 종횡비 차이 고려
+    let scaleX = videoWidth / thumbnailWidth;
+    let scaleY = videoHeight / thumbnailHeight;
+
+    // 종횡비 차이가 유의미한 경우 (1% 이상) 보정 로직 적용
+    if (aspectRatioDifference > 0.01) {
+      console.log(`종횡비 불일치 감지됨: 좌표 변환 보정 적용`);
+
+      // 스케일링 방식 결정 (비디오 프레임에 맞추기)
+      // 블러 영역이 비디오 범위 내에 정확히 위치하도록 조정
+      const thumbToVideoRatio = Math.min(
+        videoWidth / thumbnailWidth,
+        videoHeight / thumbnailHeight
+      );
+
+      // 비디오 중앙을 기준으로 정렬할 때 오프셋 계산
+      const centerOffsetX =
+        (videoWidth - thumbnailWidth * thumbToVideoRatio) / 2;
+      const centerOffsetY =
+        (videoHeight - thumbnailHeight * thumbToVideoRatio) / 2;
+
+      console.log(`조정된 변환 비율: ${thumbToVideoRatio.toFixed(3)}`);
+      console.log(
+        `중앙 오프셋 X: ${centerOffsetX.toFixed(1)}, Y: ${centerOffsetY.toFixed(
+          1
+        )}`
+      );
+
+      // 이 정보를 블러 영역 변환에 활용
+      scaleX = thumbToVideoRatio;
+      scaleY = thumbToVideoRatio;
+    }
 
     console.log(
       `스케일링 비율: X=${scaleX.toFixed(2)}, Y=${scaleY.toFixed(2)}`
@@ -320,10 +361,13 @@ class TimelapseGenerator {
       console.log(`블러 영역: ${blurRegions.length}개 적용`);
       console.log(`블러 영역 원본 좌표:`, JSON.stringify(blurRegions[0]));
 
-      // 단순화된 필터 체인 접근법 사용
-      if (blurRegions.length === 1) {
-        // 단일 블러 영역에 대한 간단한 처리 방식
-        const region = blurRegions[0];
+      // 블러 필터 체인 구성을 위한 배열
+      const blurFilters = [];
+      const validBlurRegions = [];
+
+      // 각 블러 영역을 처리
+      for (let i = 0; i < blurRegions.length; i++) {
+        const region = blurRegions[i];
 
         // 경계 확인 - 영역이 음수 값이거나 너무 작은 경우 보정
         const safeRegion = {
@@ -339,32 +383,56 @@ class TimelapseGenerator {
         const width = Math.round(safeRegion.width * scaleX);
         const height = Math.round(safeRegion.height * scaleY);
 
+        // 너무 작은 블러 영역은 크기 보정
+        const minBlurSize = 20; // 최소 블러 크기
+        const adjustedWidth = Math.max(minBlurSize, width);
+        const adjustedHeight = Math.max(minBlurSize, height);
+
         console.log(
-          `원본 블러 좌표(썸네일): x=${safeRegion.x}, y=${safeRegion.y}, width=${safeRegion.width}, height=${safeRegion.height}`
+          `원본 블러 좌표(썸네일) #${i + 1}: x=${safeRegion.x}, y=${
+            safeRegion.y
+          }, width=${safeRegion.width}, height=${safeRegion.height}`
         );
         console.log(
-          `변환된 블러 좌표(비디오): x=${x}, y=${y}, width=${width}, height=${height}`
+          `변환된 블러 좌표(비디오) #${
+            i + 1
+          }: x=${x}, y=${y}, width=${adjustedWidth}, height=${adjustedHeight}`
         );
 
         // 변환된 좌표가 비디오 안에 있는지 확인
         const isWithinVideo =
           x >= 0 &&
           y >= 0 &&
-          width > 0 &&
-          height > 0 &&
-          x + width <= videoWidth &&
-          y + height <= videoHeight;
+          adjustedWidth > 0 &&
+          adjustedHeight > 0 &&
+          x + adjustedWidth <= videoWidth &&
+          y + adjustedHeight <= videoHeight;
 
-        console.log(`비디오 크기 내에 있는지: ${isWithinVideo}`);
-        console.log(
-          `x+width=${x + width}<=${videoWidth}, y+height=${
-            y + height
-          }<=${videoHeight}`
-        );
+        console.log(`비디오 크기 내에 있는지 #${i + 1}: ${isWithinVideo}`);
 
-        // 블러 영역이 유효한지 확인
+        // 유효한 블러 영역만 추가
         if (isWithinVideo) {
-          // 단일 필터 체인 구성 (더 단순한 구문으로 변경)
+          validBlurRegions.push({
+            index: i,
+            x,
+            y,
+            width: adjustedWidth,
+            height: adjustedHeight,
+          });
+        } else {
+          console.log(`블러 영역 #${i + 1}이 비디오 범위를 벗어나 무시됩니다.`);
+        }
+      }
+
+      // 유효한 블러 영역이 있는 경우
+      if (validBlurRegions.length > 0) {
+        console.log(`유효한 블러 영역 수: ${validBlurRegions.length}`);
+
+        // 단일 블러 영역일 경우 단순한 필터 체인 사용
+        if (validBlurRegions.length === 1) {
+          const { x, y, width, height } = validBlurRegions[0];
+
+          // 단일 필터 체인 구성 (향상된 블러 파라미터)
           filterChain = [
             speedFilter,
             `split=2[base][crop]`,
@@ -374,59 +442,54 @@ class TimelapseGenerator {
           ].join(",");
 
           console.log(
-            `블러 필터 적용 (x=${x}, y=${y}, width=${width}, height=${height})`
+            `단일 블러 필터 적용 (x=${x}, y=${y}, width=${width}, height=${height})`
           );
-        } else {
-          // 유효하지 않은 블러 영역인 경우 기본 필터만 적용
-          filterChain = `${speedFilter},scale=-2:1080:flags=lanczos`;
-          console.log(`유효하지 않은 블러 영역 - 기본 필터만 적용`);
+        }
+        // 다중 블러 영역 처리 (최대 3개까지만 처리)
+        else {
+          const maxBlurRegions = Math.min(3, validBlurRegions.length);
+          console.log(`다중 블러 필터 적용: ${maxBlurRegions}개`);
+
+          // 복잡한 필터 체인 구성 (다중 블러)
+          let filterParts = [speedFilter];
+
+          // 베이스 스트림 분할 (N+1개 스트림으로)
+          filterParts.push(
+            `split=${maxBlurRegions + 1}[base]${Array(maxBlurRegions)
+              .fill("")
+              .map((_, i) => `[crop${i}]`)
+              .join("")}`
+          );
+
+          // 각 블러 영역별 처리
+          for (let i = 0; i < maxBlurRegions; i++) {
+            const { x, y, width, height } = validBlurRegions[i];
+            filterParts.push(
+              `[crop${i}]crop=${width}:${height}:${x}:${y},boxblur=20:2[blurred${i}]`
+            );
+          }
+
+          // 오버레이 적용 (역순으로)
+          let currentBase = "[base]";
+          for (let i = 0; i < maxBlurRegions; i++) {
+            const { x, y } = validBlurRegions[i];
+            const nextBase = i < maxBlurRegions - 1 ? `[base${i + 1}]` : "";
+            filterParts.push(
+              `${currentBase}[blurred${i}]overlay=${x}:${y}${nextBase}`
+            );
+            currentBase = `[base${i + 1}]`;
+          }
+
+          // 최종 스케일링
+          filterParts.push("scale=-2:1080:flags=lanczos");
+
+          // 필터 체인 조합
+          filterChain = filterParts.join(",");
         }
       } else {
-        // 다중 블러 영역을 처리하기 위한 복잡한 체인 구성
-        // 첫 번째 블러만 적용하여 안정성 확보 (향후 다중 블러 개선 예정)
-        const region = blurRegions[0];
-
-        // 썸네일에서 원본 비디오 해상도로 좌표 변환
-        const x = Math.round(region.x * scaleX);
-        const y = Math.round(region.y * scaleY);
-        const width = Math.round(region.width * scaleX);
-        const height = Math.round(region.height * scaleY);
-
-        console.log(
-          `변환된 블러 좌표(다중): x=${x}, y=${y}, width=${width}, height=${height}`
-        );
-        console.log(
-          `비디오 크기 내에 있는지: x+width=${
-            x + width
-          }<=${videoWidth}, y+height=${y + height}<=${videoHeight}`
-        );
-
-        // 블러 영역이 유효한지 확인
-        if (
-          x >= 0 &&
-          y >= 0 &&
-          width > 0 &&
-          height > 0 &&
-          x + width <= videoWidth &&
-          y + height <= videoHeight
-        ) {
-          // 단일 필터 체인 구성
-          filterChain = [
-            speedFilter,
-            `split=2[base][crop]`,
-            `[crop]crop=${width}:${height}:${x}:${y},boxblur=20:2[blurred]`,
-            `[base][blurred]overlay=${x}:${y}`,
-            `scale=-2:1080:flags=lanczos`,
-          ].join(",");
-
-          console.log(
-            `첫 번째 블러 영역만 적용 (x=${x}, y=${y}, width=${width}, height=${height})`
-          );
-        } else {
-          // 유효하지 않은 블러 영역인 경우 기본 필터만 적용
-          filterChain = `${speedFilter},scale=-2:1080:flags=lanczos`;
-          console.log(`유효하지 않은 블러 영역 - 기본 필터만 적용`);
-        }
+        // 유효한 블러 영역이 없는 경우 기본 필터만 적용
+        console.log(`유효한 블러 영역이 없어 기본 필터만 적용합니다.`);
+        filterChain = `${speedFilter},scale=-2:1080:flags=lanczos`;
       }
     } else {
       // 블러 없는 경우 기본 필터만 적용

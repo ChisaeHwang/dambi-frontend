@@ -232,104 +232,166 @@ class RecorderService {
    * @param {Object} source - 캡처할 소스
    * @param {string} outputPath - 출력 파일 경로
    * @param {string} captureDir - 캡처 디렉토리 경로
-   * @returns {Promise<Object>} 레코더 윈도우 인스턴스
+   * @returns {Promise<boolean>} 성공 여부
    */
   async startRendererProcessRecording(source, outputPath, captureDir) {
-    return new Promise((resolve, reject) => {
-      try {
-        console.log(`[RecorderService] 렌더러 프로세스 녹화 방식으로 전환`);
+    try {
+      console.log(`[RecorderService] 렌더러 프로세스 녹화 시작`);
 
-        // 캡처 설정에서 해상도 가져오기
-        const width = this.captureConfig.videoSize.width;
-        const height = this.captureConfig.videoSize.height;
-        console.log(
-          `[RecorderService] 녹화 창 해상도 설정: ${width}x${height}`
-        );
-
-        // 최적화된 캡처 창 설정
-        const recorderWindow = new BrowserWindow({
-          width: width,
-          height: height,
-          show: false, // 항상 숨김 상태로 실행
-          webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false,
-            backgroundThrottling: false, // 백그라운드에서도 성능 제한 없음
-            webSecurity: false,
-            allowRunningInsecureContent: true,
-            enableRemoteModule: true,
-            // 하드웨어 가속 활성화
-            accelerator: "gpu",
-            // 추가 성능 최적화
-            offscreen: true, // 오프스크린 렌더링 활성화
-          },
-          // 추가 창 설정
-          frame: false,
-          transparent: false,
-          resizable: false,
-          skipTaskbar: true, // 작업 표시줄에 표시하지 않음
-          // 렌더링 성능 최적화
-          paintWhenInitiallyHidden: true,
-          useContentSize: true,
-        });
-
-        // 창 크기가 캡처 설정과 일치하는지 확인
-        const actualSize = recorderWindow.getSize();
-        console.log(
-          `[RecorderService] 실제 녹화 창 크기: ${actualSize[0]}x${actualSize[1]}`
-        );
-        if (actualSize[0] !== width || actualSize[1] !== height) {
-          console.log(`[RecorderService] 창 크기 불일치 감지, 강제 조정`);
-          recorderWindow.setSize(width, height, false);
-        }
-
-        // 오프스크린 렌더링 최적화
-        if (recorderWindow.webContents.setFrameRate) {
-          // 프레임 레이트 설정 (일정한 캡처 주기 유지)
-          recorderWindow.webContents.setFrameRate(this.captureConfig.fps);
-        }
-
-        // 로컬 HTML 파일 생성 및 로드
-        const recorderHtmlPath = path.join(captureDir, "recorder.html");
-        // RecorderTemplate 사용하여 HTML 생성
-        const recorderHtml = RecorderTemplate.generate(this.captureConfig);
-
-        storageManager.createHtmlFile(recorderHtmlPath, recorderHtml);
-        recorderWindow.loadFile(recorderHtmlPath);
-
-        // 레코더 창 관련 이벤트 및 변수 설정
-        this.recorderWindow = recorderWindow;
-
-        // 창이 준비되면 녹화 시작 메시지 전송
-        recorderWindow.webContents.on("did-finish-load", () => {
-          // 창 크기 한번 더 확인
-          const finalSize = recorderWindow.getSize();
-          console.log(
-            `[RecorderService] 최종 녹화 창 크기: ${finalSize[0]}x${finalSize[1]}`
-          );
-
-          // 잠시 기다렸다가 녹화 시작 (창 렌더링 완료 보장)
-          setTimeout(() => {
-            recorderWindow.webContents.send("START_RECORDING", {
-              sourceId: source.id,
-              outputPath: outputPath,
-            });
-            resolve(recorderWindow);
-          }, 500);
-        });
-
-        // 창 로드 실패 시
-        recorderWindow.webContents.on(
-          "did-fail-load",
-          (_, __, ___, message) => {
-            reject(new Error(`녹화 창 로드 실패: ${message}`));
-          }
-        );
-      } catch (error) {
-        console.error("렌더러 프로세스 녹화 시작 오류:", error);
-        reject(error);
+      // 1. 이미 생성된 창이 있으면 닫기
+      if (this.recorderWindow && !this.recorderWindow.isDestroyed()) {
+        this.recorderWindow.close();
+        this.recorderWindow = null;
       }
-    });
+
+      // 2. 녹화 설정 계산
+      const width = this.captureConfig.videoSize.width;
+      const height = this.captureConfig.videoSize.height;
+      const fps = this.captureConfig.fps;
+      const videoBitrate = this.captureConfig.videoBitrate;
+
+      // 3. 소스 ID 타입 및 이름 가져오기 (debugging용)
+      const sourceId = source.id;
+      const sourceName = source.name || "Unknown";
+      const isScreenCapture = sourceId.startsWith("screen:");
+
+      // 4. 소스 유형에 따라 캡처 크기 조정 시도 (더 정확한 해상도 추정)
+      let estimatedWidth = width;
+      let estimatedHeight = height;
+
+      // 특정 애플리케이션 창의 경우, 썸네일 크기를 기반으로 실제 크기 추정
+      if (!isScreenCapture && source.thumbnail) {
+        try {
+          // 썸네일 비율을 사용하여 실제 애플리케이션 창 해상도 추정
+          const thumbnailSize = source.thumbnail.getSize();
+          if (thumbnailSize.width > 0 && thumbnailSize.height > 0) {
+            // 썸네일의 비율이 원본 캡처물의 비율과 동일하다고 가정
+            const aspectRatio = thumbnailSize.width / thumbnailSize.height;
+
+            // 전체 화면 해상도 내에서 해당 애플리케이션 창의 해상도 추정
+            // 기본 캡처 설정의 크기를 넘지 않도록 함
+            if (aspectRatio > 1) {
+              // 가로가 더 긴 경우
+              estimatedWidth = Math.min(
+                width,
+                Math.round(height * aspectRatio)
+              );
+              estimatedHeight = Math.min(
+                height,
+                Math.round(estimatedWidth / aspectRatio)
+              );
+            } else {
+              // 세로가 더 긴 경우
+              estimatedHeight = Math.min(
+                height,
+                Math.round(width / aspectRatio)
+              );
+              estimatedWidth = Math.min(
+                width,
+                Math.round(estimatedHeight * aspectRatio)
+              );
+            }
+
+            console.log(
+              `[RecorderService] 썸네일 비율 기반 추정 해상도: ${estimatedWidth}x${estimatedHeight}`
+            );
+            console.log(
+              `[RecorderService] 썸네일 크기: ${thumbnailSize.width}x${thumbnailSize.height}`
+            );
+          }
+        } catch (error) {
+          console.error("[RecorderService] 해상도 추정 중 오류:", error);
+        }
+      }
+
+      console.log(
+        `[RecorderService] 소스 정보: ${sourceName} (${sourceId}), 캡처 유형: ${
+          isScreenCapture ? "전체 화면" : "애플리케이션 창"
+        }`
+      );
+      console.log(
+        `[RecorderService] 최종 캡처 해상도: ${estimatedWidth}x${estimatedHeight}, FPS: ${fps}, 비트레이트: ${videoBitrate}kbps`
+      );
+
+      // 5. 메타데이터 파일 업데이트 (추정된 해상도 포함)
+      const metadataPath = path.join(captureDir, "metadata.json");
+      const metaDataUpdates = {
+        captureType: isScreenCapture ? "screen" : "window",
+        videoSize: {
+          width: estimatedWidth,
+          height: estimatedHeight,
+          original: {
+            width,
+            height,
+          },
+        },
+        sourceId,
+        sourceName,
+        thumbnailInfo: source.thumbnail
+          ? {
+              width: source.thumbnail.getSize().width,
+              height: source.thumbnail.getSize().height,
+            }
+          : null,
+      };
+
+      storageManager.updateMetadata(metadataPath, metaDataUpdates);
+
+      // 6. 로컬 HTML 파일 생성
+      const recorderHtmlPath = path.join(captureDir, "recorder.html");
+
+      // RecorderTemplate 사용하여 HTML 생성
+      const recorderOptions = {
+        videoSize: {
+          width: estimatedWidth,
+          height: estimatedHeight,
+        },
+        fps,
+        videoBitrate,
+      };
+
+      const recorderHtml = RecorderTemplate.generate(recorderOptions);
+      storageManager.createHtmlFile(recorderHtmlPath, recorderHtml);
+
+      console.log(`[RecorderService] 녹화용 HTML 생성: ${recorderHtmlPath}`);
+
+      // 7. 새 창 생성 - 자체 preload 없이 nodeIntegration 활성화로 변경
+      this.recorderWindow = new BrowserWindow({
+        width: 800,
+        height: 600,
+        show: false, // 숨김 모드로 실행
+        webPreferences: {
+          nodeIntegration: true,
+          contextIsolation: false,
+          backgroundThrottling: false,
+        },
+      });
+
+      // HTML 파일 로드
+      await this.recorderWindow.loadFile(recorderHtmlPath);
+
+      // 개발 모드에서만 DevTools 열기
+      if (process.env.NODE_ENV === "development") {
+        this.recorderWindow.webContents.openDevTools({ mode: "detach" });
+      }
+
+      // 8. 실제 녹화 시작
+      // 코드를 확인한 결과 START_RECORDING이 올바른 이벤트 이름입니다
+      this.recorderWindow.webContents.send("START_RECORDING", {
+        sourceId: source.id,
+        outputPath,
+        width: estimatedWidth,
+        height: estimatedHeight,
+        fps,
+        videoBitrate,
+      });
+
+      console.log(`[RecorderService] 렌더러 프로세스 녹화 요청 완료`);
+      return true;
+    } catch (error) {
+      console.error("[RecorderService] 렌더러 프로세스 녹화 오류:", error);
+      throw error;
+    }
   }
 
   /**

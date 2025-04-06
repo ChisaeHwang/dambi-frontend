@@ -133,12 +133,22 @@ const Timelapse: React.FC = () => {
   // 타임랩스 생성 핸들러
   const handleGenerateTimelapse = async (speedFactor: number) => {
     try {
+      // 현재 선택된 창의 썸네일 정보
+      const selectedWindow = activeWindows.find(
+        (window) => window.id === selectedWindowId
+      );
+
       // 사용자가 선택한 속도 값과 블러 영역으로 옵션 업데이트
       const updatedOptions = {
         ...timelapseOptions,
         speedFactor,
         blurRegions: [...blurRegions],
+        // 썸네일 해상도 명시적으로 전달
+        thumbnailWidth: selectedWindow?.thumbnailWidth || 320,
+        thumbnailHeight: selectedWindow?.thumbnailHeight || 240,
       };
+
+      console.log("타임랩스 생성 옵션:", updatedOptions);
 
       // 생성 시작
       const path = await generateTimelapse(updatedOptions);
