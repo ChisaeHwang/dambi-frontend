@@ -370,24 +370,47 @@ class RecorderService {
       // HTML 파일 로드
       await this.recorderWindow.loadFile(recorderHtmlPath);
 
+      // 창이 준비될 때까지 기다림 - 중요: 이 부분을 추가합니다
+      await new Promise((resolve) => {
+        this.recorderWindow.once("ready-to-show", () => {
+          console.log(`[RecorderService] 녹화 창이 준비되었습니다.`);
+          resolve();
+        });
+
+        // 타임아웃 설정 (5초)
+        setTimeout(() => {
+          console.log(
+            `[RecorderService] 녹화 창 준비 타임아웃, 계속 진행합니다.`
+          );
+          resolve();
+        }, 5000);
+      });
+
       // 개발 모드에서만 DevTools 열기
       if (process.env.NODE_ENV === "development") {
         this.recorderWindow.webContents.openDevTools({ mode: "detach" });
       }
 
       // 8. 실제 녹화 시작
-      // 코드를 확인한 결과 START_RECORDING이 올바른 이벤트 이름입니다
-      this.recorderWindow.webContents.send("START_RECORDING", {
-        sourceId: source.id,
-        outputPath,
-        width: estimatedWidth,
-        height: estimatedHeight,
-        fps,
-        videoBitrate,
-      });
-
-      console.log(`[RecorderService] 렌더러 프로세스 녹화 요청 완료`);
-      return true;
+      // webContents가 준비되었는지 확인 - 중요: 여기도 검사 추가
+      if (
+        this.recorderWindow &&
+        !this.recorderWindow.isDestroyed() &&
+        this.recorderWindow.webContents
+      ) {
+        this.recorderWindow.webContents.send("START_RECORDING", {
+          sourceId: source.id,
+          outputPath,
+          width: estimatedWidth,
+          height: estimatedHeight,
+          fps,
+          videoBitrate,
+        });
+        console.log(`[RecorderService] 렌더러 프로세스 녹화 요청 완료`);
+        return true;
+      } else {
+        throw new Error("녹화 창이 준비되지 않았습니다.");
+      }
     } catch (error) {
       console.error("[RecorderService] 렌더러 프로세스 녹화 오류:", error);
       throw error;
