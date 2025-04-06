@@ -81,15 +81,12 @@ class TimelapseGenerator {
           stage: "초기화",
         });
 
-        // 단순화된 FFmpeg 명령 구성
-        // 로그 레벨 디버그로 변경하여 더 많은 정보 출력
+        // 로그 레벨 변경 (debug → info로 변경하여 로그 출력 감소)
         const ffmpegArgs = [
           "-loglevel",
-          "debug", // 디버그 레벨 로그 추가
+          "info",
           ...this._buildFfmpegArgs(sourcePath, outputPath, options),
         ];
-
-        console.log(`FFmpeg 명령: ${ffmpegArgs.join(" ")}`);
 
         // 메인 윈도우에 초기 작업 시작 알림
         windowManager.sendEvent("timelapse-progress", {
@@ -101,21 +98,16 @@ class TimelapseGenerator {
         // FFmpeg 프로세스 실행
         const ffmpeg = spawn(ffmpegPath, ffmpegArgs);
 
-        ffmpeg.stdout.on("data", (data) => {
-          console.log(`ffmpeg 출력: ${data}`);
-        });
-
         // 진행 상황 업데이트 간소화
         let lastUpdateTime = Date.now();
         const minUpdateInterval = 1000;
 
         ffmpeg.stderr.on("data", (data) => {
           const output = data.toString();
-          console.log(`ffmpeg 정보: ${output}`);
 
-          // "boxblur" 필터 관련 로그 특별히 확인
-          if (output.includes("boxblur") || output.includes("filter")) {
-            console.log(`FFmpeg 필터 로그: ${output}`);
+          // 불필요한 로그 출력을 제거하고 중요한 정보만 로깅
+          if (output.includes("error") || output.includes("Error")) {
+            console.error(`FFmpeg 오류: ${output}`);
           }
 
           // 진행 상황 업데이트
@@ -238,12 +230,12 @@ class TimelapseGenerator {
     let filterChain;
     let framerate = "30"; // 기본 출력 프레임 레이트
 
-    // 원본 비디오 해상도 추정 (옵션에서 제공되지 않으면 기본값 사용)
-    const videoWidth = options.videoWidth || 1920; // 기본 해상도 1920x1080
+    // 원본 비디오 해상도 (옵션에서 제공되지 않으면 기본값 사용)
+    const videoWidth = options.videoWidth || 1920;
     const videoHeight = options.videoHeight || 1080;
 
-    // 썸네일 해상도 추정 (옵션에서 제공되지 않으면 기본값 사용)
-    const thumbnailWidth = options.thumbnailWidth || 320; // 일반적인 썸네일 크기
+    // 썸네일 해상도 (옵션에서 제공되지 않으면 기본값 사용)
+    const thumbnailWidth = options.thumbnailWidth || 320;
     const thumbnailHeight = options.thumbnailHeight || 240;
 
     // 스케일링 비율 계산
@@ -275,129 +267,98 @@ class TimelapseGenerator {
       framerate = "24"; // 영화같은 느낌의 프레임 레이트
     }
 
-    // 블러 영역 필터 구성
-    const blurFilters = [];
+    // 블러 영역이 있는 경우 처리
     if (blurRegions && blurRegions.length > 0) {
-      console.log(`블러 영역: ${blurRegions.length}개 처리 중...`);
+      console.log(`블러 영역: ${blurRegions.length}개 적용`);
 
-      // 각 블러 영역에 대해 boxblur 필터 생성
-      blurRegions.forEach((region, index) => {
+      // 단순화된 필터 체인 접근법 사용
+      if (blurRegions.length === 1) {
+        // 단일 블러 영역에 대한 간단한 처리 방식
+        const region = blurRegions[0];
+
         // 썸네일에서 원본 비디오 해상도로 좌표 변환
-        const x = Math.max(0, Math.round(region.x * scaleX));
-        const y = Math.max(0, Math.round(region.y * scaleY));
-        const width = Math.min(
-          videoWidth - x,
-          Math.round(region.width * scaleX)
-        );
-        const height = Math.min(
-          videoHeight - y,
-          Math.round(region.height * scaleY)
-        );
+        const x = Math.round(region.x * scaleX);
+        const y = Math.round(region.y * scaleY);
+        const width = Math.round(region.width * scaleX);
+        const height = Math.round(region.height * scaleY);
 
-        console.log(
-          `블러 영역 #${index + 1}: 썸네일(${region.x},${region.y},${
-            region.width
-          },${region.height}) -> 비디오(${x},${y},${width},${height})`
-        );
+        // 블러 영역이 유효한지 확인
+        if (
+          x >= 0 &&
+          y >= 0 &&
+          width > 0 &&
+          height > 0 &&
+          x + width <= videoWidth &&
+          y + height <= videoHeight
+        ) {
+          // 단일 필터 체인 구성 (더 단순한 구문으로 변경)
+          filterChain = [
+            speedFilter,
+            `split=2[base][crop]`,
+            `[crop]crop=${width}:${height}:${x}:${y},boxblur=20:2[blurred]`,
+            `[base][blurred]overlay=${x}:${y}`,
+            `scale=-2:1080:flags=lanczos`,
+          ].join(",");
 
-        // 좌표가 비디오 범위 내에 있는지 확인
-        if (x < videoWidth && y < videoHeight && width > 0 && height > 0) {
-          // boxblur 필터: 강도 20, 반복 2회 적용 (좌표 명확하게 분리)
-          const blurFilter = `boxblur=20:2:enable='between(X,${x},${
-            x + width
-          }) * between(Y,${y},${y + height})'`;
-          blurFilters.push(blurFilter);
-          console.log(`블러 필터 #${index + 1} 추가:`, blurFilter);
+          console.log(
+            `블러 필터 적용 (x=${x}, y=${y}, width=${width}, height=${height})`
+          );
         } else {
-          console.warn(`블러 영역 #${index + 1} 건너뜀: 비디오 범위 밖 좌표`);
-        }
-      });
-
-      // 최종 필터 체인 구성
-      if (blurFilters.length > 0) {
-        try {
-          // 블러 필터 방식 변경: 심플한 방법으로 적용
-          // FFmpeg의 boxblur 필터 사용 방식 변경
-          // 보다 단순한 좌표 형식 사용
-          const centerX = Math.round(videoWidth / 2);
-          const centerY = Math.round(videoHeight / 2);
-          const blurSize = Math.round(Math.min(videoWidth, videoHeight) / 4);
-
-          // 이전에 복잡한 between 사용법으로 인한 오류 해결
-          // 간단한 테스트 블러: 화면 중앙에 사각형 블러 적용
-          filterChain = `${speedFilter},split[a][b];[a]crop=${blurSize * 2}:${
-            blurSize * 2
-          }:${centerX - blurSize}:${
-            centerY - blurSize
-          },boxblur=20:2[blurred];[b][blurred]overlay=${centerX - blurSize}:${
-            centerY - blurSize
-          },scale=-2:1080:flags=lanczos`;
-
-          // 이제 실제 사용자가 선택한 블러 영역도 함께 적용
-          // 블러 영역마다 별도의 필터 체인 생성
-          let filterParts = `${speedFilter}`;
-
-          // 각 블러 영역에 대해 처리
-          blurRegions.forEach((region, index) => {
-            // 썸네일에서 원본 비디오 해상도로 좌표 변환
-            const x = Math.max(0, Math.round(region.x * scaleX));
-            const y = Math.max(0, Math.round(region.y * scaleY));
-            const width = Math.min(
-              videoWidth - x,
-              Math.round(region.width * scaleX)
-            );
-            const height = Math.min(
-              videoHeight - y,
-              Math.round(region.height * scaleY)
-            );
-
-            // 좌표가 비디오 범위 내에 있는지 확인
-            if (x < videoWidth && y < videoHeight && width > 0 && height > 0) {
-              // split, crop, blur, overlay 방식으로 블러 필터 적용
-              filterParts +=
-                `,split[main${index}][crop${index}];` +
-                `[crop${index}]crop=${width}:${height}:${x}:${y},boxblur=20:2[blur${index}];` +
-                `[main${index}][blur${index}]overlay=${x}:${y}`;
-
-              console.log(
-                `블러 영역 #${
-                  index + 1
-                } 필터 추가: x=${x}, y=${y}, width=${width}, height=${height}`
-              );
-            }
-          });
-
-          // 마지막에 스케일링 적용
-          filterParts += `,scale=-2:1080:flags=lanczos`;
-
-          // 최종 필터 체인 업데이트
-          filterChain = filterParts;
-
-          console.log(`실제 블러 영역이 적용된 필터 체인:`, filterChain);
-        } catch (error) {
-          console.error(`필터 체인 구성 오류:`, error);
-          // 오류 발생 시 기본 필터만 적용
+          // 유효하지 않은 블러 영역인 경우 기본 필터만 적용
           filterChain = `${speedFilter},scale=-2:1080:flags=lanczos`;
+          console.log(`유효하지 않은 블러 영역 - 기본 필터만 적용`);
         }
-
-        console.log(`최종 필터 체인:`, filterChain);
       } else {
-        // 기존 방식대로 속도 필터만 적용
-        filterChain = `${speedFilter},scale=-2:1080:flags=lanczos`;
-        console.log("블러 필터 없음, 기본 필터 체인:", filterChain);
+        // 다중 블러 영역을 처리하기 위한 복잡한 체인 구성
+        // 첫 번째 블러만 적용하여 안정성 확보 (향후 다중 블러 개선 예정)
+        const region = blurRegions[0];
+
+        // 썸네일에서 원본 비디오 해상도로 좌표 변환
+        const x = Math.round(region.x * scaleX);
+        const y = Math.round(region.y * scaleY);
+        const width = Math.round(region.width * scaleX);
+        const height = Math.round(region.height * scaleY);
+
+        // 블러 영역이 유효한지 확인
+        if (
+          x >= 0 &&
+          y >= 0 &&
+          width > 0 &&
+          height > 0 &&
+          x + width <= videoWidth &&
+          y + height <= videoHeight
+        ) {
+          // 단일 필터 체인 구성
+          filterChain = [
+            speedFilter,
+            `split=2[base][crop]`,
+            `[crop]crop=${width}:${height}:${x}:${y},boxblur=20:2[blurred]`,
+            `[base][blurred]overlay=${x}:${y}`,
+            `scale=-2:1080:flags=lanczos`,
+          ].join(",");
+
+          console.log(
+            `첫 번째 블러 영역만 적용 (x=${x}, y=${y}, width=${width}, height=${height})`
+          );
+        } else {
+          // 유효하지 않은 블러 영역인 경우 기본 필터만 적용
+          filterChain = `${speedFilter},scale=-2:1080:flags=lanczos`;
+          console.log(`유효하지 않은 블러 영역 - 기본 필터만 적용`);
+        }
       }
     } else {
-      // 기존 방식대로 속도 필터만 적용
+      // 블러 없는 경우 기본 필터만 적용
       filterChain = `${speedFilter},scale=-2:1080:flags=lanczos`;
-      console.log("블러 필터 없음, 기본 필터 체인:", filterChain);
     }
+
+    console.log(`최종 필터 체인: ${filterChain}`);
 
     return [
       // 입력 파일
       "-i",
       inputPath,
 
-      // 스레드 최적화 - 더 많은 코어 활용
+      // 스레드 최적화
       "-threads",
       cpuCount.toString(),
 
@@ -409,40 +370,30 @@ class TimelapseGenerator {
       "-r",
       framerate,
 
-      // 인코더 옵션 - 향상된 품질 설정
+      // 인코더 옵션
       "-c:v",
-      "libx264", // H.264 코덱
+      "libx264",
       "-pix_fmt",
       "yuv420p",
       "-preset",
-      "medium", // ultrafast보다 품질 우선
+      "medium",
       "-tune",
-      "film", // 영상 콘텐츠 최적화
+      "film",
       "-crf",
-      crf || "26", // 품질 값이 없으면 기본값 사용
+      crf || "26",
 
       // 추가 인코딩 최적화
       "-profile:v",
-      "high", // 고품질 프로필
+      "high",
       "-level",
       "4.2",
-
-      // I-프레임 간격 설정
       "-g",
       "50",
-
-      // 빠른 디코딩 최적화
       "-movflags",
       "+faststart",
-
-      // 오디오 제거
       "-an",
-
-      // 메타데이터 추가
       "-metadata",
       `title=담비 타임랩스 (${speedFactor}x)`,
-
-      // 출력 파일 덮어쓰기
       "-y",
       outputPath,
     ];
