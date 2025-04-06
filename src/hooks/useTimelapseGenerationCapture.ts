@@ -29,6 +29,10 @@ export interface TimelapseOptions {
   preserveOriginals?: boolean; // 원본 이미지 보존 여부
   enabled?: boolean; // 타임랩스 활성화 여부
   blurRegions?: BlurRegion[]; // 블러 처리할 영역 목록
+  thumbnailWidth?: number;
+  thumbnailHeight?: number;
+  videoWidth?: number;
+  videoHeight?: number;
 }
 
 // 캡처 상태 인터페이스
@@ -457,6 +461,46 @@ export const useTimelapseGenerationCapture = () => {
         // 저장 경로가 설정되어 있으면 추가
         if (saveFolderPath) {
           mergedOptions.outputPath = saveFolderPath;
+        }
+
+        // 현재 선택된 창의 썸네일 해상도 정보 추가
+        const selectedWindow = activeWindows.find(
+          (window) => window.id === selectedWindowId
+        );
+
+        if (selectedWindow) {
+          // 썸네일 크기 정보 추가
+          mergedOptions.thumbnailWidth = selectedWindow.thumbnailWidth || 320;
+          mergedOptions.thumbnailHeight = selectedWindow.thumbnailHeight || 240;
+
+          // 원본 비디오 해상도는 메인 프로세스에서 캡처된 실제 해상도를 사용
+          // capture-manager.js에서 메타데이터를 통해 실제 해상도를 가져와 사용
+          // 여기서는, 썸네일과 유사한 화면 비율을 기본값으로 사용하고,
+          // 메인 프로세스에서 실제 캡처 해상도를 우선 적용
+
+          // 일반적인 화면 해상도를 기본 추정값으로 설정
+          if (selectedWindow.isScreen) {
+            // 전체 화면 캡처인 경우 (일반적인 모니터 해상도 사용)
+            mergedOptions.videoWidth = 1920;
+            mergedOptions.videoHeight = 1080;
+          } else {
+            // 창 캡처인 경우 (창 크기 비율 유지하되 적절한 해상도로 추정)
+            const aspectRatio =
+              selectedWindow.thumbnailWidth && selectedWindow.thumbnailHeight
+                ? selectedWindow.thumbnailWidth / selectedWindow.thumbnailHeight
+                : 16 / 9; // 기본 화면 비율
+
+            // 기본 해상도 설정 (메인 프로세스에서 실제 값으로 덮어씀)
+            mergedOptions.videoWidth = Math.round(1080 * aspectRatio);
+            mergedOptions.videoHeight = 1080;
+          }
+
+          console.log("타임랩스 생성 옵션:", {
+            thumbnailSize: `${mergedOptions.thumbnailWidth}x${mergedOptions.thumbnailHeight}`,
+            videoSize: `${mergedOptions.videoWidth}x${mergedOptions.videoHeight}`,
+            isScreen: selectedWindow.isScreen || false,
+            blurRegions: mergedOptions.blurRegions?.length || 0,
+          });
         }
 
         const path = await window.electron.generateTimelapse(mergedOptions);

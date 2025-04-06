@@ -50,6 +50,15 @@ class StorageManager {
   }
 
   /**
+   * 메타데이터 가져오기 (별칭 메서드)
+   * @param {string} metadataPath - 메타데이터 파일 경로
+   * @returns {Object} 메타데이터 객체
+   */
+  getMetadata(metadataPath) {
+    return this.loadMetadata(metadataPath);
+  }
+
+  /**
    * 메타데이터 업데이트
    * @param {string} metadataPath - 메타데이터 파일 경로
    * @param {Object} updatedData - 업데이트할 데이터

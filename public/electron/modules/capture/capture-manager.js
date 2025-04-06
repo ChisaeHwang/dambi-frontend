@@ -182,6 +182,21 @@ class CaptureManager {
       throw new Error("유효한 녹화 파일이 없습니다");
     }
 
+    // 메타데이터에서 원본 비디오 해상도 가져오기
+    try {
+      const metadata = storageManager.getMetadata(this.metadataPath);
+      if (metadata && metadata.videoSize) {
+        console.log("원본 녹화 해상도 정보 포함:", metadata.videoSize);
+        // 옵션에 실제 캡처 해상도 추가
+        options.videoWidth = metadata.videoSize.width;
+        options.videoHeight = metadata.videoSize.height;
+      } else {
+        console.log("원본 녹화 해상도 정보 없음, 기본값 사용");
+      }
+    } catch (error) {
+      console.warn("메타데이터 읽기 실패, 기본 해상도 사용:", error);
+    }
+
     // 타임랩스 생성 요청
     return await timelapseGenerator.generateTimelapse(this.videoPath, options);
   }
