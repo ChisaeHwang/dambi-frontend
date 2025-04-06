@@ -37,7 +37,15 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
   useEffect(() => {
     // containerRef에 접근하지만 상태를 설정할 필요가 없습니다.
     // 모든 계산은 실시간으로 수행됩니다.
-  }, []);
+
+    // 0,0 시작점 초기화 방지: 컴포넌트 마운트 시 시작점을 화면 중앙으로 설정
+    if (thumbnailWidth > 0 && thumbnailHeight > 0) {
+      setStartPoint({
+        x: Math.floor(thumbnailWidth / 2),
+        y: Math.floor(thumbnailHeight / 2),
+      });
+    }
+  }, [thumbnailWidth, thumbnailHeight]);
 
   // 좌표 변환 함수 (화면 좌표 → 원본 좌표)
   const convertToOriginalCoordinates = (x: number, y: number) => {
@@ -75,13 +83,17 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
     } else {
       // 새 영역 생성 시작
       setIsCreating(true);
-      setStartPoint({ x, y });
+
+      // 시작점 좌표를 클릭한 지점으로 정확히 설정
+      const validX = Math.max(0, Math.min(x, thumbnailWidth));
+      const validY = Math.max(0, Math.min(y, thumbnailHeight));
+      setStartPoint({ x: validX, y: validY });
 
       // 새 영역 ID 생성
       const newRegion: BlurRegion = {
         id: `region-${Date.now()}`,
-        x,
-        y,
+        x: validX,
+        y: validY,
         width: 0,
         height: 0,
       };
