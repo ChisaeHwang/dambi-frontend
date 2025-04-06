@@ -172,12 +172,11 @@ const Timelapse: React.FC = () => {
     // 변경된 블러 영역 상태 업데이트
     setBlurRegions(regions);
     // 변경된 블러 영역을 전역 옵션에도 즉시 저장
-    if (regions.length > 0) {
-      changeTimelapseOptions({
-        ...timelapseOptions,
-        blurRegions: [...regions],
-      });
-    }
+    changeTimelapseOptions({
+      ...timelapseOptions,
+      blurRegions: [...regions],
+    });
+    console.log("블러 영역 변경:", regions.length, "개 영역");
   };
 
   // 블러 선택기 토글
@@ -185,6 +184,11 @@ const Timelapse: React.FC = () => {
     if (showBlurSelector) {
       // 블러 선택기를 닫을 때는 영역을 유지합니다 (변경하지 않음)
       setShowBlurSelector(false);
+      console.log(
+        "블러 영역 설정 닫기: 현재 영역 유지",
+        blurRegions.length,
+        "개"
+      );
     } else {
       // 블러 선택기를 열 때 가장 최신 타임랩스 옵션에서 블러 영역을 가져옵니다
       if (
@@ -202,10 +206,22 @@ const Timelapse: React.FC = () => {
         );
       } else {
         // 저장된 블러 영역이 없는 경우
+        setBlurRegions([]);
         console.log("블러 영역 설정 열기: 저장된 영역 없음");
       }
       setShowBlurSelector(true);
     }
+  };
+
+  // 모든 블러 영역 삭제 핸들러
+  const handleClearAllBlurRegions = () => {
+    setBlurRegions([]);
+    // 전역 옵션에도 빈 배열로 업데이트
+    changeTimelapseOptions({
+      ...timelapseOptions,
+      blurRegions: [],
+    });
+    console.log("블러 영역 모두 삭제");
   };
 
   // 작업 시간 포맷팅 (00:00:00 형식)
@@ -282,10 +298,7 @@ const Timelapse: React.FC = () => {
                         완료
                       </button>
                       <button
-                        onClick={() => {
-                          setBlurRegions([]);
-                          console.log("블러 영역 모두 삭제");
-                        }}
+                        onClick={handleClearAllBlurRegions}
                         className="py-2 px-5 bg-[var(--bg-secondary)] text-[var(--text-normal)] rounded hover:bg-[var(--bg-hover)] transition-colors duration-200"
                       >
                         모두 삭제
