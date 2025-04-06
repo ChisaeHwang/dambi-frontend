@@ -200,6 +200,22 @@ class RecorderTemplate {
         console.log('녹화 중지됨');
         document.getElementById('status').style.display = 'none';
         
+        // 스트림 트랙을 중지하여 리소스 확실히 해제
+        try {
+          const videoElement = document.getElementById('preview');
+          if (videoElement && videoElement.srcObject) {
+            const tracks = videoElement.srcObject.getTracks();
+            tracks.forEach(track => {
+              track.stop();
+              console.log('미디어 트랙 중지:', track.kind);
+            });
+            videoElement.srcObject = null;
+            console.log('스트림 리소스 해제 완료');
+          }
+        } catch (error) {
+          console.error('스트림 리소스 해제 중 오류:', error);
+        }
+        
         // 청크 데이터를 블롭으로 변환
         const blob = new Blob(recordedChunks, {
           type: 'video/webm'

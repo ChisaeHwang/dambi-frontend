@@ -107,7 +107,11 @@ class CaptureManager {
       const callbacks = this._createRendererProcessCallbacks();
 
       // 이벤트 리스너 설정
-      recorderService.setupRendererProcessEventListeners(callbacks);
+      this.eventCleanupFunctions =
+        recorderService.setupRendererProcessEventListeners(callbacks);
+      console.log(
+        `[CaptureManager] 이벤트 리스너 ${this.eventCleanupFunctions.length}개 설정 완료`
+      );
 
       // 렌더러 프로세스 녹화 시작
       await recorderService.startRendererProcessRecording(
@@ -138,6 +142,17 @@ class CaptureManager {
     try {
       // 녹화 중지
       recorderService.stopRecording();
+
+      // 이벤트 리스너 정리 (추가)
+      if (this.eventCleanupFunctions && this.eventCleanupFunctions.length > 0) {
+        console.log(`[CaptureManager] 이벤트 리스너 정리 중...`);
+        this.eventCleanupFunctions.forEach((cleanup) => {
+          if (typeof cleanup === "function") {
+            cleanup();
+          }
+        });
+        this.eventCleanupFunctions = [];
+      }
 
       // 메타데이터 업데이트
       this.endTime = Date.now();
@@ -314,8 +329,38 @@ class CaptureManager {
         // 타이머 정리
         this._clearTimers();
 
+        // 모든 상태 초기화
         this.isCapturing = false;
+
+        // 이벤트 리스너 정리 - 중요: 모든 이벤트 리스너를 명시적으로 정리
+        if (
+          this.eventCleanupFunctions &&
+          this.eventCleanupFunctions.length > 0
+        ) {
+          console.log(`[CaptureManager] 녹화 완료 후 이벤트 리스너 정리 중...`);
+          this.eventCleanupFunctions.forEach((cleanup) => {
+            if (typeof cleanup === "function") {
+              cleanup();
+            }
+          });
+          this.eventCleanupFunctions = [];
+        }
+
+        // RecorderService에 창을 확실히 닫도록 요청
+        try {
+          const recorderService = require("./recorder-service");
+          if (recorderService.recorderWindow) {
+            console.log(`[CaptureManager] 녹화 완료 후 창 닫기 요청`);
+            recorderService.stopRendererProcessRecording();
+          }
+        } catch (e) {
+          console.error(`[CaptureManager] 창 닫기 시도 중 오류:`, e.message);
+        }
+
+        // 상태 업데이트 전송으로 UI 갱신
         this.emitStatusUpdate();
+
+        console.log(`[CaptureManager] 녹화 완료 처리 완료`);
       },
 
       onError: (event, error) => {
@@ -324,7 +369,23 @@ class CaptureManager {
         // 타이머 정리
         this._clearTimers();
 
+        // 상태 초기화 및 이벤트 리스너 정리
         this.isCapturing = false;
+
+        // 이벤트 리스너 정리
+        if (
+          this.eventCleanupFunctions &&
+          this.eventCleanupFunctions.length > 0
+        ) {
+          console.log(`[CaptureManager] 녹화 오류 후 이벤트 리스너 정리 중...`);
+          this.eventCleanupFunctions.forEach((cleanup) => {
+            if (typeof cleanup === "function") {
+              cleanup();
+            }
+          });
+          this.eventCleanupFunctions = [];
+        }
+
         this.emitStatusUpdate();
       },
     };
