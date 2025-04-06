@@ -1,4 +1,10 @@
-const { desktopCapturer, BrowserWindow, ipcMain } = require("electron");
+const {
+  desktopCapturer,
+  BrowserWindow,
+  ipcMain,
+  screen,
+  app,
+} = require("electron");
 const path = require("path");
 const storageManager = require("./storage-manager");
 const RecorderTemplate = require("./recorder-template");
@@ -10,14 +16,68 @@ class RecorderService {
   constructor() {
     this.recorder = null; // 메인 프로세스 기반 레코더
     this.recorderWindow = null; // 렌더러 프로세스 기반 레코더 창
+    this._hasInitializedResolution = false;
+
+    // 기본 캡처 설정으로 초기화
     this.captureConfig = {
       fps: 30, // 캡처 프레임 속도 (기존 15에서 30으로 증가)
       videoBitrate: 6000, // 비디오 비트레이트 (기존 3000에서 6000으로 증가)
       videoSize: {
-        width: 1920, // 해상도 증가 (기존 1280에서 1920으로)
-        height: 1080, // 해상도 증가 (기존 720에서 1080으로)
+        width: 1920, // 초기 기본값
+        height: 1080, // 초기 기본값
       },
     };
+
+    // Electron 앱이 준비된 후에만 화면 해상도 초기화
+    if (app.isReady()) {
+      this._initializeScreenResolution();
+    } else {
+      console.log("Electron 앱이 준비되지 않음, ready 이벤트 대기 중");
+      app.on("ready", () => {
+        this._initializeScreenResolution();
+      });
+    }
+  }
+
+  /**
+   * 실제 화면 해상도를 초기화하는 메서드
+   * app ready 이벤트 이후에 호출되어야 함
+   * @private
+   */
+  _initializeScreenResolution() {
+    try {
+      // Electron 앱이 준비되었는지 확인
+      if (!app.isReady()) {
+        console.log("Electron 앱이 아직 준비되지 않음, 기본 해상도 사용");
+        return;
+      }
+
+      // screen 모듈이 사용 가능한지 확인
+      const primaryDisplay = screen.getPrimaryDisplay();
+
+      // workAreaSize 대신 bounds를 사용하여 실제 화면 전체 해상도 가져오기
+      const { width, height } = primaryDisplay.bounds;
+
+      // 작업 영역 크기 (작업 표시줄 등을 제외한 영역)도 로깅
+      const { width: workWidth, height: workHeight } =
+        primaryDisplay.workAreaSize;
+
+      console.log(`주 디스플레이 실제 해상도: ${width}x${height}`);
+      console.log(`주 디스플레이 작업 영역: ${workWidth}x${workHeight}`);
+
+      // 실제 전체 해상도로 설정 업데이트
+      this.updateCaptureConfig({
+        videoSize: {
+          width: width,
+          height: height,
+        },
+      });
+
+      this._hasInitializedResolution = true;
+    } catch (error) {
+      console.error("화면 해상도 초기화 중 오류:", error.message);
+      console.log("기본 해상도(1920x1080)를 사용합니다.");
+    }
   }
 
   /**
@@ -25,6 +85,12 @@ class RecorderService {
    * @returns {Promise<Array>} 캡처 가능한 소스 목록
    */
   async getCaptureSources() {
+    // 이 메서드 호출 전에 해상도 초기화 시도
+    if (!this._hasInitializedResolution) {
+      this._initializeScreenResolution();
+      this._hasInitializedResolution = true;
+    }
+
     try {
       const sources = await desktopCapturer.getSources({
         types: ["window", "screen"],
@@ -173,10 +239,17 @@ class RecorderService {
       try {
         console.log(`[RecorderService] 렌더러 프로세스 녹화 방식으로 전환`);
 
+        // 캡처 설정에서 해상도 가져오기
+        const width = this.captureConfig.videoSize.width;
+        const height = this.captureConfig.videoSize.height;
+        console.log(
+          `[RecorderService] 녹화 창 해상도 설정: ${width}x${height}`
+        );
+
         // 최적화된 캡처 창 설정
         const recorderWindow = new BrowserWindow({
-          width: this.captureConfig.videoSize.width,
-          height: this.captureConfig.videoSize.height,
+          width: width,
+          height: height,
           show: false, // 항상 숨김 상태로 실행
           webPreferences: {
             nodeIntegration: true,
@@ -200,6 +273,16 @@ class RecorderService {
           useContentSize: true,
         });
 
+        // 창 크기가 캡처 설정과 일치하는지 확인
+        const actualSize = recorderWindow.getSize();
+        console.log(
+          `[RecorderService] 실제 녹화 창 크기: ${actualSize[0]}x${actualSize[1]}`
+        );
+        if (actualSize[0] !== width || actualSize[1] !== height) {
+          console.log(`[RecorderService] 창 크기 불일치 감지, 강제 조정`);
+          recorderWindow.setSize(width, height, false);
+        }
+
         // 오프스크린 렌더링 최적화
         if (recorderWindow.webContents.setFrameRate) {
           // 프레임 레이트 설정 (일정한 캡처 주기 유지)
@@ -219,6 +302,12 @@ class RecorderService {
 
         // 창이 준비되면 녹화 시작 메시지 전송
         recorderWindow.webContents.on("did-finish-load", () => {
+          // 창 크기 한번 더 확인
+          const finalSize = recorderWindow.getSize();
+          console.log(
+            `[RecorderService] 최종 녹화 창 크기: ${finalSize[0]}x${finalSize[1]}`
+          );
+
           // 잠시 기다렸다가 녹화 시작 (창 렌더링 완료 보장)
           setTimeout(() => {
             recorderWindow.webContents.send("START_RECORDING", {

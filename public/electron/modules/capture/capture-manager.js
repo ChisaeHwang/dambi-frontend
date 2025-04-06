@@ -186,12 +186,39 @@ class CaptureManager {
     try {
       const metadata = storageManager.getMetadata(this.metadataPath);
       if (metadata && metadata.videoSize) {
-        console.log("원본 녹화 해상도 정보 포함:", metadata.videoSize);
+        const origWidth = metadata.videoSize.width;
+        const origHeight = metadata.videoSize.height;
+
+        console.log("==========================================");
+        console.log(`원본 녹화 해상도 정보: ${origWidth}x${origHeight}`);
+        console.log(
+          `옵션에 지정된 해상도: ${options.videoWidth || "없음"}x${
+            options.videoHeight || "없음"
+          }`
+        );
+
         // 옵션에 실제 캡처 해상도 추가
-        options.videoWidth = metadata.videoSize.width;
-        options.videoHeight = metadata.videoSize.height;
+        options.videoWidth = origWidth;
+        options.videoHeight = origHeight;
+
+        console.log(
+          `최종 사용 해상도: ${options.videoWidth}x${options.videoHeight}`
+        );
+        console.log("==========================================");
       } else {
-        console.log("원본 녹화 해상도 정보 없음, 기본값 사용");
+        console.log(
+          "원본 녹화 해상도 정보가 메타데이터에 없음, 기본값 사용 예정"
+        );
+
+        // 현재 캡처 설정에서 해상도 가져오기 시도
+        const currentConfig = recorderService.getCaptureConfig();
+        if (currentConfig && currentConfig.videoSize) {
+          console.log(
+            `현재 설정된 해상도 사용: ${currentConfig.videoSize.width}x${currentConfig.videoSize.height}`
+          );
+          options.videoWidth = currentConfig.videoSize.width;
+          options.videoHeight = currentConfig.videoSize.height;
+        }
       }
     } catch (error) {
       console.warn("메타데이터 읽기 실패, 기본 해상도 사용:", error);

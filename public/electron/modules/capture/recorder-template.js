@@ -13,6 +13,14 @@ class RecorderTemplate {
    * @returns {string} 생성된 HTML 템플릿
    */
   static generate(config) {
+    // 캡처 설정에서 필요한 값 가져오기
+    const { videoSize, fps, videoBitrate } = config;
+
+    // 실제 해상도 로깅
+    console.log(
+      `[RecorderTemplate] HTML 생성 - 설정된 해상도: ${videoSize.width}x${videoSize.height}`
+    );
+
     return `
     <!DOCTYPE html>
     <html>
@@ -23,6 +31,7 @@ class RecorderTemplate {
     </head>
     <body>
       <video id="preview" width="800" height="600" autoplay muted></video>
+      <div id="status">녹화 중...</div>
       <script>
         ${this._generateScript(config)}
       </script>
@@ -40,6 +49,17 @@ class RecorderTemplate {
       <style>
         body { margin: 0; overflow: hidden; background: #000; }
         video { width: 100%; height: 100%; object-fit: contain; }
+        #status { 
+          position: fixed; 
+          bottom: 10px; 
+          right: 10px; 
+          background: rgba(0,0,0,0.5); 
+          color: white; 
+          padding: 5px 10px; 
+          border-radius: 4px; 
+          font-family: Arial, sans-serif;
+          display: none;
+        }
       </style>
     `;
   }
@@ -50,111 +70,184 @@ class RecorderTemplate {
    * @returns {string} 스크립트 코드
    */
   static _generateScript(config) {
+    const { videoSize, fps, videoBitrate } = config;
+
+    // 캡처 설정 로깅
+    console.log(
+      `[RecorderTemplate] 스크립트 생성 - 해상도: ${videoSize.width}x${videoSize.height}, FPS: ${fps}, 비트레이트: ${videoBitrate}`
+    );
+
     return `
+      // 녹화 설정
+      const config = {
+        fps: ${fps || 30},
+        videoBitrate: ${videoBitrate || 6000},
+        width: ${videoSize.width},
+        height: ${videoSize.height}
+      };
+      
+      console.log('설정된 녹화 해상도:', config.width, 'x', config.height);
+
       const { ipcRenderer } = require('electron');
       const fs = require('fs');
+      const path = require('path');
       
       let mediaRecorder;
       let recordedChunks = [];
+      let startTime;
+      let outputPath;
       
-      // 녹화 시작
-      async function startRecording(sourceId, outputPath) {
+      // 녹화 시작 이벤트 리스너
+      ipcRenderer.on('START_RECORDING', async (event, data) => {
         try {
-          console.log('녹화를 시작합니다. 소스 ID:', sourceId);
+          const { sourceId, outputPath: outputFilePath } = data;
+          outputPath = outputFilePath;
           
-          const constraints = {
-            audio: false,
-            video: {
-              mandatory: {
-                chromeMediaSource: 'desktop',
-                chromeMediaSourceId: sourceId
-              }
-            }
-          };
+          console.log('녹화 시작 요청 받음:', sourceId);
+          console.log('출력 경로:', outputPath);
+          console.log('설정:', config);
           
-          console.log('getUserMedia 호출 전:', navigator.mediaDevices);
-          const stream = await navigator.mediaDevices.getUserMedia(constraints);
-          console.log('스트림 획득 성공');
-          
-          document.getElementById('preview').srcObject = stream;
-          
-          // MediaRecorder 생성 - 향상된 설정
-          let options;
-          try {
-            // VP9 코덱 시도 (더 나은 압축률과 품질)
-            options = { 
-              mimeType: 'video/webm; codecs=vp9',
-              videoBitsPerSecond: ${
-                config.videoBitrate * 2000
-              } // 2배 더 높은 비트레이트
-            };
-            mediaRecorder = new MediaRecorder(stream, options);
-          } catch (e) {
-            console.log('VP9 지원하지 않음, VP8로 대체:', e);
-            // VP8로 대체
-            options = { 
-              mimeType: 'video/webm; codecs=vp8',
-              videoBitsPerSecond: ${
-                config.videoBitrate * 1500
-              } // 1.5배 더 높은 비트레이트
-            };
-            mediaRecorder = new MediaRecorder(stream, options);
-          }
-          
-          console.log('MediaRecorder 생성됨:', mediaRecorder, '설정:', options);
-          
-          mediaRecorder.ondataavailable = (e) => {
-            console.log('데이터 청크 받음:', e.data.size);
-            if (e.data.size > 0) {
-              recordedChunks.push(e.data);
-            }
-          };
-          
-          mediaRecorder.onstop = async () => {
-            console.log('녹화 중지됨, 파일 저장 중...');
-            // 모든 청크 수집 완료 확인
-            await new Promise(resolve => setTimeout(resolve, 200));
-            
-            const blob = new Blob(recordedChunks, { type: options.mimeType });
-            const buffer = Buffer.from(await blob.arrayBuffer());
-            fs.writeFileSync(outputPath, buffer);
-            
-            ipcRenderer.send('RECORDING_COMPLETE', {
-              success: true,
-              outputPath,
-              fileSize: buffer.length
-            });
-            
-            stream.getTracks().forEach(track => track.stop());
-            recordedChunks = [];
-          };
-          
-          // 더 짧은 주기로 데이터 청크 생성 (1초마다)
-          // 더 자주 청크를 생성하면 프레임 손실을 줄이고 깨짐 현상을 완화
-          mediaRecorder.start(1000);
-          console.log('MediaRecorder 시작됨');
-          ipcRenderer.send('RECORDING_STARTED');
+          await startRecording(sourceId);
         } catch (error) {
           console.error('녹화 시작 오류:', error);
-          ipcRenderer.send('RECORDING_ERROR', {
-            message: error.message,
-            stack: error.stack
-          });
+          ipcRenderer.send('RECORDING_ERROR', { error: error.message });
         }
-      }
-      
-      // 이벤트 리스너
-      ipcRenderer.on('START_RECORDING', (event, data) => {
-        console.log('START_RECORDING 이벤트 받음', data);
-        startRecording(data.sourceId, data.outputPath);
       });
       
+      // 녹화 중지 이벤트 리스너
       ipcRenderer.on('STOP_RECORDING', () => {
-        console.log('STOP_RECORDING 이벤트 받음');
+        console.log('녹화 중지 요청 받음');
         if (mediaRecorder && mediaRecorder.state !== 'inactive') {
           mediaRecorder.stop();
         }
       });
+      
+      /**
+       * 녹화 시작
+       * @param {string} sourceId - 녹화할 소스 ID
+       */
+      async function startRecording(sourceId) {
+        try {
+          // 스트림 가져오기
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: {
+              // 데스크톱 캡처 제약 조건
+              mandatory: {
+                chromeMediaSource: 'desktop',
+                chromeMediaSourceId: sourceId,
+                minWidth: config.width,
+                maxWidth: config.width,
+                minHeight: config.height,
+                maxHeight: config.height,
+                frameRate: config.fps
+              }
+            }
+          });
+          
+          // 비디오 미리보기 설정
+          const videoElement = document.getElementById('preview');
+          videoElement.srcObject = stream;
+          videoElement.onloadedmetadata = (e) => {
+            videoElement.play();
+            console.log('실제 비디오 크기:', videoElement.videoWidth, 'x', videoElement.videoHeight);
+          };
+          
+          // 녹화 설정
+          const options = {
+            mimeType: 'video/webm; codecs=vp9',
+            videoBitsPerSecond: config.videoBitrate * 1000
+          };
+          
+          // 미디어 레코더 초기화
+          mediaRecorder = new MediaRecorder(stream, options);
+          recordedChunks = [];
+          
+          // 미디어 레코더 이벤트 핸들러
+          mediaRecorder.ondataavailable = handleDataAvailable;
+          mediaRecorder.onstop = handleStop;
+          
+          // 녹화 시작
+          mediaRecorder.start(1000); // 1초마다 데이터 청크 생성
+          startTime = Date.now();
+          
+          // 녹화 시작 상태 표시
+          document.getElementById('status').style.display = 'block';
+          
+          // 녹화 시작 알림
+          ipcRenderer.send('RECORDING_STARTED');
+          console.log('녹화가 시작되었습니다');
+        } catch (error) {
+          console.error('스트림 가져오기 오류:', error);
+          ipcRenderer.send('RECORDING_ERROR', { error: error.message });
+        }
+      }
+      
+      /**
+       * 녹화 데이터 처리
+       * @param {BlobEvent} e - Blob 이벤트
+       */
+      function handleDataAvailable(e) {
+        if (e.data.size > 0) {
+          recordedChunks.push(e.data);
+        }
+      }
+      
+      /**
+       * 녹화 중지 처리
+       */
+      async function handleStop() {
+        console.log('녹화 중지됨');
+        document.getElementById('status').style.display = 'none';
+        
+        // 청크 데이터를 블롭으로 변환
+        const blob = new Blob(recordedChunks, {
+          type: 'video/webm'
+        });
+        
+        // 녹화 파일 저장
+        await saveRecording(blob);
+      }
+      
+      /**
+       * 녹화 파일 저장
+       * @param {Blob} blob - 녹화 데이터
+       */
+      async function saveRecording(blob) {
+        const buffer = Buffer.from(await blob.arrayBuffer());
+        
+        // 파일로 저장
+        fs.writeFile(outputPath, buffer, (err) => {
+          if (err) {
+            console.error('녹화 파일 저장 오류:', err);
+            ipcRenderer.send('RECORDING_ERROR', { error: err.message });
+            return;
+          }
+          
+          // 파일 크기 확인
+          fs.stat(outputPath, (err, stats) => {
+            if (err) {
+              console.error('파일 정보 가져오기 오류:', err);
+              ipcRenderer.send('RECORDING_COMPLETE', { 
+                outputPath,
+                fileSize: buffer.length,
+                duration: Date.now() - startTime
+              });
+              return;
+            }
+            
+            // 녹화 완료 메시지 전송
+            ipcRenderer.send('RECORDING_COMPLETE', {
+              outputPath,
+              fileSize: stats.size,
+              duration: Date.now() - startTime
+            });
+            
+            console.log('녹화 파일 저장 완료:', outputPath);
+            console.log('파일 크기:', (stats.size / 1024 / 1024).toFixed(2), 'MB');
+          });
+        });
+      }
     `;
   }
 }

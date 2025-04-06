@@ -230,24 +230,72 @@ class TimelapseGenerator {
     let filterChain;
     let framerate = "30"; // 기본 출력 프레임 레이트
 
-    // 원본 비디오 해상도 (옵션에서 제공되지 않으면 기본값 사용)
-    const videoWidth = options.videoWidth || 1920;
-    const videoHeight = options.videoHeight || 1080;
+    // 원본 비디오 해상도 (options에서 가져오기)
+    let videoWidth, videoHeight;
+
+    // 1. 옵션에서 직접 제공된 실제 해상도 사용
+    if (options.videoWidth && options.videoHeight) {
+      videoWidth = options.videoWidth;
+      videoHeight = options.videoHeight;
+      console.log(
+        `옵션에서 제공된 비디오 해상도: ${videoWidth}x${videoHeight}`
+      );
+    }
+    // 2. FFprobe를 시도해 볼 수 있는 경우에만 시도
+    else {
+      try {
+        // FFprobe 모듈 존재 여부 확인
+        const ffprobeStatic = require("ffprobe-static");
+        const ffprobePath = ffprobeStatic.path;
+
+        // 동기식으로 비디오 해상도 가져오기
+        const { execSync } = require("child_process");
+        const cmd = `"${ffprobePath}" -v error -select_streams v:0 -show_entries stream=width,height -of csv=s=x:p=0 "${inputPath}"`;
+        const result = execSync(cmd).toString().trim();
+
+        if (result && result.includes("x")) {
+          const [width, height] = result.split("x").map(Number);
+          videoWidth = width;
+          videoHeight = height;
+          console.log(
+            `FFprobe로 확인된 실제 비디오 해상도: ${videoWidth}x${videoHeight}`
+          );
+        } else {
+          // 기본값 사용
+          videoWidth = 1920;
+          videoHeight = 1080;
+          console.log(
+            `FFprobe 결과가 없어 기본 해상도 사용: ${videoWidth}x${videoHeight}`
+          );
+        }
+      } catch (e) {
+        // FFprobe 오류 시 기본값 사용
+        console.error("비디오 해상도 확인 중 오류:", e.message);
+        videoWidth = options.videoWidth || 1920;
+        videoHeight = options.videoHeight || 1080;
+        console.log(
+          `오류로 인해 기본 해상도 사용: ${videoWidth}x${videoHeight}`
+        );
+      }
+    }
 
     // 썸네일 해상도 (옵션에서 제공되지 않으면 기본값 사용)
     const thumbnailWidth = options.thumbnailWidth || 320;
     const thumbnailHeight = options.thumbnailHeight || 240;
 
-    // 스케일링 비율 계산
+    console.log(`============ 해상도 정보 ============`);
+    console.log(`원본 비디오 해상도: ${videoWidth}x${videoHeight}`);
+    console.log(`썸네일 해상도: ${thumbnailWidth}x${thumbnailHeight}`);
+
+    // 스케일링 비율 계산 - 더 정확하게 계산
+    // 썸네일에서 실제 비디오 해상도로 변환하는 비율
     const scaleX = videoWidth / thumbnailWidth;
     const scaleY = videoHeight / thumbnailHeight;
 
     console.log(
-      `비디오 해상도: ${videoWidth}x${videoHeight}, 썸네일: ${thumbnailWidth}x${thumbnailHeight}`
-    );
-    console.log(
       `스케일링 비율: X=${scaleX.toFixed(2)}, Y=${scaleY.toFixed(2)}`
     );
+    console.log(`======================================`);
 
     // 기본 속도 필터 생성
     let speedFilter;
@@ -270,27 +318,52 @@ class TimelapseGenerator {
     // 블러 영역이 있는 경우 처리
     if (blurRegions && blurRegions.length > 0) {
       console.log(`블러 영역: ${blurRegions.length}개 적용`);
+      console.log(`블러 영역 원본 좌표:`, JSON.stringify(blurRegions[0]));
 
       // 단순화된 필터 체인 접근법 사용
       if (blurRegions.length === 1) {
         // 단일 블러 영역에 대한 간단한 처리 방식
         const region = blurRegions[0];
 
-        // 썸네일에서 원본 비디오 해상도로 좌표 변환
-        const x = Math.round(region.x * scaleX);
-        const y = Math.round(region.y * scaleY);
-        const width = Math.round(region.width * scaleX);
-        const height = Math.round(region.height * scaleY);
+        // 경계 확인 - 영역이 음수 값이거나 너무 작은 경우 보정
+        const safeRegion = {
+          x: Math.max(0, region.x),
+          y: Math.max(0, region.y),
+          width: Math.max(10, region.width),
+          height: Math.max(10, region.height),
+        };
 
-        // 블러 영역이 유효한지 확인
-        if (
+        // 썸네일에서 원본 비디오 해상도로 좌표 변환
+        const x = Math.round(safeRegion.x * scaleX);
+        const y = Math.round(safeRegion.y * scaleY);
+        const width = Math.round(safeRegion.width * scaleX);
+        const height = Math.round(safeRegion.height * scaleY);
+
+        console.log(
+          `원본 블러 좌표(썸네일): x=${safeRegion.x}, y=${safeRegion.y}, width=${safeRegion.width}, height=${safeRegion.height}`
+        );
+        console.log(
+          `변환된 블러 좌표(비디오): x=${x}, y=${y}, width=${width}, height=${height}`
+        );
+
+        // 변환된 좌표가 비디오 안에 있는지 확인
+        const isWithinVideo =
           x >= 0 &&
           y >= 0 &&
           width > 0 &&
           height > 0 &&
           x + width <= videoWidth &&
-          y + height <= videoHeight
-        ) {
+          y + height <= videoHeight;
+
+        console.log(`비디오 크기 내에 있는지: ${isWithinVideo}`);
+        console.log(
+          `x+width=${x + width}<=${videoWidth}, y+height=${
+            y + height
+          }<=${videoHeight}`
+        );
+
+        // 블러 영역이 유효한지 확인
+        if (isWithinVideo) {
           // 단일 필터 체인 구성 (더 단순한 구문으로 변경)
           filterChain = [
             speedFilter,
@@ -318,6 +391,15 @@ class TimelapseGenerator {
         const y = Math.round(region.y * scaleY);
         const width = Math.round(region.width * scaleX);
         const height = Math.round(region.height * scaleY);
+
+        console.log(
+          `변환된 블러 좌표(다중): x=${x}, y=${y}, width=${width}, height=${height}`
+        );
+        console.log(
+          `비디오 크기 내에 있는지: x+width=${
+            x + width
+          }<=${videoWidth}, y+height=${y + height}<=${videoHeight}`
+        );
 
         // 블러 영역이 유효한지 확인
         if (
