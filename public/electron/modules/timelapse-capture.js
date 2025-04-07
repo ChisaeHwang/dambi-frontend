@@ -2,63 +2,62 @@ const captureModule = require("./capture");
 
 /**
  * 타임랩스 캡처 래퍼 클래스
- *
- * 이 클래스는 하위호환성을 위해 유지되며,
- * 내부적으로는 리팩토링된 capture 모듈을 사용합니다.
- * 새로운 기능을 추가할 때는 capture 모듈을 직접 사용하는 것을 권장합니다.
+ * 캡처 모듈의 기능들을 통합하고 고수준의 인터페이스를 제공합니다.
  */
-
 class TimelapseCapture {
   constructor() {
     // 내부적으로 captureManager 사용
     this.captureManager = captureModule.captureManager;
+    this._setupStateProxy();
+    this._initializeConfig();
+  }
 
-    // captureManager의 상태를 this에 프록시
-    Object.defineProperty(this, "isCapturing", {
-      get: () => this.captureManager.isCapturing,
+  /**
+   * 상태 프록시 설정
+   * 캡처 매니저의 상태를 직접 접근 가능하도록 합니다.
+   * @private
+   */
+  _setupStateProxy() {
+    const proxyProperties = [
+      "isCapturing",
+      "captureDir",
+      "startTime",
+      "endTime",
+      "videoPath",
+      "recordingDuration",
+      "currentSource",
+    ];
+
+    proxyProperties.forEach((prop) => {
+      Object.defineProperty(this, prop, {
+        get: () => this.captureManager[prop],
+      });
     });
+  }
 
-    Object.defineProperty(this, "captureDir", {
-      get: () => this.captureManager.captureDir,
-    });
-
-    Object.defineProperty(this, "startTime", {
-      get: () => this.captureManager.startTime,
-    });
-
-    Object.defineProperty(this, "endTime", {
-      get: () => this.captureManager.endTime,
-    });
-
-    Object.defineProperty(this, "videoPath", {
-      get: () => this.captureManager.videoPath,
-    });
-
-    Object.defineProperty(this, "recordingDuration", {
-      get: () => this.captureManager.recordingDuration,
-    });
-
-    Object.defineProperty(this, "currentSource", {
-      get: () => this.captureManager.currentSource,
-    });
-
+  /**
+   * 기본 설정 초기화
+   * 캡처 및 타임랩스 생성을 위한 기본 설정을 정의합니다.
+   * @private
+   */
+  _initializeConfig() {
     this.captureConfig = {
-      fps: 15, // 캡처 프레임 속도 향상 (더 부드러운 결과물)
-      videoBitrate: 3000, // 비디오 비트레이트 (품질 향상)
+      fps: 15, // 캡처 프레임 속도 (부드러운 결과물)
+      videoBitrate: 3000, // 비디오 비트레이트 (품질)
       videoSize: {
-        // 캡처 해상도
-        width: 1280,
-        height: 720,
+        width: 1280, // 캡처 해상도 너비
+        height: 720, // 캡처 해상도 높이
       },
     };
 
-    // 상태 관리를 위한 변수들
     this.recordingInterval = null;
     this.statusUpdateInterval = null;
   }
 
   /**
    * 활성 창 목록 가져오기
+   * 현재 캡처 가능한 모든 윈도우 목록을 반환합니다.
+   * @returns {Promise<Array>} 활성 창 목록
    */
   async getActiveWindows() {
     return await this.captureManager.getActiveWindows();
@@ -66,6 +65,8 @@ class TimelapseCapture {
 
   /**
    * 녹화 상태 정보 반환
+   * 현재 녹화 상태에 대한 상세 정보를 제공합니다.
+   * @returns {Object} 녹화 상태 정보
    */
   getRecordingStatus() {
     return this.captureManager.getRecordingStatus();
@@ -73,6 +74,10 @@ class TimelapseCapture {
 
   /**
    * 캡처 시작
+   * 지정된 윈도우의 캡처를 시작합니다.
+   * @param {string} windowId - 캡처할 윈도우 ID
+   * @param {string} windowName - 캡처할 윈도우 이름
+   * @returns {Promise<Object>} 캡처 시작 결과
    */
   async startCapture(windowId, windowName) {
     return await this.captureManager.startCapture(windowId, windowName);
@@ -80,13 +85,16 @@ class TimelapseCapture {
 
   /**
    * 캡처 중지
+   * 현재 진행 중인 캡처를 중지합니다.
+   * @returns {Promise<Object>} 캡처 중지 결과
    */
-  stopCapture() {
-    return this.captureManager.stopCapture();
+  async stopCapture() {
+    return await this.captureManager.stopCapture();
   }
 
   /**
    * 상태 업데이트 이벤트 발송
+   * 캡처 상태 변경을 알립니다.
    */
   emitStatusUpdate() {
     this.captureManager.emitStatusUpdate();
@@ -94,10 +102,14 @@ class TimelapseCapture {
 
   /**
    * 타임랩스 생성
+   * 캡처된 영상을 타임랩스로 변환합니다.
+   * @param {Object} options - 타임랩스 생성 옵션
+   * @returns {Promise<string>} 생성된 타임랩스 파일 경로
    */
   async generateTimelapse(options) {
     return await this.captureManager.generateTimelapse(options);
   }
 }
 
+// 싱글톤 인스턴스 생성 및 내보내기
 module.exports = new TimelapseCapture();

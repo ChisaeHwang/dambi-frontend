@@ -3,6 +3,17 @@ const windowManager = require("./window-manager");
 const captureModule = require("./capture");
 
 /**
+ * 표준 응답 생성 헬퍼 함수
+ * @param {boolean} success - 성공 여부
+ * @param {any} data - 응답 데이터
+ * @param {string} error - 오류 메시지
+ * @returns {Object} 표준화된 응답
+ */
+function createResponse(success, data = null, error = null) {
+  return { success, data, error };
+}
+
+/**
  * IPC 이벤트 처리를 담당하는 클래스
  */
 class IpcHandler {
@@ -21,22 +32,46 @@ class IpcHandler {
   _registerWindowControlHandlers() {
     // 윈도우 최소화
     ipcMain.handle("minimize-window", () => {
-      return windowManager.minimize();
+      try {
+        const result = windowManager.minimize();
+        return createResponse(true, result);
+      } catch (error) {
+        console.error("[IPC] 윈도우 최소화 오류:", error);
+        return createResponse(false, null, error.message);
+      }
     });
 
     // 윈도우 최대화 토글
     ipcMain.handle("maximize-window", () => {
-      return windowManager.toggleMaximize();
+      try {
+        const result = windowManager.toggleMaximize();
+        return createResponse(true, result);
+      } catch (error) {
+        console.error("[IPC] 윈도우 최대화 토글 오류:", error);
+        return createResponse(false, null, error.message);
+      }
     });
 
     // 윈도우 닫기
     ipcMain.handle("close-window", () => {
-      return windowManager.close();
+      try {
+        const result = windowManager.close();
+        return createResponse(true, result);
+      } catch (error) {
+        console.error("[IPC] 윈도우 닫기 오류:", error);
+        return createResponse(false, null, error.message);
+      }
     });
 
     // 윈도우 최대화 상태 확인
     ipcMain.handle("is-maximized", () => {
-      return windowManager.isMaximized();
+      try {
+        const result = windowManager.isMaximized();
+        return createResponse(true, result);
+      } catch (error) {
+        console.error("[IPC] 윈도우 상태 확인 오류:", error);
+        return createResponse(false, null, error.message);
+      }
     });
   }
 
@@ -48,12 +83,26 @@ class IpcHandler {
 
     // 활성 창 목록 가져오기
     ipcMain.handle("get-active-windows", async () => {
-      return await captureManager.getActiveWindows();
+      try {
+        console.log(`[IPC] 활성 창 목록 요청 받음`);
+        const windows = await captureManager.getActiveWindows();
+        console.log(`[IPC] 활성 창 목록 반환: ${windows.length}개 항목`);
+        return createResponse(true, windows);
+      } catch (error) {
+        console.error("[IPC] 활성 창 목록 가져오기 오류:", error);
+        return createResponse(false, null, error.message);
+      }
     });
 
     // 녹화 상태 확인
     ipcMain.handle("get-recording-status", () => {
-      return captureManager.getRecordingStatus();
+      try {
+        const status = captureManager.getRecordingStatus();
+        return createResponse(true, status);
+      } catch (error) {
+        console.error("[IPC] 녹화 상태 확인 오류:", error);
+        return createResponse(false, null, error.message);
+      }
     });
 
     // 캡처 시작
@@ -62,10 +111,10 @@ class IpcHandler {
         console.log(`[IPC] 캡처 시작 요청 받음: ${windowId}, ${windowName}`);
         const result = await captureManager.startCapture(windowId, windowName);
         console.log(`[IPC] 캡처 시작 결과:`, result);
-        return result;
+        return createResponse(true, result);
       } catch (error) {
         console.error("[IPC] 캡처 시작 오류:", error);
-        return { success: false, error: error.message };
+        return createResponse(false, null, error.message);
       }
     });
 
@@ -73,12 +122,12 @@ class IpcHandler {
     ipcMain.handle("stop-capture", async () => {
       try {
         console.log(`[IPC] 캡처 중지 요청 받음`);
-        const result = captureManager.stopCapture();
+        const result = await captureManager.stopCapture();
         console.log(`[IPC] 캡처 중지 결과:`, result);
-        return result;
+        return createResponse(true, result);
       } catch (error) {
         console.error("[IPC] 캡처 중지 오류:", error);
-        return { success: false, error: error.message };
+        return createResponse(false, null, error.message);
       }
     });
 
@@ -88,10 +137,10 @@ class IpcHandler {
         console.log("타임랩스 생성 요청 받음:", options);
         const result = await captureManager.generateTimelapse(options);
         console.log("타임랩스 생성 완료:", result);
-        return result;
+        return createResponse(true, result);
       } catch (error) {
         console.error("타임랩스 생성 오류:", error);
-        throw error;
+        return createResponse(false, null, error.message);
       }
     });
 
@@ -99,19 +148,20 @@ class IpcHandler {
     ipcMain.handle("update-timelapse-options", async (event, options) => {
       try {
         console.log("타임랩스 옵션 업데이트 요청 받음:", options);
-        // 옵션 업데이트 처리 (필요시 captureManager에 해당 기능 추가)
-        if (options && typeof options === "object") {
-          // 여기서 captureManager 또는 다른 모듈에 옵션을 전달
-          // 실제 기능은 이후 구현이 필요할 수 있음
-          if (captureManager.updateTimelapseOptions) {
-            await captureManager.updateTimelapseOptions(options);
-          }
-          return { success: true };
+
+        if (!options || typeof options !== "object") {
+          throw new Error("잘못된 옵션 형식");
         }
-        return { success: false, error: "잘못된 옵션 형식" };
+
+        if (captureManager.updateTimelapseOptions) {
+          const result = await captureManager.updateTimelapseOptions(options);
+          return createResponse(true, result || options);
+        }
+
+        throw new Error("타임랩스 옵션 업데이트 기능이 구현되지 않았습니다");
       } catch (error) {
         console.error("타임랩스 옵션 업데이트 오류:", error);
-        return { success: false, error: error.message };
+        return createResponse(false, null, error.message);
       }
     });
   }
@@ -134,10 +184,10 @@ class IpcHandler {
           }
         );
 
-        return result;
+        return createResponse(true, result);
       } catch (error) {
         console.error("폴더 선택 다이얼로그 오류:", error);
-        throw error;
+        return createResponse(false, null, error.message);
       }
     });
   }

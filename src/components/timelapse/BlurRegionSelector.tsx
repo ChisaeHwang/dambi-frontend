@@ -29,15 +29,31 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
   const [isCreating, setIsCreating] = useState(false);
   const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null);
   const [startPoint, setStartPoint] = useState({ x: 0, y: 0 });
+  const [isReady, setIsReady] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
-  // 컨테이너 크기 업데이트
+  // 컴포넌트 크기 업데이트 및 초기화
   useEffect(() => {
     // containerRef에 접근하지만 상태를 설정할 필요가 없습니다.
     // 모든 계산은 실시간으로 수행됩니다.
-  }, []);
+
+    // 0,0 시작점 초기화 방지: 컴포넌트 마운트 시 시작점을 화면 중앙으로 설정
+    if (thumbnailWidth > 0 && thumbnailHeight > 0) {
+      setStartPoint({
+        x: Math.floor(thumbnailWidth / 2),
+        y: Math.floor(thumbnailHeight / 2),
+      });
+
+      // 약간의 지연 후 렌더링 준비 완료 상태로 설정
+      const timer = setTimeout(() => {
+        setIsReady(true);
+      }, 50);
+
+      return () => clearTimeout(timer);
+    }
+  }, [thumbnailWidth, thumbnailHeight]);
 
   // 좌표 변환 함수 (화면 좌표 → 원본 좌표)
   const convertToOriginalCoordinates = (x: number, y: number) => {
@@ -75,13 +91,17 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
     } else {
       // 새 영역 생성 시작
       setIsCreating(true);
-      setStartPoint({ x, y });
+
+      // 시작점 좌표를 클릭한 지점으로 정확히 설정
+      const validX = Math.max(0, Math.min(x, thumbnailWidth));
+      const validY = Math.max(0, Math.min(y, thumbnailHeight));
+      setStartPoint({ x: validX, y: validY });
 
       // 새 영역 ID 생성
       const newRegion: BlurRegion = {
         id: `region-${Date.now()}`,
-        x,
-        y,
+        x: validX,
+        y: validY,
         width: 0,
         height: 0,
       };
@@ -216,41 +236,42 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
           }}
         />
 
-        {/* 블러 영역 렌더링 */}
-        {regions.map((region) => {
-          const { left, top, width, height } =
-            convertToDisplayCoordinates(region);
-          return (
-            <div
-              key={region.id}
-              className={`absolute border-2 bg-[rgba(255,0,0,0.2)] ${
-                region.id === selectedRegionId
-                  ? "border-blue-500"
-                  : "border-red-500"
-              }`}
-              style={{
-                left,
-                top,
-                width,
-                height,
-              }}
-            >
-              {isEditable && (
-                <button
-                  type="button"
-                  className="absolute -top-4 -right-4 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center text-xl shadow-md hover:bg-red-600 z-50"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    handleDeleteRegion(region.id);
-                  }}
-                >
-                  ×
-                </button>
-              )}
-            </div>
-          );
-        })}
+        {/* 블러 영역 렌더링 - 컴포넌트가 준비된 후에만 렌더링 */}
+        {isReady &&
+          regions.map((region) => {
+            const { left, top, width, height } =
+              convertToDisplayCoordinates(region);
+            return (
+              <div
+                key={region.id}
+                className={`absolute border-2 bg-[rgba(255,0,0,0.2)] ${
+                  region.id === selectedRegionId
+                    ? "border-blue-500"
+                    : "border-red-500"
+                }`}
+                style={{
+                  left,
+                  top,
+                  width,
+                  height,
+                }}
+              >
+                {isEditable && (
+                  <button
+                    type="button"
+                    className="absolute -top-4 -right-4 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center text-xl shadow-md hover:bg-red-600 z-50"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      handleDeleteRegion(region.id);
+                    }}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            );
+          })}
       </div>
 
       {isEditable && (
