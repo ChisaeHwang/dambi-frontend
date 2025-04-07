@@ -238,6 +238,16 @@ class RecorderService {
     try {
       console.log(`[RecorderService] 렌더러 프로세스 녹화 시작`);
 
+      // 입력 매개변수 유효성 검사
+      if (!source || !outputPath || !captureDir) {
+        console.error("[RecorderService] 녹화 매개변수 오류:", {
+          source: !!source,
+          outputPath,
+          captureDir,
+        });
+        throw new Error("녹화에 필요한 매개변수가 유효하지 않습니다.");
+      }
+
       // 1. 이미 생성된 창이 있으면 먼저 확실하게 닫기
       // (더 안정적인 정리 작업을 위해 기존 코드 강화)
       if (this.recorderWindow) {
@@ -348,7 +358,8 @@ class RecorderService {
           : null,
       };
 
-      storageManager.updateMetadata(metadataPath, metaDataUpdates);
+      // 비동기 메타데이터 업데이트
+      await storageManager.updateMetadata(metadataPath, metaDataUpdates);
 
       // 6. 로컬 HTML 파일 생성
       const recorderHtmlPath = path.join(captureDir, "recorder.html");
@@ -364,7 +375,9 @@ class RecorderService {
       };
 
       const recorderHtml = RecorderTemplate.generate(recorderOptions);
-      storageManager.createHtmlFile(recorderHtmlPath, recorderHtml);
+
+      // 비동기 HTML 파일 생성
+      await storageManager.createHtmlFile(recorderHtmlPath, recorderHtml);
 
       console.log(`[RecorderService] 녹화용 HTML 생성: ${recorderHtmlPath}`);
 

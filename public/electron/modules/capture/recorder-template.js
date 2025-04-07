@@ -4,51 +4,131 @@
  */
 
 /**
- * 녹화 HTML 템플릿 생성기
+ * 템플릿 생성 오류 클래스
  */
-class RecorderTemplate {
+class TemplateError extends Error {
+  constructor(message, section, config = null) {
+    super(message);
+    this.name = "TemplateError";
+    this.section = section;
+    this.config = config;
+  }
+}
+
+/**
+ * 설정 검증기
+ */
+class ConfigValidator {
   /**
-   * 녹화 HTML 템플릿 생성
-   * @param {Object} config - 녹화 설정
-   * @returns {string} 생성된 HTML 템플릿
+   * 녹화 설정 유효성 검사
+   * @param {Object} config - 검사할 녹화 설정
+   * @throws {TemplateError} 유효하지 않은 설정인 경우
    */
-  static generate(config) {
-    // 캡처 설정에서 필요한 값 가져오기
-    const { videoSize, fps, videoBitrate } = config;
+  static validate(config) {
+    if (!config) {
+      throw new TemplateError("설정이 제공되지 않았습니다.", "config", config);
+    }
 
-    // 실제 해상도 로깅
-    console.log(
-      `[RecorderTemplate] HTML 생성 - 설정된 해상도: ${videoSize.width}x${videoSize.height}`
-    );
+    // videoSize 필수 검사
+    if (!config.videoSize) {
+      throw new TemplateError(
+        "비디오 크기가 지정되지 않았습니다.",
+        "videoSize",
+        config
+      );
+    }
 
+    // 너비와 높이 값 검사
+    if (
+      !config.videoSize.width ||
+      !config.videoSize.height ||
+      config.videoSize.width <= 0 ||
+      config.videoSize.height <= 0
+    ) {
+      throw new TemplateError(
+        "비디오 해상도가 유효하지 않습니다.",
+        "videoSize",
+        config.videoSize
+      );
+    }
+
+    // fps 값 범위 검사 (지정되지 않았으면 기본값 사용)
+    if (config.fps !== undefined && (config.fps <= 0 || config.fps > 60)) {
+      throw new TemplateError(
+        "FPS 값이 유효하지 않습니다. 1-60 사이의 값을 사용하세요.",
+        "fps",
+        config.fps
+      );
+    }
+
+    // 비트레이트 값 범위 검사 (지정되지 않았으면 기본값 사용)
+    if (config.videoBitrate !== undefined && config.videoBitrate <= 0) {
+      throw new TemplateError(
+        "비디오 비트레이트가 유효하지 않습니다.",
+        "videoBitrate",
+        config.videoBitrate
+      );
+    }
+
+    return true;
+  }
+}
+
+/**
+ * HTML 템플릿 생성기
+ */
+class HtmlGenerator {
+  /**
+   * HTML 문서 생성
+   * @param {string} styles - CSS 스타일 문자열
+   * @param {string} script - JavaScript 코드 문자열
+   * @returns {string} 완성된 HTML 문서
+   */
+  static generateDocument(styles, script) {
     return `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="UTF-8">
       <title>Screen Recorder</title>
-      ${this._generateStyles()}
+      ${styles}
     </head>
     <body>
       <video id="preview" width="800" height="600" autoplay muted></video>
       <div id="status">녹화 중...</div>
       <script>
-        ${this._generateScript(config)}
+        ${script}
       </script>
     </body>
     </html>
     `;
   }
+}
 
+/**
+ * CSS 스타일 생성기
+ */
+class StyleGenerator {
   /**
-   * 스타일 코드 생성
-   * @returns {string} 스타일 코드
+   * CSS 스타일 생성
+   * @param {Object} config - 녹화 설정 (현재 사용하지 않지만 확장성을 위해 유지)
+   * @returns {string} 스타일 태그로 감싼 CSS 코드
    */
-  static _generateStyles() {
+  static generate(config = {}) {
     return `
       <style>
-        body { margin: 0; overflow: hidden; background: #000; }
-        video { width: 100%; height: 100%; object-fit: contain; }
+        body { 
+          margin: 0; 
+          overflow: hidden; 
+          background: #000; 
+        }
+        
+        video { 
+          width: 100%; 
+          height: 100%; 
+          object-fit: contain; 
+        }
+        
         #status { 
           position: fixed; 
           bottom: 10px; 
@@ -63,25 +143,30 @@ class RecorderTemplate {
       </style>
     `;
   }
+}
 
+/**
+ * JavaScript 코드 생성기
+ */
+class ScriptGenerator {
   /**
-   * 스크립트 코드 생성
+   * 녹화 스크립트 생성
    * @param {Object} config - 녹화 설정
-   * @returns {string} 스크립트 코드
+   * @returns {string} JavaScript 코드
    */
-  static _generateScript(config) {
-    const { videoSize, fps, videoBitrate } = config;
+  static generate(config) {
+    const { videoSize, fps = 30, videoBitrate = 6000 } = config;
 
     // 캡처 설정 로깅
     console.log(
-      `[RecorderTemplate] 스크립트 생성 - 해상도: ${videoSize.width}x${videoSize.height}, FPS: ${fps}, 비트레이트: ${videoBitrate}`
+      `[ScriptGenerator] 스크립트 생성 - 해상도: ${videoSize.width}x${videoSize.height}, FPS: ${fps}, 비트레이트: ${videoBitrate}`
     );
 
     return `
       // 녹화 설정
       const config = {
-        fps: ${fps || 30},
-        videoBitrate: ${videoBitrate || 6000},
+        fps: ${fps},
+        videoBitrate: ${videoBitrate},
         width: ${videoSize.width},
         height: ${videoSize.height}
       };
@@ -92,13 +177,32 @@ class RecorderTemplate {
       const fs = require('fs');
       const path = require('path');
       
+      // 전역 상태 변수
       let mediaRecorder;
       let recordedChunks = [];
       let startTime;
       let outputPath;
       
-      // 녹화 시작 이벤트 리스너
-      ipcRenderer.on('START_RECORDING', async (event, data) => {
+      // 이벤트 리스너 등록
+      setupEventListeners();
+      
+      /**
+       * 이벤트 리스너 설정
+       */
+      function setupEventListeners() {
+        // 녹화 시작 이벤트 리스너
+        ipcRenderer.on('START_RECORDING', handleStartRecording);
+        
+        // 녹화 중지 이벤트 리스너
+        ipcRenderer.on('STOP_RECORDING', handleStopRecording);
+      }
+      
+      /**
+       * 녹화 시작 요청 처리
+       * @param {Event} event - 이벤트 객체
+       * @param {Object} data - 녹화 데이터
+       */
+      async function handleStartRecording(event, data) {
         try {
           const { sourceId, outputPath: outputFilePath } = data;
           outputPath = outputFilePath;
@@ -112,15 +216,17 @@ class RecorderTemplate {
           console.error('녹화 시작 오류:', error);
           ipcRenderer.send('RECORDING_ERROR', { error: error.message });
         }
-      });
+      }
       
-      // 녹화 중지 이벤트 리스너
-      ipcRenderer.on('STOP_RECORDING', () => {
+      /**
+       * 녹화 중지 요청 처리
+       */
+      function handleStopRecording() {
         console.log('녹화 중지 요청 받음');
         if (mediaRecorder && mediaRecorder.state !== 'inactive') {
           mediaRecorder.stop();
         }
-      });
+      }
       
       /**
        * 녹화 시작
@@ -129,47 +235,13 @@ class RecorderTemplate {
       async function startRecording(sourceId) {
         try {
           // 스트림 가져오기
-          const stream = await navigator.mediaDevices.getUserMedia({
-            audio: false,
-            video: {
-              // 데스크톱 캡처 제약 조건
-              mandatory: {
-                chromeMediaSource: 'desktop',
-                chromeMediaSourceId: sourceId,
-                minWidth: config.width,
-                maxWidth: config.width,
-                minHeight: config.height,
-                maxHeight: config.height,
-                frameRate: config.fps
-              }
-            }
-          });
+          const stream = await getMediaStream(sourceId);
           
           // 비디오 미리보기 설정
-          const videoElement = document.getElementById('preview');
-          videoElement.srcObject = stream;
-          videoElement.onloadedmetadata = (e) => {
-            videoElement.play();
-            console.log('실제 비디오 크기:', videoElement.videoWidth, 'x', videoElement.videoHeight);
-          };
+          setupVideoPreview(stream);
           
-          // 녹화 설정
-          const options = {
-            mimeType: 'video/webm; codecs=vp9',
-            videoBitsPerSecond: config.videoBitrate * 1000
-          };
-          
-          // 미디어 레코더 초기화
-          mediaRecorder = new MediaRecorder(stream, options);
-          recordedChunks = [];
-          
-          // 미디어 레코더 이벤트 핸들러
-          mediaRecorder.ondataavailable = handleDataAvailable;
-          mediaRecorder.onstop = handleStop;
-          
-          // 녹화 시작
-          mediaRecorder.start(1000); // 1초마다 데이터 청크 생성
-          startTime = Date.now();
+          // 미디어 레코더 초기화 및 시작
+          initializeRecorder(stream);
           
           // 녹화 시작 상태 표시
           document.getElementById('status').style.display = 'block';
@@ -181,6 +253,65 @@ class RecorderTemplate {
           console.error('스트림 가져오기 오류:', error);
           ipcRenderer.send('RECORDING_ERROR', { error: error.message });
         }
+      }
+      
+      /**
+       * 미디어 스트림 가져오기
+       * @param {string} sourceId - 캡처할 소스 ID
+       * @returns {Promise<MediaStream>} 미디어 스트림
+       */
+      async function getMediaStream(sourceId) {
+        return await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            mandatory: {
+              chromeMediaSource: 'desktop',
+              chromeMediaSourceId: sourceId,
+              minWidth: config.width,
+              maxWidth: config.width,
+              minHeight: config.height,
+              maxHeight: config.height,
+              frameRate: config.fps
+            }
+          }
+        });
+      }
+      
+      /**
+       * 비디오 미리보기 설정
+       * @param {MediaStream} stream - 미디어 스트림
+       */
+      function setupVideoPreview(stream) {
+        const videoElement = document.getElementById('preview');
+        videoElement.srcObject = stream;
+        videoElement.onloadedmetadata = (e) => {
+          videoElement.play();
+          console.log('실제 비디오 크기:', videoElement.videoWidth, 'x', videoElement.videoHeight);
+        };
+      }
+      
+      /**
+       * 미디어 레코더 초기화 및 시작
+       * @param {MediaStream} stream - 미디어 스트림
+       */
+      function initializeRecorder(stream) {
+        // 녹화 설정
+        const options = {
+          mimeType: 'video/webm; codecs=vp9',
+          videoBitsPerSecond: config.videoBitrate * 1000
+        };
+        
+        // 미디어 레코더 초기화
+        mediaRecorder = new MediaRecorder(stream, options);
+        recordedChunks = [];
+        
+        // 미디어 레코더 이벤트 핸들러
+        mediaRecorder.ondataavailable = handleDataAvailable;
+        mediaRecorder.onstop = handleStop;
+        
+        // 녹화 시작
+        mediaRecorder.start(1000); // 1초마다 데이터 청크 생성
+        startTime = Date.now();
       }
       
       /**
@@ -200,7 +331,22 @@ class RecorderTemplate {
         console.log('녹화 중지됨');
         document.getElementById('status').style.display = 'none';
         
-        // 스트림 트랙을 중지하여 리소스 확실히 해제
+        // 스트림 리소스 해제
+        releaseStreamResources();
+        
+        // 청크 데이터를 블롭으로 변환
+        const blob = new Blob(recordedChunks, {
+          type: 'video/webm'
+        });
+        
+        // 녹화 파일 저장
+        await saveRecording(blob);
+      }
+      
+      /**
+       * 스트림 리소스 해제
+       */
+      function releaseStreamResources() {
         try {
           const videoElement = document.getElementById('preview');
           if (videoElement && videoElement.srcObject) {
@@ -215,14 +361,6 @@ class RecorderTemplate {
         } catch (error) {
           console.error('스트림 리소스 해제 중 오류:', error);
         }
-        
-        // 청크 데이터를 블롭으로 변환
-        const blob = new Blob(recordedChunks, {
-          type: 'video/webm'
-        });
-        
-        // 녹화 파일 저장
-        await saveRecording(blob);
       }
       
       /**
@@ -230,41 +368,109 @@ class RecorderTemplate {
        * @param {Blob} blob - 녹화 데이터
        */
       async function saveRecording(blob) {
-        const buffer = Buffer.from(await blob.arrayBuffer());
-        
-        // 파일로 저장
-        fs.writeFile(outputPath, buffer, (err) => {
-          if (err) {
-            console.error('녹화 파일 저장 오류:', err);
-            ipcRenderer.send('RECORDING_ERROR', { error: err.message });
-            return;
-          }
+        try {
+          const buffer = Buffer.from(await blob.arrayBuffer());
           
-          // 파일 크기 확인
-          fs.stat(outputPath, (err, stats) => {
+          // 파일로 저장
+          fs.writeFile(outputPath, buffer, (err) => {
             if (err) {
-              console.error('파일 정보 가져오기 오류:', err);
-              ipcRenderer.send('RECORDING_COMPLETE', { 
-                outputPath,
-                fileSize: buffer.length,
-                duration: Date.now() - startTime
-              });
+              handleSaveError(err);
               return;
             }
             
-            // 녹화 완료 메시지 전송
-            ipcRenderer.send('RECORDING_COMPLETE', {
-              outputPath,
-              fileSize: stats.size,
-              duration: Date.now() - startTime
+            // 파일 크기 확인
+            fs.stat(outputPath, (err, stats) => {
+              const recordingData = {
+                outputPath,
+                fileSize: err ? buffer.length : stats.size,
+                duration: Date.now() - startTime
+              };
+              
+              if (err) {
+                console.error('파일 정보 가져오기 오류:', err);
+              }
+              
+              // 녹화 완료 메시지 전송
+              ipcRenderer.send('RECORDING_COMPLETE', recordingData);
+              
+              if (!err) {
+                console.log('녹화 파일 저장 완료:', outputPath);
+                console.log('파일 크기:', (stats.size / 1024 / 1024).toFixed(2), 'MB');
+              }
             });
-            
-            console.log('녹화 파일 저장 완료:', outputPath);
-            console.log('파일 크기:', (stats.size / 1024 / 1024).toFixed(2), 'MB');
           });
+        } catch (error) {
+          handleSaveError(error);
+        }
+      }
+      
+      /**
+       * 저장 오류 처리
+       * @param {Error} error - 발생한 오류
+       */
+      function handleSaveError(error) {
+        console.error('녹화 파일 저장 오류:', error);
+        ipcRenderer.send('RECORDING_ERROR', { 
+          error: error.message || '파일 저장 중 오류가 발생했습니다.'
         });
       }
     `;
+  }
+}
+
+/**
+ * 녹화 HTML 템플릿 생성기
+ */
+class RecorderTemplate {
+  /**
+   * 녹화 HTML 템플릿 생성
+   * @param {Object} config - 녹화 설정
+   * @returns {string} 생성된 HTML 템플릿
+   * @throws {TemplateError} 설정 유효성 검사 실패 시
+   */
+  static generate(config) {
+    try {
+      // 설정 유효성 검사
+      ConfigValidator.validate(config);
+
+      // 실제 해상도 로깅
+      console.log(
+        `[RecorderTemplate] HTML 생성 - 설정된 해상도: ${config.videoSize.width}x${config.videoSize.height}`
+      );
+
+      // 각 구성 요소 생성
+      const styles = StyleGenerator.generate(config);
+      const script = ScriptGenerator.generate(config);
+
+      // 최종 HTML 문서 생성
+      return HtmlGenerator.generateDocument(styles, script);
+    } catch (error) {
+      if (error instanceof TemplateError) {
+        console.error(`[RecorderTemplate] 템플릿 생성 오류: ${error.message}`);
+        throw error;
+      }
+      // 기타 오류 처리
+      console.error("[RecorderTemplate] 예기치 않은 오류:", error);
+      throw new TemplateError(
+        `템플릿 생성 중 오류가 발생했습니다: ${error.message}`,
+        "unknown",
+        config
+      );
+    }
+  }
+
+  /**
+   * 기본 HTML 템플릿 생성 (설정 없이)
+   * @returns {string} 생성된 기본 HTML 템플릿
+   */
+  static generateDefault() {
+    const defaultConfig = {
+      videoSize: { width: 1920, height: 1080 },
+      fps: 30,
+      videoBitrate: 6000,
+    };
+
+    return this.generate(defaultConfig);
   }
 }
 

@@ -77,8 +77,8 @@ class CaptureManager {
 
       console.log(`캡처 시작: ${windowId}, ${windowName}`);
 
-      // 1. 캡처 디렉토리 및 파일 경로 생성
-      const captureInfo = storageManager.createCaptureDirectory();
+      // 1. 캡처 디렉토리 및 파일 경로 생성 (비동기 처리)
+      const captureInfo = await storageManager.createCaptureDirectory();
       this.captureDir = captureInfo.captureDir;
       this.videoPath = captureInfo.videoPath;
       this.metadataPath = captureInfo.metadataPath;
@@ -97,7 +97,8 @@ class CaptureManager {
         windowName,
       };
 
-      storageManager.saveMetadata(this.metadataPath, metaData);
+      // 메타데이터 저장 (비동기 처리)
+      await storageManager.saveMetadata(this.metadataPath, metaData);
 
       // 3. 캡처할 소스 찾기
       this.currentSource = await recorderService.findCaptureSource(windowId);
@@ -120,6 +121,9 @@ class CaptureManager {
         this.captureDir
       );
 
+      // 상태 업데이트
+      this.isCapturing = true;
+
       return { success: true, captureDir: this.captureDir };
     } catch (error) {
       console.error("[CaptureManager] 캡처 시작 오류:", error);
@@ -130,9 +134,9 @@ class CaptureManager {
 
   /**
    * 캡처 중지
-   * @returns {Object} 캡처 중지 결과
+   * @returns {Promise<Object>} 캡처 중지 결과
    */
-  stopCapture() {
+  async stopCapture() {
     if (!this.isCapturing) {
       return { success: false, error: "녹화 중이 아닙니다." };
     }
@@ -156,7 +160,7 @@ class CaptureManager {
 
       // 메타데이터 업데이트
       this.endTime = Date.now();
-      this._updateMetadataAfterCapture();
+      await this._updateMetadataAfterCapture();
 
       // 타이머 정리
       this._clearTimers();
@@ -408,21 +412,32 @@ class CaptureManager {
 
   /**
    * 메타데이터 업데이트 (캡처 후)
+   * @private
    */
-  _updateMetadataAfterCapture() {
-    if (this.metadataPath) {
-      const updateData = {
+  async _updateMetadataAfterCapture() {
+    if (!this.metadataPath) return;
+
+    try {
+      // endTime과 recordingDuration 업데이트
+      const metaDataUpdates = {
         endTime: this.endTime,
-        duration: this.endTime - this.startTime,
+        recordingDuration: this.endTime - this.startTime,
       };
 
-      // 파일 크기 업데이트
-      const fileSize = storageManager.getVideoFileSize(this.videoPath);
-      if (fileSize > 0) {
-        updateData.fileSize = fileSize;
+      // 파일 크기 정보 추가 (비동기 버전 사용)
+      if (this.videoPath) {
+        const fileSize = await storageManager.getVideoFileSizeAsync(
+          this.videoPath
+        );
+        if (fileSize > 0) {
+          metaDataUpdates.fileSize = fileSize;
+        }
       }
 
-      storageManager.updateMetadata(this.metadataPath, updateData);
+      // 비동기 방식으로 메타데이터 업데이트
+      await storageManager.updateMetadata(this.metadataPath, metaDataUpdates);
+    } catch (error) {
+      console.error("[CaptureManager] 메타데이터 업데이트 오류:", error);
     }
   }
 
