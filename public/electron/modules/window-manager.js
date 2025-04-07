@@ -1,4 +1,4 @@
-const { BrowserWindow, ipcMain } = require("electron");
+const { BrowserWindow } = require("electron");
 const path = require("path");
 const isDev = require("electron-is-dev");
 const EventEmitter = require("events");
@@ -80,6 +80,8 @@ class WindowManager extends EventEmitter {
       backgroundColor: "#2f3136", // 디스코드와 유사한 배경색
       titleBarStyle: "hidden", // 타이틀바 숨김
       titleBarOverlay: false, // 타이틀바 오버레이 사용 안함
+      resizable: true, // 크기 조절 가능
+      thickFrame: true, // 윈도우에서 Aero Snap 지원
     };
 
     // 옵션 병합
@@ -315,7 +317,7 @@ class WindowManager extends EventEmitter {
    * 모든 윈도우 닫기
    */
   closeAll() {
-    for (const [id, { window }] of this.windows.entries()) {
+    for (const [{ window }] of this.windows.entries()) {
       if (window && !window.isDestroyed()) {
         window.close();
       }
@@ -363,7 +365,7 @@ class WindowManager extends EventEmitter {
   broadcastEvent(channel, data) {
     let successCount = 0;
 
-    for (const [id, { window }] of this.windows.entries()) {
+    for (const [{ window }] of this.windows.entries()) {
       if (window && !window.isDestroyed()) {
         window.webContents.send(channel, data);
         successCount++;
