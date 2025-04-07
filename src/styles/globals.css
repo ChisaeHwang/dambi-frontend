@@ -96,10 +96,6 @@
 }
 
 @layer components {
-  .app-title-bar {
-    @apply bg-[var(--bg-tertiary)] h-8 flex items-center justify-between px-4 select-none;
-  }
-
   .icon-button {
     @apply w-12 h-12 mb-2 flex items-center justify-center rounded-full bg-[var(--bg-secondary)] text-[var(--text-muted)] cursor-pointer relative transition-all duration-200 hover:bg-[var(--bg-accent)] hover:text-[var(--text-normal)] hover:rounded-2xl hover:-translate-y-0.5;
   }

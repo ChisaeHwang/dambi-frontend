@@ -76,7 +76,10 @@ class WindowManager extends EventEmitter {
         preload: path.join(__dirname, "../preload.js"),
       },
       frame: false, // 사용자 정의 프레임 사용
+      useContentSize: true, // 컨텐츠 크기 사용
       backgroundColor: "#2f3136", // 디스코드와 유사한 배경색
+      titleBarStyle: "hidden", // 타이틀바 숨김
+      titleBarOverlay: false, // 타이틀바 오버레이 사용 안함
     };
 
     // 옵션 병합
