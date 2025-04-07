@@ -1,31 +1,212 @@
+const { ipcMain } = require("electron");
+const path = require("path");
+const fs = require("fs");
+const EventEmitter = require("events");
 const windowManager = require("../window-manager");
 const storageManager = require("./storage-manager");
 const recorderService = require("./recorder-service");
 const timelapseGenerator = require("./timelapse-generator");
 
 /**
- * 타임랩스 캡처 전체 과정을 관리하는 클래스
+ * 캡처 상태 열거형
+ */
+const CaptureState = {
+  IDLE: "idle",
+  RECORDING: "recording",
+  PROCESSING: "processing",
+  ERROR: "error",
+};
+
+/**
+ * 캡처 이벤트 관리자
+ */
+class CaptureEventManager extends EventEmitter {
+  constructor() {
+    super();
+    this._setupIpcListeners();
+  }
+
+  _setupIpcListeners() {
+    ipcMain.on("CAPTURE_START", (event, data) => {
+      this.emit("start", data);
+    });
+
+    ipcMain.on("CAPTURE_STOP", (event, data) => {
+      this.emit("stop", data);
+    });
+
+    ipcMain.on("CAPTURE_ERROR", (event, error) => {
+      this.emit("error", error);
+    });
+  }
+
+  notifyCaptureStarted(data) {
+    this.emit("captureStarted", data);
+  }
+
+  notifyCaptureStopped(data) {
+    this.emit("captureStopped", data);
+  }
+
+  notifyCaptureError(error) {
+    this.emit("captureError", error);
+  }
+
+  notifyCaptureProgress(progress) {
+    this.emit("captureProgress", progress);
+  }
+}
+
+/**
+ * 캡처 상태 머신
+ */
+class CaptureStateMachine {
+  constructor() {
+    this.currentState = CaptureState.IDLE;
+    this.eventManager = new CaptureEventManager();
+    this._setupStateTransitions();
+  }
+
+  _setupStateTransitions() {
+    this.transitions = {
+      [CaptureState.IDLE]: {
+        start: () => {
+          this.currentState = CaptureState.RECORDING;
+          this.eventManager.notifyCaptureStarted();
+        },
+      },
+      [CaptureState.RECORDING]: {
+        stop: () => {
+          this.currentState = CaptureState.PROCESSING;
+          this.eventManager.notifyCaptureStopped();
+        },
+        error: () => {
+          this.currentState = CaptureState.ERROR;
+          this.eventManager.notifyCaptureError();
+        },
+      },
+      [CaptureState.PROCESSING]: {
+        complete: () => {
+          this.currentState = CaptureState.IDLE;
+          this.eventManager.notifyCaptureStopped();
+        },
+        error: () => {
+          this.currentState = CaptureState.ERROR;
+          this.eventManager.notifyCaptureError();
+        },
+      },
+      [CaptureState.ERROR]: {
+        reset: () => {
+          this.currentState = CaptureState.IDLE;
+        },
+      },
+    };
+  }
+
+  transition(action) {
+    const currentTransitions = this.transitions[this.currentState];
+    if (currentTransitions && currentTransitions[action]) {
+      currentTransitions[action]();
+      return true;
+    }
+    return false;
+  }
+
+  getState() {
+    return this.currentState;
+  }
+
+  isIdle() {
+    return this.currentState === CaptureState.IDLE;
+  }
+
+  isRecording() {
+    return this.currentState === CaptureState.RECORDING;
+  }
+
+  isProcessing() {
+    return this.currentState === CaptureState.PROCESSING;
+  }
+
+  isError() {
+    return this.currentState === CaptureState.ERROR;
+  }
+}
+
+/**
+ * 캡처 세션
+ */
+class CaptureSession {
+  constructor() {
+    this.stateMachine = new CaptureStateMachine();
+    this.eventManager = this.stateMachine.eventManager;
+    this.recorderService = recorderService;
+    this._setupEventListeners();
+  }
+
+  _setupEventListeners() {
+    this.eventManager.on("start", this._handleStart.bind(this));
+    this.eventManager.on("stop", this._handleStop.bind(this));
+    this.eventManager.on("error", this._handleError.bind(this));
+  }
+
+  async _handleStart(data) {
+    try {
+      const { windowId, windowName, captureDir } = data;
+
+      if (!this.stateMachine.isIdle()) {
+        throw new Error("이미 캡처가 진행 중입니다.");
+      }
+
+      const source = await this.recorderService.findCaptureSource(windowId);
+      const outputPath = path.join(captureDir, "capture.mp4");
+
+      await this.recorderService.startRecording(source, outputPath, captureDir);
+      this.stateMachine.transition("start");
+    } catch (error) {
+      this._handleError(error);
+    }
+  }
+
+  async _handleStop() {
+    try {
+      if (!this.stateMachine.isRecording()) {
+        throw new Error("현재 녹화 중이 아닙니다.");
+      }
+
+      this.stateMachine.transition("stop");
+      await this.recorderService.stopRecording();
+      this.stateMachine.transition("complete");
+    } catch (error) {
+      this._handleError(error);
+    }
+  }
+
+  _handleError(error) {
+    console.error("캡처 오류:", error);
+    this.stateMachine.transition("error");
+    this.eventManager.notifyCaptureError(error);
+  }
+}
+
+/**
+ * 캡처 매니저
  */
 class CaptureManager {
   constructor() {
-    // 캡처 상태 관리
+    this.session = new CaptureSession();
+    this.eventManager = this.session.eventManager;
     this.isCapturing = false;
     this.captureDir = null;
     this.videoPath = null;
     this.metadataPath = null;
     this.startTime = null;
     this.endTime = null;
-
-    // 상태 관리를 위한 변수들
     this.recordingDuration = 0;
     this.recordingInterval = null;
     this.statusUpdateInterval = null;
-    this.currentSource = null; // 현재 녹화 중인 소스 정보
-
-    // 타임랩스 활성화 상태 초기값 (기본값: 활성화)
+    this.currentSource = null;
     this.timelapseEnabled = true;
-
-    // 캡처 프레임 버퍼
   }
 
   /**
@@ -61,74 +242,14 @@ class CaptureManager {
    */
   async startCapture(windowId, windowName) {
     try {
-      // 이미 캡처 중인 경우 중지
-      if (this.isCapturing) {
-        this.stopCapture();
-      }
-
-      // 타임랩스 비활성화 상태 확인
-      if (this.timelapseEnabled === false) {
-        console.log("타임랩스가 비활성화되어 있어 캡처를 시작할 수 없습니다.");
-        this.emitStatusUpdate({
-          error: "타임랩스가 비활성화되어 있습니다. 설정에서 활성화해주세요.",
-        });
-        return { success: false, error: "타임랩스가 비활성화되어 있습니다" };
-      }
-
-      console.log(`캡처 시작: ${windowId}, ${windowName}`);
-
-      // 1. 캡처 디렉토리 및 파일 경로 생성 (비동기 처리)
-      const captureInfo = await storageManager.createCaptureDirectory();
-      this.captureDir = captureInfo.captureDir;
-      this.videoPath = captureInfo.videoPath;
-      this.metadataPath = captureInfo.metadataPath;
-
-      // 2. 메타데이터 초기화
-      this.startTime = Date.now();
-      this.recordingDuration = 0;
-      const captureConfig = recorderService.getCaptureConfig();
-
-      const metaData = {
-        startTime: this.startTime,
-        fps: captureConfig.fps,
-        videoBitrate: captureConfig.videoBitrate,
-        videoSize: captureConfig.videoSize,
+      const captureDir = await storageManager.createCaptureDirectory();
+      await this.eventManager.emit("start", {
         windowId,
         windowName,
-      };
-
-      // 메타데이터 저장 (비동기 처리)
-      await storageManager.saveMetadata(this.metadataPath, metaData);
-
-      // 3. 캡처할 소스 찾기
-      this.currentSource = await recorderService.findCaptureSource(windowId);
-
-      // 4. 렌더러 프로세스 기반 녹화 시작 (더 안정적인 품질)
-      // electron-screen-recorder 패키지 문제로 메인 프로세스 건너뛰기
-      const callbacks = this._createRendererProcessCallbacks();
-
-      // 이벤트 리스너 설정
-      this.eventCleanupFunctions =
-        recorderService.setupRendererProcessEventListeners(callbacks);
-      console.log(
-        `[CaptureManager] 이벤트 리스너 ${this.eventCleanupFunctions.length}개 설정 완료`
-      );
-
-      // 렌더러 프로세스 녹화 시작
-      await recorderService.startRendererProcessRecording(
-        this.currentSource,
-        this.videoPath,
-        this.captureDir
-      );
-
-      // 상태 업데이트
-      this.isCapturing = true;
-
-      return { success: true, captureDir: this.captureDir };
+        captureDir,
+      });
     } catch (error) {
-      console.error("[CaptureManager] 캡처 시작 오류:", error);
-      this.isCapturing = false;
-      return { success: false, error: error.message };
+      this.eventManager.notifyCaptureError(error);
     }
   }
 
@@ -137,45 +258,10 @@ class CaptureManager {
    * @returns {Promise<Object>} 캡처 중지 결과
    */
   async stopCapture() {
-    if (!this.isCapturing) {
-      return { success: false, error: "녹화 중이 아닙니다." };
-    }
-
-    console.log(`[CaptureManager] 캡처 중지 요청 받음`);
-
     try {
-      // 녹화 중지
-      recorderService.stopRecording();
-
-      // 이벤트 리스너 정리 (추가)
-      if (this.eventCleanupFunctions && this.eventCleanupFunctions.length > 0) {
-        console.log(`[CaptureManager] 이벤트 리스너 정리 중...`);
-        this.eventCleanupFunctions.forEach((cleanup) => {
-          if (typeof cleanup === "function") {
-            cleanup();
-          }
-        });
-        this.eventCleanupFunctions = [];
-      }
-
-      // 메타데이터 업데이트
-      this.endTime = Date.now();
-      await this._updateMetadataAfterCapture();
-
-      // 타이머 정리
-      this._clearTimers();
-
-      // 상태 업데이트
-      this.isCapturing = false;
-      this.emitStatusUpdate();
-
-      console.log(`[CaptureManager] 캡처 중지 완료`);
-      this.currentSource = null; // 녹화 중인 소스 정보 초기화
-
-      return { success: true };
+      await this.eventManager.emit("stop");
     } catch (error) {
-      console.error("[CaptureManager] 캡처 중지 오류:", error);
-      return { success: false, error: error.message };
+      this.eventManager.notifyCaptureError(error);
     }
   }
 
