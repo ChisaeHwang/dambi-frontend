@@ -1,6 +1,5 @@
 const { ipcMain } = require("electron");
 const path = require("path");
-const fs = require("fs");
 const EventEmitter = require("events");
 const windowManager = require("../window-manager");
 const storageManager = require("./storage-manager");
@@ -155,7 +154,7 @@ class CaptureSession {
 
   async _handleStart(data) {
     try {
-      const { windowId, windowName, captureDir } = data;
+      const { windowId, captureDir } = data;
 
       if (!this.stateMachine.isIdle()) {
         throw new Error("이미 캡처가 진행 중입니다.");

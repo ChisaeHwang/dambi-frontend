@@ -1,5 +1,4 @@
 const { spawn } = require("child_process");
-const os = require("os");
 const fs = require("fs");
 const windowManager = require("../window-manager");
 const storageManager = require("./storage-manager");
