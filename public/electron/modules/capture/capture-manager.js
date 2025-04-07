@@ -141,6 +141,9 @@ class CaptureSession {
     this.stateMachine = new CaptureStateMachine();
     this.eventManager = this.stateMachine.eventManager;
     this.recorderService = recorderService;
+    this.captureDir = null;
+    this.videoPath = null;
+    this.metadataPath = null;
     this._setupEventListeners();
   }
 
@@ -158,10 +161,20 @@ class CaptureSession {
         throw new Error("이미 캡처가 진행 중입니다.");
       }
 
-      const source = await this.recorderService.findCaptureSource(windowId);
-      const outputPath = path.join(captureDir, "capture.mp4");
+      if (!captureDir || typeof captureDir !== "string") {
+        throw new Error("캡처 디렉토리가 유효하지 않습니다.");
+      }
 
-      await this.recorderService.startRecording(source, outputPath, captureDir);
+      this.captureDir = captureDir;
+      this.videoPath = path.join(captureDir, "capture.mp4");
+      this.metadataPath = path.join(captureDir, "metadata.json");
+
+      const source = await this.recorderService.findCaptureSource(windowId);
+      await this.recorderService.startRecording(
+        source,
+        this.videoPath,
+        this.captureDir
+      );
       this.stateMachine.transition("start");
     } catch (error) {
       this._handleError(error);
@@ -197,9 +210,6 @@ class CaptureManager {
     this.session = new CaptureSession();
     this.eventManager = this.session.eventManager;
     this.isCapturing = false;
-    this.captureDir = null;
-    this.videoPath = null;
-    this.metadataPath = null;
     this.startTime = null;
     this.endTime = null;
     this.recordingDuration = 0;
@@ -207,6 +217,36 @@ class CaptureManager {
     this.statusUpdateInterval = null;
     this.currentSource = null;
     this.timelapseEnabled = true;
+    this._setupEventListeners();
+  }
+
+  _setupEventListeners() {
+    this.eventManager.on("captureStarted", (data) => {
+      this.isCapturing = true;
+      this.startTime = Date.now();
+      this._setupRecordingStateUpdates();
+      this.emitStatusUpdate();
+    });
+
+    this.eventManager.on("captureStopped", async () => {
+      this.endTime = Date.now();
+      this.isCapturing = false;
+      this._clearTimers();
+
+      // 메타데이터 업데이트
+      if (this.session.metadataPath) {
+        await this._updateMetadataAfterCapture();
+      }
+
+      this.emitStatusUpdate();
+    });
+
+    this.eventManager.on("captureError", (error) => {
+      this._clearTimers();
+      this.isCapturing = false;
+      this.emitStatusUpdate();
+      console.error("[CaptureManager] 캡처 오류:", error);
+    });
   }
 
   /**
@@ -242,14 +282,26 @@ class CaptureManager {
    */
   async startCapture(windowId, windowName) {
     try {
-      const captureDir = await storageManager.createCaptureDirectory();
+      if (this.isCapturing) {
+        return { success: false, error: "이미 캡처가 진행 중입니다." };
+      }
+
+      const { captureDir } = await storageManager.createCaptureDirectory();
+
+      if (!captureDir || typeof captureDir !== "string") {
+        throw new Error("캡처 디렉토리 생성에 실패했습니다.");
+      }
+
       await this.eventManager.emit("start", {
         windowId,
         windowName,
         captureDir,
       });
+
+      return { success: true, captureDir };
     } catch (error) {
       this.eventManager.notifyCaptureError(error);
+      return { success: false, error: error.message };
     }
   }
 
@@ -259,9 +311,15 @@ class CaptureManager {
    */
   async stopCapture() {
     try {
+      if (!this.isCapturing) {
+        return { success: false, error: "녹화 중이 아닙니다." };
+      }
+
       await this.eventManager.emit("stop");
+      return { success: true };
     } catch (error) {
       this.eventManager.notifyCaptureError(error);
+      return { success: false, error: error.message };
     }
   }
 
@@ -271,101 +329,66 @@ class CaptureManager {
    * @returns {Promise<string>} 생성된 타임랩스 파일 경로
    */
   async generateTimelapse(options) {
-    // 녹화 중이면 먼저 중지
-    if (this.isCapturing) {
-      this.stopCapture();
-      // 녹화가 완전히 중지될 때까지 잠시 대기
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
-
-    // 유효한 녹화 파일 확인
-    if (
-      !this.captureDir ||
-      !this.videoPath ||
-      !storageManager.getVideoFileSize(this.videoPath)
-    ) {
-      throw new Error("유효한 녹화 파일이 없습니다");
-    }
-
-    // 메타데이터에서 원본 비디오 해상도 가져오기
     try {
-      const metadata = storageManager.getMetadata(this.metadataPath);
+      // 녹화 중이면 먼저 중지하고 완료될 때까지 대기
+      if (this.isCapturing) {
+        await this.stopCapture();
+        // 녹화가 완전히 중지될 때까지 대기
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
 
-      console.log("==========================================");
-      console.log("타임랩스 생성 옵션:", JSON.stringify(options, null, 2));
+      // 세션에서 경로 정보 가져오기
+      const { captureDir, videoPath, metadataPath } = this.session;
 
-      // 메타데이터에서 해상도 정보 확인
-      if (metadata && metadata.videoSize) {
-        const origWidth = metadata.videoSize.width;
-        const origHeight = metadata.videoSize.height;
+      // 유효한 녹화 파일 확인
+      if (!captureDir || !videoPath) {
+        throw new Error("캡처 경로 정보가 없습니다");
+      }
 
-        console.log(`원본 녹화 해상도 정보: ${origWidth}x${origHeight}`);
-        console.log(
-          `옵션에 지정된 해상도: ${options.videoWidth || "없음"}x${
-            options.videoHeight || "없음"
-          }`
-        );
-        console.log(
-          `썸네일 해상도: ${options.thumbnailWidth || "없음"}x${
-            options.thumbnailHeight || "없음"
-          }`
-        );
+      const fileSize = await storageManager.getVideoFileSizeAsync(videoPath);
+      if (!fileSize || fileSize <= 0) {
+        throw new Error("유효한 녹화 파일이 없거나 파일이 비어있습니다");
+      }
 
-        // 옵션에 실제 캡처 해상도 추가 (메타데이터 값 우선)
-        options.videoWidth = origWidth;
-        options.videoHeight = origHeight;
-      } else {
-        console.log("원본 녹화 해상도 정보가 메타데이터에 없음");
+      // 메타데이터에서 원본 비디오 해상도 가져오기
+      try {
+        const metadata = await storageManager.getMetadata(metadataPath);
 
-        // 현재 캡처 설정에서 해상도 가져오기 시도
-        const currentConfig = recorderService.getCaptureConfig();
-        if (currentConfig && currentConfig.videoSize) {
-          console.log(
-            `현재 설정된 해상도 사용: ${currentConfig.videoSize.width}x${currentConfig.videoSize.height}`
-          );
-          options.videoWidth = currentConfig.videoSize.width;
-          options.videoHeight = currentConfig.videoSize.height;
-        } else {
-          console.log("해상도 정보를 찾을 수 없어 기본값 사용");
+        console.log("==========================================");
+        console.log("타임랩스 생성 옵션:", JSON.stringify(options, null, 2));
+        console.log("캡처 경로:", captureDir);
+        console.log("비디오 파일:", videoPath);
+        console.log("파일 크기:", fileSize, "bytes");
+
+        // 메타데이터에서 해상도 정보 확인
+        if (metadata && metadata.videoSize) {
+          const origWidth = metadata.videoSize.width;
+          const origHeight = metadata.videoSize.height;
+
+          console.log(`원본 녹화 해상도 정보: ${origWidth}x${origHeight}`);
+
+          // 옵션에 실제 캡처 해상도 추가
+          options.videoWidth = origWidth;
+          options.videoHeight = origHeight;
+        }
+
+        console.log("==========================================");
+      } catch (error) {
+        console.warn("메타데이터 읽기 실패:", error);
+        // 메타데이터 읽기 실패 시 recorderService의 설정 사용
+        const config = this.getCaptureConfig();
+        if (config && config.videoSize) {
+          options.videoWidth = config.videoSize.width;
+          options.videoHeight = config.videoSize.height;
         }
       }
 
-      // 해상도 비율 분석 및 로깅
-      if (
-        options.videoWidth &&
-        options.videoHeight &&
-        options.thumbnailWidth &&
-        options.thumbnailHeight
-      ) {
-        const videoAspect = options.videoWidth / options.videoHeight;
-        const thumbnailAspect =
-          options.thumbnailWidth / options.thumbnailHeight;
-
-        console.log(`비디오 종횡비: ${videoAspect.toFixed(3)}`);
-        console.log(`썸네일 종횡비: ${thumbnailAspect.toFixed(3)}`);
-        console.log(
-          `종횡비 차이: ${Math.abs(videoAspect - thumbnailAspect).toFixed(3)}`
-        );
-
-        if (Math.abs(videoAspect - thumbnailAspect) > 0.01) {
-          console.log(
-            "⚠️ 주의: 비디오와 썸네일의 종횡비가 다릅니다. 블러 위치가 정확하지 않을 수 있습니다."
-          );
-        }
-      }
-
-      console.log(
-        `최종 사용 해상도: ${options.videoWidth || "알 수 없음"}x${
-          options.videoHeight || "알 수 없음"
-        }`
-      );
-      console.log("==========================================");
+      // 타임랩스 생성 요청
+      return await timelapseGenerator.generateTimelapse(videoPath, options);
     } catch (error) {
-      console.warn("메타데이터 읽기 실패, 기본 해상도 사용:", error);
+      console.error("타임랩스 생성 오류:", error);
+      throw error;
     }
-
-    // 타임랩스 생성 요청
-    return await timelapseGenerator.generateTimelapse(this.videoPath, options);
   }
 
   /**
@@ -389,99 +412,6 @@ class CaptureManager {
   }
 
   /**
-   * 렌더러 프로세스 녹화용 콜백 생성
-   * @returns {Object} 콜백 함수들
-   */
-  _createRendererProcessCallbacks() {
-    return {
-      onStart: () => {
-        console.log("[CaptureManager] 렌더러 프로세스 녹화가 시작되었습니다.");
-        this._setupRecordingStateUpdates();
-      },
-
-      onComplete: (event, data) => {
-        console.log(
-          `[CaptureManager] 녹화 완료: ${data.outputPath}, 파일 크기: ${(
-            data.fileSize /
-            1024 /
-            1024
-          ).toFixed(2)}MB`
-        );
-        this.endTime = Date.now();
-
-        // 메타데이터 업데이트
-        this._updateMetadataWithData({
-          endTime: this.endTime,
-          duration: this.endTime - this.startTime,
-          fileSize: data.fileSize,
-        });
-
-        // 타이머 정리
-        this._clearTimers();
-
-        // 모든 상태 초기화
-        this.isCapturing = false;
-
-        // 이벤트 리스너 정리 - 중요: 모든 이벤트 리스너를 명시적으로 정리
-        if (
-          this.eventCleanupFunctions &&
-          this.eventCleanupFunctions.length > 0
-        ) {
-          console.log(`[CaptureManager] 녹화 완료 후 이벤트 리스너 정리 중...`);
-          this.eventCleanupFunctions.forEach((cleanup) => {
-            if (typeof cleanup === "function") {
-              cleanup();
-            }
-          });
-          this.eventCleanupFunctions = [];
-        }
-
-        // RecorderService에 창을 확실히 닫도록 요청
-        try {
-          const recorderService = require("./recorder-service");
-          if (recorderService.recorderWindow) {
-            console.log(`[CaptureManager] 녹화 완료 후 창 닫기 요청`);
-            recorderService.stopRendererProcessRecording();
-          }
-        } catch (e) {
-          console.error(`[CaptureManager] 창 닫기 시도 중 오류:`, e.message);
-        }
-
-        // 상태 업데이트 전송으로 UI 갱신
-        this.emitStatusUpdate();
-
-        console.log(`[CaptureManager] 녹화 완료 처리 완료`);
-      },
-
-      onError: (event, error) => {
-        console.error("[CaptureManager] 녹화 오류:", error);
-
-        // 타이머 정리
-        this._clearTimers();
-
-        // 상태 초기화 및 이벤트 리스너 정리
-        this.isCapturing = false;
-
-        // 이벤트 리스너 정리
-        if (
-          this.eventCleanupFunctions &&
-          this.eventCleanupFunctions.length > 0
-        ) {
-          console.log(`[CaptureManager] 녹화 오류 후 이벤트 리스너 정리 중...`);
-          this.eventCleanupFunctions.forEach((cleanup) => {
-            if (typeof cleanup === "function") {
-              cleanup();
-            }
-          });
-          this.eventCleanupFunctions = [];
-        }
-
-        this.emitStatusUpdate();
-      },
-    };
-  }
-
-  /**
    * 타이머 정리
    */
   _clearTimers() {
@@ -501,7 +431,7 @@ class CaptureManager {
    * @private
    */
   async _updateMetadataAfterCapture() {
-    if (!this.metadataPath) return;
+    if (!this.session.metadataPath) return;
 
     try {
       // endTime과 recordingDuration 업데이트
@@ -511,9 +441,9 @@ class CaptureManager {
       };
 
       // 파일 크기 정보 추가 (비동기 버전 사용)
-      if (this.videoPath) {
+      if (this.session.videoPath) {
         const fileSize = await storageManager.getVideoFileSizeAsync(
-          this.videoPath
+          this.session.videoPath
         );
         if (fileSize > 0) {
           metaDataUpdates.fileSize = fileSize;
@@ -521,7 +451,10 @@ class CaptureManager {
       }
 
       // 비동기 방식으로 메타데이터 업데이트
-      await storageManager.updateMetadata(this.metadataPath, metaDataUpdates);
+      await storageManager.updateMetadata(
+        this.session.metadataPath,
+        metaDataUpdates
+      );
     } catch (error) {
       console.error("[CaptureManager] 메타데이터 업데이트 오류:", error);
     }
@@ -532,8 +465,8 @@ class CaptureManager {
    * @param {Object} data - 업데이트할 데이터
    */
   _updateMetadataWithData(data) {
-    if (this.metadataPath) {
-      storageManager.updateMetadata(this.metadataPath, data);
+    if (this.session.metadataPath) {
+      storageManager.updateMetadata(this.session.metadataPath, data);
     }
   }
 
