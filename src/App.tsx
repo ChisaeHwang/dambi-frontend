@@ -1,6 +1,8 @@
 import React, { useState, lazy, Suspense } from "react";
-import AppTitleBar from "./components/AppTitleBar";
-import Navigation, { Page } from "./components/Navigation";
+import AppTitleBar from "./components/layout/AppTitleBar";
+import Navigation from "./components/layout/Navigation";
+import { Page } from "./types/navigation";
+import { isElectronEnv } from "./types/common";
 
 // 지연 로딩으로 각 페이지 컴포넌트 불러오기
 const Timelapse = lazy(() => import("./components/Timelapse"));
@@ -18,7 +20,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState<Page>("workspace");
 
   // 일렉트론 환경에서 실행 중인지 확인
-  const isElectron = window.electron !== undefined;
+  const isElectron = isElectronEnv();
 
   // 페이지 전환 핸들러
   const handlePageChange = (page: Page) => {

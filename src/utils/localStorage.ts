@@ -1,15 +1,7 @@
 /**
  * 로컬 스토리지 관련 유틸리티 함수
  */
-
-// 로컬 스토리지 키
-export const STORAGE_KEYS = {
-  TIMELAPSE_OPTIONS: "timelapseOptions",
-  SELECTED_WINDOW_ID: "selectedWindowId",
-  ACTIVE_WINDOWS: "activeWindows",
-  SAVE_PATH: "timelapse_save_path",
-  THUMBNAIL_PREFIX: "window_thumbnail_",
-};
+import { STORAGE_KEYS } from "../constants/storage";
 
 /**
  * 로컬 스토리지에 객체를 저장
