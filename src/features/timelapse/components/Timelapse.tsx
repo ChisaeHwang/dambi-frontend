@@ -25,6 +25,7 @@ const Timelapse: React.FC = () => {
     isGeneratingTimelapse,
     timelapseProgress,
     changeTimelapseOptions,
+    isStatusInitialized,
   } = useTimelapseGenerationCapture();
 
   // 상태 관리
@@ -205,6 +206,14 @@ const Timelapse: React.FC = () => {
   // 현재 duration 값으로 형식화된 시간 표시
   const formattedDuration = formatTime(duration / 1000); // ms를 초로 변환
 
+  // 로딩 상태 표시
+  const renderLoadingContent = () => (
+    <div className="flex flex-col items-center justify-center flex-grow py-8">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--primary-color)]"></div>
+      <div className="mt-4 text-lg">녹화 상태 확인 중...</div>
+    </div>
+  );
+
   // 녹화 중일 때의 내용
   const renderRecordingContent = () => (
     <div className="flex flex-col items-center justify-center flex-grow py-8">
@@ -320,12 +329,21 @@ const Timelapse: React.FC = () => {
     </>
   );
 
+  // 메인 컨텐츠 렌더링 결정
+  const renderMainContent = () => {
+    if (!isStatusInitialized) {
+      return renderLoadingContent();
+    }
+
+    return isCapturing ? renderRecordingContent() : renderNormalContent();
+  };
+
   return (
     <div className="bg-[var(--bg-primary)] text-[var(--text-normal)] h-screen w-full flex flex-col p-3">
       <div className="bg-[var(--bg-secondary)] rounded-lg shadow-md p-5 w-[98%] max-w-[1400px] min-w-auto mx-auto mb-5 h-[calc(100vh-30px)] overflow-y-auto">
         <h2 className="text-xl mb-4 font-semibold">타임랩스 워크스페이스</h2>
 
-        {isCapturing ? renderRecordingContent() : renderNormalContent()}
+        {renderMainContent()}
       </div>
     </div>
   );

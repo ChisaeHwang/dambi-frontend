@@ -56,6 +56,7 @@ export const useTimelapseGenerationCapture = () => {
     duration: captureState.duration,
     startCapture: captureState.startCapture,
     stopCapture: captureState.stopCapture,
+    isStatusInitialized: captureState.isStatusInitialized,
 
     // 타임랩스 생성 관련
     isGeneratingTimelapse: timelapseGeneration.isGeneratingTimelapse,
