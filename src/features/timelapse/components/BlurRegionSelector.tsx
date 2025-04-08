@@ -5,18 +5,18 @@ import { BlurRegion } from "../types";
 interface BlurRegionSelectorProps {
   windowId: string;
   activeWindows: WindowInfo[];
-  initialRegions: BlurRegion[];
-  onRegionsChange: (regions: BlurRegion[]) => void;
+  blurRegions: BlurRegion[];
+  onChange: (regions: BlurRegion[]) => void;
 }
 
 const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
   windowId,
   activeWindows,
-  initialRegions,
-  onRegionsChange,
+  blurRegions,
+  onChange,
 }) => {
   // 상태 관리
-  const [regions, setRegions] = useState<BlurRegion[]>(initialRegions || []);
+  const [regions, setRegions] = useState<BlurRegion[]>(blurRegions || []);
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPoint, setStartPoint] = useState({ x: 0, y: 0 });
   const [currentRegion, setCurrentRegion] = useState<BlurRegion | null>(null);
@@ -286,8 +286,8 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
 
   // regions 변경시 부모 컴포넌트에 알림
   useEffect(() => {
-    onRegionsChange(regions);
-  }, [regions, onRegionsChange]);
+    onChange(regions);
+  }, [regions, onChange]);
 
   // 마우스 이벤트 핸들러
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {

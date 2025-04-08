@@ -3,20 +3,25 @@ import React from "react";
 interface TimelapseControlsProps {
   isCapturing: boolean;
   isPaused: boolean;
+  selectedWindowId: string;
   onStart: () => void;
   onStop: () => void;
-  onCancel: () => void;
-  disabled: boolean;
+  onCancel?: () => void;
+  hasRecording: boolean;
 }
 
 const TimelapseControls: React.FC<TimelapseControlsProps> = ({
   isCapturing,
   isPaused,
+  selectedWindowId,
   onStart,
   onStop,
   onCancel,
-  disabled,
+  hasRecording,
 }) => {
+  // 녹화 버튼 비활성화 여부 - 선택된 창이 없으면 비활성화
+  const disabled = !selectedWindowId;
+
   return (
     <div className="flex flex-col items-center justify-center space-y-4 bg-[var(--bg-tertiary)] p-6 rounded-lg shadow-sm h-full">
       {!isCapturing ? (
@@ -30,7 +35,7 @@ const TimelapseControls: React.FC<TimelapseControlsProps> = ({
             {isPaused ? "계속하기" : "녹화 시작"}
           </button>
 
-          {isPaused && (
+          {isPaused && onCancel && (
             <button
               onClick={onCancel}
               className="w-full sm:flex-1 py-3 px-6 rounded-lg bg-gray-600 hover:bg-gray-700 text-white font-medium transition-colors"

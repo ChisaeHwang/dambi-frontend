@@ -29,10 +29,6 @@ const Timelapse: React.FC = () => {
 
   // 상태 관리
   const [showGeneratePrompt, setShowGeneratePrompt] = useState<boolean>(false);
-  const [workTime, setWorkTime] = useState<number>(0);
-  const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(
-    null
-  );
   const [isPaused, setIsPaused] = useState<boolean>(false);
 
   // 블러 영역 관리
@@ -45,6 +41,8 @@ const Timelapse: React.FC = () => {
 
   // 최초 마운트 여부 확인을 위한 ref
   const mountedRef = React.useRef(false);
+  // 이전 캡처 상태 추적을 위한 ref
+  const wasCapturingRef = React.useRef(false);
 
   // 컴포넌트 마운트 시 창 목록 초기 로드만 수행
   useEffect(() => {
@@ -71,22 +69,27 @@ const Timelapse: React.FC = () => {
     }
   }, [blurRegions, timelapseOptions, changeTimelapseOptions]);
 
-  // 타이머 관리
+  // 페이지 이동 후 돌아왔을 때와 녹화 중지 시 자동으로 타임랩스 생성 모달 표시
   useEffect(() => {
-    if (isCapturing && !timerInterval) {
-      const interval = setInterval(() => {
-        setWorkTime((prev) => prev + 1);
-      }, 1000);
-      setTimerInterval(interval);
-    } else if (!isCapturing && timerInterval) {
-      clearInterval(timerInterval);
-      setTimerInterval(null);
+    // 컴포넌트가 마운트될 때, isCapturing 상태 확인
+    if (isCapturing) {
+      // 이미 녹화 중인 경우 wasCapturingRef를 true로 설정
+      wasCapturingRef.current = true;
+    } else if (
+      wasCapturingRef.current &&
+      !isCapturing &&
+      duration > 0 &&
+      !showGeneratePrompt &&
+      !isPaused
+    ) {
+      // 녹화가 중지되었고, duration이 있으며, 모달이 표시되지 않은 경우
+      setIsPaused(true);
+      setShowGeneratePrompt(true);
     }
 
-    return () => {
-      if (timerInterval) clearInterval(timerInterval);
-    };
-  }, [isCapturing, timerInterval]);
+    // 현재 상태 저장
+    wasCapturingRef.current = isCapturing;
+  }, [isCapturing, duration, showGeneratePrompt, isPaused]);
 
   // 캡처 시작 핸들러
   const handleStartCapture = () => {
@@ -115,17 +118,12 @@ const Timelapse: React.FC = () => {
   // 캡처 중지 핸들러
   const handleStopCapture = () => {
     stopCapture();
-    if (duration > 0) {
-      setIsPaused(true);
-      setShowGeneratePrompt(true);
-    }
   };
 
   // 캡처 취소 핸들러
   const handleCancelCapture = () => {
     setIsPaused(false);
     setShowGeneratePrompt(false);
-    setWorkTime(0);
   };
 
   // 타임랩스 생성 핸들러
@@ -154,7 +152,6 @@ const Timelapse: React.FC = () => {
       // 생성 완료 후 상태 초기화
       setShowGeneratePrompt(false);
       setIsPaused(false);
-      setWorkTime(0);
 
       // 성공 메시지
       alert(`타임랩스가 생성되었습니다: ${path}`);
@@ -205,101 +202,131 @@ const Timelapse: React.FC = () => {
     }
   };
 
-  // 작업 시간 표시
-  const formattedWorkTime = formatTime(workTime);
+  // 현재 duration 값으로 형식화된 시간 표시
+  const formattedDuration = formatTime(duration / 1000); // ms를 초로 변환
 
-  return (
-    <div className="flex flex-col h-full">
-      <div className="flex flex-col bg-[var(--bg-secondary)] rounded-lg p-6 space-y-6 h-full overflow-y-auto">
-        <h1 className="text-2xl font-bold mb-4">타임랩스 워크스페이스</h1>
-
-        {/* 창 선택 영역 */}
-        <div className="grid gap-4">
-          <div className="flex flex-col">
-            <label className="text-lg font-medium mb-2">캡처할 창 선택</label>
-
-            <div className="flex-1">
-              <WindowSelector
-                selectedWindowId={selectedWindowId}
-                activeWindows={activeWindows}
-                isLoading={isLoadingWindows}
-                onSelect={handleWindowChange}
-                onRefresh={refreshActiveWindows}
-                disabled={isCapturing || isPaused || showBlurSelector}
-                renderButtons={() => (
-                  <button
-                    onClick={toggleBlurSelector}
-                    className={`py-2 px-4 rounded min-w-[120px] text-sm text-white ${
-                      showBlurSelector
-                        ? "bg-indigo-600 hover:bg-indigo-700"
-                        : "bg-[var(--bg-accent)] hover:bg-gray-700"
-                    } disabled:opacity-50 disabled:cursor-not-allowed`}
-                    disabled={isCapturing || !selectedWindowId}
-                    title={
-                      showBlurSelector
-                        ? "블러 영역 설정 완료"
-                        : "캡처 영상에서 제외할 영역 설정"
-                    }
-                  >
-                    {showBlurSelector ? "영역 설정 완료" : "블러 영역 설정"}
-                  </button>
-                )}
-              />
-            </div>
-
-            {/* 안내 메시지 */}
-            {error && <div className="mt-2 text-red-500 text-sm">{error}</div>}
-            {blurRegions.length > 0 && (
-              <div className="mt-2 text-green-500 text-sm">
-                {blurRegions.length}개의 블러 영역이 설정되었습니다.
-              </div>
-            )}
-          </div>
+  // 녹화 중일 때의 내용
+  const renderRecordingContent = () => (
+    <div className="flex flex-col items-center justify-center flex-grow py-8">
+      <div className="text-center mb-8">
+        <div className="text-xl font-medium mb-2">녹화 진행 중...</div>
+        <div className="text-5xl font-mono tracking-widest font-semibold">
+          {formattedDuration}
         </div>
+      </div>
 
-        {/* 블러 영역 선택기 (show/hide 토글) */}
-        {showBlurSelector && selectedWindowId && (
-          <BlurRegionSelector
-            windowId={selectedWindowId}
-            activeWindows={activeWindows}
-            initialRegions={blurRegions}
-            onRegionsChange={handleBlurRegionsChange}
-          />
-        )}
+      <button
+        onClick={handleStopCapture}
+        className="py-3 px-6 bg-red-600 hover:bg-red-700 text-white rounded-lg text-lg font-medium"
+      >
+        녹화 중지
+      </button>
+    </div>
+  );
 
-        {/* 타이머 및 제어 영역 */}
-        {!showBlurSelector && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start mt-8">
-            {/* 타이머 및 상태 표시 */}
+  // 녹화 중이 아닐 때의 내용
+  const renderNormalContent = () => (
+    <>
+      {/* 창 선택 영역 */}
+      <div className="grid gap-4">
+        <div className="flex flex-col">
+          <label className="text-lg font-medium mb-2">캡처할 창 선택</label>
+
+          <div className="flex-1">
+            <WindowSelector
+              selectedWindowId={selectedWindowId}
+              activeWindows={activeWindows}
+              isLoading={isLoadingWindows}
+              onSelect={handleWindowChange}
+              onRefresh={refreshActiveWindows}
+              disabled={isCapturing || isPaused || showBlurSelector}
+              renderButtons={() => (
+                <button
+                  onClick={toggleBlurSelector}
+                  className={`py-2 px-4 rounded min-w-[120px] text-sm text-white ${
+                    showBlurSelector
+                      ? "bg-indigo-600 hover:bg-indigo-700"
+                      : "bg-[var(--bg-accent)] hover:bg-gray-700"
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  disabled={isCapturing || !selectedWindowId}
+                  title={
+                    showBlurSelector
+                      ? "블러 영역 설정 완료"
+                      : "캡처 영상에서 제외할 영역 설정"
+                  }
+                >
+                  {showBlurSelector ? "영역 설정 완료" : "블러 영역 설정"}
+                </button>
+              )}
+            />
+          </div>
+
+          {/* 안내 메시지 */}
+          {!selectedWindowId && !isLoadingWindows && (
+            <div className="mt-2 text-amber-600">
+              캡처할 창을 선택해주세요. 목록이 비어있다면 녹화할 창을 열고
+              새로고침을 눌러주세요.
+            </div>
+          )}
+
+          {error && <div className="mt-2 text-red-500">오류: {error}</div>}
+        </div>
+      </div>
+
+      {/* 블러 영역 선택기 */}
+      {showBlurSelector && selectedWindowId && (
+        <BlurRegionSelector
+          windowId={selectedWindowId}
+          activeWindows={activeWindows}
+          blurRegions={blurRegions}
+          onChange={handleBlurRegionsChange}
+        />
+      )}
+
+      {/* 타이머 및 컨트롤 영역 */}
+      {!showBlurSelector && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div className="flex flex-col">
             <TimelapseTimer
               isCapturing={isCapturing}
-              duration={formattedWorkTime}
+              duration={formattedDuration}
               isPaused={isPaused}
             />
-
-            {/* 제어 버튼 */}
+          </div>
+          <div className="flex flex-col">
             <TimelapseControls
               isCapturing={isCapturing}
               isPaused={isPaused}
+              selectedWindowId={selectedWindowId}
               onStart={handleStartCapture}
               onStop={handleStopCapture}
               onCancel={handleCancelCapture}
-              disabled={!selectedWindowId || showBlurSelector}
+              hasRecording={duration > 0}
             />
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* 타임랩스 생성 프롬프트 (모달) */}
-      {showGeneratePrompt && (
+      {/* 타임랩스 생성 모달 */}
+      {showGeneratePrompt && !isCapturing && (
         <GeneratePrompt
           onGenerate={handleGenerateTimelapse}
           onCancel={handleCancelCapture}
           isGenerating={isGeneratingTimelapse}
           progress={timelapseProgress}
-          captureTime={workTime}
+          captureTime={duration / 1000} // ms를 초로 변환
         />
       )}
+    </>
+  );
+
+  return (
+    <div className="bg-[var(--bg-primary)] text-[var(--text-normal)] h-screen w-full flex flex-col p-3">
+      <div className="bg-[var(--bg-secondary)] rounded-lg shadow-md p-5 w-[98%] max-w-[1400px] min-w-auto mx-auto mb-5 h-[calc(100vh-30px)] overflow-y-auto">
+        <h2 className="text-xl mb-4 font-semibold">타임랩스 워크스페이스</h2>
+
+        {isCapturing ? renderRecordingContent() : renderNormalContent()}
+      </div>
     </div>
   );
 };
