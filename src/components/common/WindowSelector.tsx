@@ -10,6 +10,7 @@ interface WindowSelectorProps {
   isLoading: boolean;
   onRefresh: () => void;
   disabled?: boolean;
+  renderButtons?: () => React.ReactNode;
 }
 
 const WindowSelector: React.FC<WindowSelectorProps> = ({
@@ -19,6 +20,7 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
   isLoading,
   onRefresh,
   disabled = false,
+  renderButtons,
 }) => {
   // 컴포넌트 마운트 시 로컬 스토리지에서 선택된 창 ID 확인
   useEffect(() => {
@@ -52,6 +54,16 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
     }
   }, [activeWindows, selectedWindowId, onSelect]);
 
+  // 새로고침 버튼 처리기
+  const handleRefresh = () => {
+    try {
+      // 부모 컴포넌트의 새로고침 함수 호출
+      onRefresh();
+    } catch (error) {
+      console.error("창 목록 새로고침 중 오류 발생:", error);
+    }
+  };
+
   // 선택한 창 변경 시 로컬 스토리지에 저장
   const handleWindowChange = (windowId: string) => {
     if (!windowId || disabled) return; // 유효하지 않은 ID 방지
@@ -74,8 +86,28 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
 
   return (
     <div className="mb-5">
+      <div className="flex justify-between items-center mb-2.5">
+        <label className="text-base font-semibold text-white">
+          녹화할 화면
+        </label>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleRefresh}
+            disabled={isLoading || disabled}
+            className={`py-2 px-4 rounded bg-[var(--bg-accent)] text-white text-sm min-w-[120px] ${
+              isLoading || disabled
+                ? "opacity-70 cursor-wait"
+                : "opacity-100 cursor-pointer hover:bg-gray-700"
+            }`}
+          >
+            새로고침
+          </button>
+          {renderButtons && renderButtons()}
+        </div>
+      </div>
+
       <div
-        className={`grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4 mt-2.5 ${disabled ? "opacity-60" : "opacity-100"}`}
+        className={`grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4 ${disabled ? "opacity-60" : "opacity-100"}`}
       >
         {isLoading ? (
           <div className="col-span-full p-5 text-center rounded bg-[var(--input-bg)] text-[var(--text-normal)]">

@@ -230,8 +230,8 @@ const Timelapse: React.FC = () => {
   const formattedWorkTime = formatTime(workTime);
 
   return (
-    <div className="flex flex-col h-full p-6 space-y-6 overflow-y-auto">
-      <div className="flex flex-col bg-[var(--bg-secondary)] rounded-lg p-6 space-y-6">
+    <div className="flex flex-col h-full">
+      <div className="flex flex-col bg-[var(--bg-secondary)] rounded-lg p-6 space-y-6 h-full overflow-y-auto">
         <h1 className="text-2xl font-bold mb-4">타임랩스 워크스페이스</h1>
 
         {/* 창 선택 영역 */}
@@ -239,68 +239,33 @@ const Timelapse: React.FC = () => {
           <div className="flex flex-col">
             <label className="text-lg font-medium mb-2">캡처할 창 선택</label>
 
-            <div className="flex flex-col space-y-4">
-              {/* 창 선택기 */}
-              <div className="w-full">
-                <div className="flex justify-between items-center mb-2.5">
-                  <label className="text-base font-semibold text-white">
-                    녹화할 화면
-                  </label>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={refreshActiveWindows}
-                      disabled={
-                        isLoadingWindows ||
-                        isCapturing ||
-                        isPaused ||
-                        showBlurSelector
-                      }
-                      className="py-2 px-4 rounded-md bg-[var(--bg-accent)] text-white text-sm min-w-[120px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      새로고침
-                    </button>
-
-                    {/* 블러 영역 설정 버튼 */}
-                    <button
-                      onClick={toggleBlurSelector}
-                      className={`py-2 px-4 rounded-md min-w-[120px] transition-colors text-sm ${
-                        showBlurSelector
-                          ? "bg-indigo-600 hover:bg-indigo-700"
-                          : "bg-[var(--bg-accent)] hover:bg-gray-700"
-                      } text-white disabled:opacity-50 disabled:cursor-not-allowed`}
-                      disabled={isCapturing || !selectedWindowId}
-                      title={
-                        showBlurSelector
-                          ? "블러 영역 설정 완료"
-                          : "캡처 영상에서 제외할 영역 설정"
-                      }
-                    >
-                      {showBlurSelector ? "영역 설정 완료" : "블러 영역 설정"}
-                    </button>
-
-                    {/* 블러 영역 전체 삭제 버튼 */}
-                    {blurRegions.length > 0 && (
-                      <button
-                        onClick={handleClearAllBlurRegions}
-                        className="py-2 px-4 rounded-md bg-red-600 hover:bg-red-700 text-white text-sm min-w-[120px]"
-                        title="설정된 모든 블러 영역 삭제"
-                        disabled={isCapturing}
-                      >
-                        전체 삭제
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <WindowSelector
-                  selectedWindowId={selectedWindowId}
-                  activeWindows={activeWindows}
-                  isLoading={isLoadingWindows}
-                  onSelect={handleWindowChange}
-                  onRefresh={refreshActiveWindows}
-                  disabled={isCapturing || isPaused || showBlurSelector}
-                />
-              </div>
+            <div className="flex-1">
+              <WindowSelector
+                selectedWindowId={selectedWindowId}
+                activeWindows={activeWindows}
+                isLoading={isLoadingWindows}
+                onSelect={handleWindowChange}
+                onRefresh={refreshActiveWindows}
+                disabled={isCapturing || isPaused || showBlurSelector}
+                renderButtons={() => (
+                  <button
+                    onClick={toggleBlurSelector}
+                    className={`py-2 px-4 rounded min-w-[120px] text-sm text-white ${
+                      showBlurSelector
+                        ? "bg-indigo-600 hover:bg-indigo-700"
+                        : "bg-[var(--bg-accent)] hover:bg-gray-700"
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    disabled={isCapturing || !selectedWindowId}
+                    title={
+                      showBlurSelector
+                        ? "블러 영역 설정 완료"
+                        : "캡처 영상에서 제외할 영역 설정"
+                    }
+                  >
+                    {showBlurSelector ? "영역 설정 완료" : "블러 영역 설정"}
+                  </button>
+                )}
+              />
             </div>
 
             {/* 안내 메시지 */}
