@@ -54,21 +54,21 @@ const AppTitleBar: React.FC = () => {
 
   return (
     <div
-      className="app-title-bar"
+      className="w-full h-8 flex flex-row items-center bg-[var(--bg-tertiary)]"
       style={{ WebkitAppRegion: "drag" } as CSSProperties}
     >
-      <div className="flex items-center">
+      <div className="flex-grow flex items-center pl-4">
         <span className="text-lg mr-2">🦝</span>
         <span className="font-semibold">담비</span>
       </div>
 
       <div
-        className="flex items-center h-full"
+        className="flex flex-row items-stretch h-full"
         style={{ WebkitAppRegion: "no-drag" } as CSSProperties}
       >
         <button
           onClick={handleMinimize}
-          className="h-full px-3 text-gray-200 hover:bg-gray-600 transition-colors flex items-center justify-center"
+          className="w-12 h-full flex items-center justify-center text-gray-200 hover:bg-gray-600"
           aria-label="최소화"
         >
           <svg
@@ -86,7 +86,7 @@ const AppTitleBar: React.FC = () => {
 
         <button
           onClick={handleMaximize}
-          className="h-full px-3 text-gray-200 hover:bg-gray-600 transition-colors flex items-center justify-center"
+          className="w-12 h-full flex items-center justify-center text-gray-200 hover:bg-gray-600"
           aria-label={isMaximized ? "복원" : "최대화"}
         >
           {isMaximized ? (
@@ -120,7 +120,7 @@ const AppTitleBar: React.FC = () => {
 
         <button
           onClick={handleClose}
-          className="h-full px-3 text-gray-200 hover:bg-red-600 transition-colors flex items-center justify-center"
+          className="w-12 h-full flex items-center justify-center text-gray-200 hover:bg-red-600"
           aria-label="닫기"
         >
           <svg

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { useTimelapseGenerationCapture } from "../hooks/useTimelapseGenerationCapture";
 import SpeedSelector from "./common/SpeedSelector";
 
@@ -10,9 +10,6 @@ const Settings: React.FC = () => {
     selectSaveFolder,
   } = useTimelapseGenerationCapture();
 
-  // 최초 마운트 여부 확인을 위한 ref
-  const mountedRef = React.useRef(false);
-
   // 배속 변경 핸들러
   const handleSpeedChange = (speed: number) => {
     changeTimelapseOptions({ speedFactor: speed });
@@ -20,10 +17,7 @@ const Settings: React.FC = () => {
 
   // 설정 저장 핸들러
   const handleSaveSettings = () => {
-    // 현재 타임랩스 옵션을 로컬 스토리지에 저장
-    // localStorage.setItem("timelapseOptions", JSON.stringify(timelapseOptions));
-    // localStorage.setItem("selectedWindowId", selectedWindowId);
-
+    // 설정 저장 로직은 useTimelapseGenerationCapture 내부에서 처리됨
     alert("설정이 저장되었습니다.");
   };
 
@@ -52,7 +46,9 @@ const Settings: React.FC = () => {
           {/* 타임랩스 ON/OFF 토글 */}
           <div className="mb-5">
             <div className="flex justify-between items-center">
-              <label className="text-sm">타임랩스 활성화</label>
+              <label htmlFor="timelapseEnabled" className="text-sm">
+                타임랩스 활성화
+              </label>
 
               <div className="toggle-switch">
                 <input
@@ -73,6 +69,11 @@ const Settings: React.FC = () => {
                       ? "bg-[var(--primary-color)]"
                       : "bg-[#72767d]"
                   }`}
+                  aria-label={
+                    timelapseOptions.enabled !== false
+                      ? "활성화됨"
+                      : "비활성화됨"
+                  }
                 >
                   <span
                     className={`block w-[18px] h-[18px] bg-white rounded-full absolute top-[3px] transition-all duration-200 ${
@@ -97,8 +98,12 @@ const Settings: React.FC = () => {
           />
 
           <div className="mb-5">
-            <label className="block mb-2.5 text-sm">출력 품질</label>
-            <div className="flex gap-2.5">
+            <div className="block mb-2.5 text-sm">출력 품질</div>
+            <div
+              className="flex gap-2.5"
+              role="radiogroup"
+              aria-label="출력 품질"
+            >
               {["low", "medium", "high"].map((quality) => (
                 <button
                   key={quality}
@@ -110,12 +115,14 @@ const Settings: React.FC = () => {
                   onClick={() =>
                     changeTimelapseOptions({ outputQuality: quality as any })
                   }
+                  role="radio"
+                  aria-checked={timelapseOptions.outputQuality === quality}
                 >
                   {quality === "low"
                     ? "낮음"
                     : quality === "medium"
-                    ? "중간"
-                    : "높음"}
+                      ? "중간"
+                      : "높음"}
                 </button>
               ))}
             </div>
@@ -123,9 +130,12 @@ const Settings: React.FC = () => {
 
           {/* 저장 경로 설정 */}
           <div className="mb-5">
-            <label className="block mb-2.5 text-sm">타임랩스 저장 위치</label>
+            <label htmlFor="savePath" className="block mb-2.5 text-sm">
+              타임랩스 저장 위치
+            </label>
             <div className="flex gap-2.5 items-center">
               <input
+                id="savePath"
                 type="text"
                 value={saveFolderPath || "기본 위치 (내 비디오 폴더)"}
                 readOnly
@@ -134,6 +144,7 @@ const Settings: React.FC = () => {
               <button
                 onClick={handleSelectFolder}
                 className="py-2.5 px-4 rounded border-none bg-[var(--bg-accent)] text-white cursor-pointer text-sm whitespace-nowrap"
+                aria-label="저장 폴더 선택하기"
               >
                 폴더 선택
               </button>
@@ -147,7 +158,9 @@ const Settings: React.FC = () => {
           {/* 원본 이미지 보존 설정 */}
           <div className="mb-5">
             <div className="flex justify-between items-center">
-              <label className="text-sm">원본 캡처 이미지 보존</label>
+              <label htmlFor="preserveOriginals" className="text-sm">
+                원본 캡처 이미지 보존
+              </label>
 
               <div className="toggle-switch">
                 <input
@@ -168,6 +181,11 @@ const Settings: React.FC = () => {
                       ? "bg-[var(--primary-color)]"
                       : "bg-[#72767d]"
                   }`}
+                  aria-label={
+                    timelapseOptions.preserveOriginals !== false
+                      ? "활성화됨"
+                      : "비활성화됨"
+                  }
                 >
                   <span
                     className={`block w-[18px] h-[18px] bg-white rounded-full absolute top-[3px] transition-all duration-200 ${

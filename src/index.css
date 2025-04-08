@@ -7,14 +7,35 @@
 
 body {
   margin: 0;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans",
-    "Helvetica Neue", sans-serif;
+  font-family:
+    "Pretendard",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "Roboto",
+    "Oxygen",
+    "Ubuntu",
+    "Cantarell",
+    "Fira Sans",
+    "Droid Sans",
+    "Helvetica Neue",
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
-    monospace;
+  font-family:
+    source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
+}
+
+/* 네비게이션 아이콘 버튼 스타일 */
+.icon-button {
+  @apply relative flex items-center justify-center w-12 h-12 mb-2 
+    rounded-lg cursor-pointer transition-all duration-200
+    text-[#a0a0a0] hover:text-white hover:bg-[rgba(255,255,255,0.1)];
+}
+
+.icon-button.active {
+  @apply text-white bg-[rgba(255,255,255,0.15)];
 }
