@@ -1,5 +1,5 @@
 import React from "react";
-import { useTimelapseGenerationCapture } from "../hooks/useTimelapseGenerationCapture";
+import { useTimelapseGenerationCapture } from "../features/timelapse";
 import SpeedSelector from "./common/SpeedSelector";
 
 const Settings: React.FC = () => {

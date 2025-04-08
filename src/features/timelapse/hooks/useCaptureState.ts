@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
+import { WindowInfo } from "../../window/types";
+import { CaptureStatus } from "../types";
 
 /**
  * 캡처 상태 관리를 위한 훅
@@ -6,7 +8,7 @@ import { useState, useEffect, useCallback } from "react";
 export const useCaptureState = (
   selectedWindowId: string,
   electronAvailable: boolean,
-  activeWindows: any[] = []
+  activeWindows: WindowInfo[] = []
 ) => {
   // 상태 관리
   const [isCapturing, setIsCapturing] = useState<boolean>(false);
@@ -19,7 +21,7 @@ export const useCaptureState = (
 
     if (electronAvailable) {
       // 캡처 상태 이벤트 리스너 등록
-      cleanup = window.electron.onCaptureStatus((status) => {
+      cleanup = window.electron.onCaptureStatus((status: CaptureStatus) => {
         setIsCapturing(status.isCapturing);
         setDuration(status.duration);
 

@@ -3,6 +3,9 @@
  */
 import { STORAGE_KEYS } from "../constants/storage";
 
+// STORAGE_KEYS 상수 재내보내기
+export { STORAGE_KEYS };
+
 /**
  * 로컬 스토리지에 객체를 저장
  * @param key 로컬 스토리지 키

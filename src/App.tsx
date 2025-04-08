@@ -5,7 +5,9 @@ import { Page } from "./types/navigation";
 import { isElectronEnv } from "./types/common";
 
 // 지연 로딩으로 각 페이지 컴포넌트 불러오기
-const Timelapse = lazy(() => import("./components/Timelapse"));
+const TimelapseWorkspacePage = lazy(
+  () => import("./pages/TimelapseWorkspacePage")
+);
 const Calendar = lazy(() => import("./components/Calendar"));
 const Settings = lazy(() => import("./components/Settings"));
 
@@ -37,7 +39,7 @@ function App() {
         {/* 메인 컨텐츠 영역 - 조건부 렌더링 개선 */}
         <main className="flex-1 overflow-hidden bg-[var(--bg-primary)]">
           <Suspense fallback={<PageLoader />}>
-            {currentPage === "workspace" && <Timelapse />}
+            {currentPage === "workspace" && <TimelapseWorkspacePage />}
             {currentPage === "calendar" && <Calendar />}
             {currentPage === "settings" && <Settings />}
           </Suspense>

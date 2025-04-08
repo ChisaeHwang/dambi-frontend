@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from "react";
-import {
-  useTimelapseGenerationCapture,
-  BlurRegion,
-} from "../hooks/useTimelapseGenerationCapture";
-import { formatTime } from "../utils/timeUtils";
-import WindowSelector from "./common/WindowSelector";
-import TimelapseTimer from "./timelapse/TimelapseTimer";
-import TimelapseControls from "./timelapse/TimelapseControls";
-import GeneratePrompt from "./timelapse/GeneratePrompt";
-import BlurRegionSelector from "./timelapse/BlurRegionSelector";
+import { useTimelapseGenerationCapture } from "../hooks/useTimelapseGenerationCapture";
+import { formatTime } from "../../../utils/timeUtils";
+import WindowSelector from "../../../components/common/WindowSelector";
+import TimelapseTimer from "./TimelapseTimer";
+import TimelapseControls from "./TimelapseControls";
+import GeneratePrompt from "./GeneratePrompt";
+import BlurRegionSelector from "./BlurRegionSelector";
+import { BlurRegion } from "../types";
 
 const Timelapse: React.FC = () => {
   const {
@@ -200,150 +198,164 @@ const Timelapse: React.FC = () => {
         "개"
       );
     } else {
-      // 블러 선택기를 열 때 가장 최신 타임랩스 옵션에서 블러 영역을 가져옵니다
-      if (
-        timelapseOptions.blurRegions &&
-        timelapseOptions.blurRegions.length > 0
-      ) {
-        // 깊은 복사를 통해 블러 영역 배열 참조 문제 방지
-        const latestRegions = JSON.parse(
-          JSON.stringify(timelapseOptions.blurRegions)
-        );
-        setBlurRegions(latestRegions);
-        console.log(
-          "블러 영역 설정 열기: 저장된 영역 불러옴",
-          latestRegions.length
-        );
-      } else {
-        // 저장된 블러 영역이 없는 경우
-        setBlurRegions([]);
-        console.log("블러 영역 설정 열기: 저장된 영역 없음");
-      }
+      // 블러 선택기를 열 때는 새로운 썸네일을 위해 창 목록을 새로고침합니다
+      refreshActiveWindows();
       setShowBlurSelector(true);
+      console.log("블러 영역 설정 시작");
     }
   };
 
-  // 모든 블러 영역 삭제 핸들러
+  // 모든 블러 영역 삭제
   const handleClearAllBlurRegions = () => {
-    setBlurRegions([]);
-    // 전역 옵션에도 빈 배열로 업데이트
-    changeTimelapseOptions({
-      ...timelapseOptions,
-      blurRegions: [],
-    });
-    console.log("블러 영역 모두 삭제");
+    if (blurRegions.length > 0) {
+      if (
+        window.confirm(
+          "모든 블러 영역을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+        )
+      ) {
+        setBlurRegions([]);
+        // 전역 옵션에서도 블러 영역 삭제
+        changeTimelapseOptions({
+          ...timelapseOptions,
+          blurRegions: [],
+        });
+        console.log("모든 블러 영역 삭제됨");
+      }
+    } else {
+      alert("삭제할 블러 영역이 없습니다.");
+    }
   };
 
-  // 작업 시간 포맷팅 (00:00:00 형식)
-  const formattedTime = formatTime(workTime);
-
-  // 현재 선택된 창의 썸네일 URL 찾기
-  const selectedWindow = activeWindows.find(
-    (window) => window.id === selectedWindowId
-  );
-  const thumbnailUrl = selectedWindow?.thumbnailDataUrl || "";
-  const thumbnailWidth = selectedWindow?.thumbnailWidth || 320;
-  const thumbnailHeight = selectedWindow?.thumbnailHeight || 240;
+  // 작업 시간 표시
+  const formattedWorkTime = formatTime(workTime);
 
   return (
-    <div className="bg-[var(--bg-primary)] text-[var(--text-normal)] h-screen w-full flex flex-col p-3">
-      <div className="bg-[var(--bg-secondary)] rounded-lg shadow-md p-5 mx-auto w-[98%] max-w-[1400px] min-w-auto h-[calc(100vh-30px)] overflow-y-auto">
-        <h2 className="text-white text-xl mb-4 text-center font-semibold">
-          워크스페이스
-        </h2>
+    <div className="flex flex-col h-full p-6 space-y-6 overflow-y-auto">
+      <div className="flex flex-col bg-[var(--bg-secondary)] rounded-lg p-6 space-y-6">
+        <h1 className="text-2xl font-bold mb-4">타임랩스 워크스페이스</h1>
 
-        {error && (
-          <div className="text-[var(--text-danger)] bg-[rgba(237,66,69,0.1)] p-2.5 rounded mb-4 text-center">
-            {error}
-          </div>
-        )}
+        {/* 창 선택 영역 */}
+        <div className="grid gap-4">
+          <div className="flex flex-col">
+            <label className="text-lg font-medium mb-2">캡처할 창 선택</label>
 
-        {!isCapturing && !isPaused && (
-          <div className="mb-4">
-            <WindowSelector
-              activeWindows={activeWindows}
-              selectedWindowId={selectedWindowId}
-              onWindowChange={handleWindowChange}
-              isLoadingWindows={isLoadingWindows}
-              onRefreshWindows={refreshActiveWindows}
-            />
+            <div className="flex flex-col space-y-4">
+              {/* 창 선택기 */}
+              <div className="w-full">
+                <div className="flex justify-between items-center mb-2.5">
+                  <label className="text-base font-semibold text-white">
+                    녹화할 화면
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={refreshActiveWindows}
+                      disabled={
+                        isLoadingWindows ||
+                        isCapturing ||
+                        isPaused ||
+                        showBlurSelector
+                      }
+                      className="py-2 px-4 rounded-md bg-[var(--bg-accent)] text-white text-sm min-w-[120px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      새로고침
+                    </button>
 
-            {selectedWindowId && (
-              <div className="mt-4 text-center">
-                <button
-                  onClick={toggleBlurSelector}
-                  className="py-2 px-4 bg-[var(--bg-accent)] text-[var(--text-normal)] rounded hover:bg-[var(--bg-hover)] transition-colors duration-200"
-                >
-                  {showBlurSelector
-                    ? "블러 영역 설정 닫기"
-                    : "블러 영역 설정하기"}
-                </button>
+                    {/* 블러 영역 설정 버튼 */}
+                    <button
+                      onClick={toggleBlurSelector}
+                      className={`py-2 px-4 rounded-md min-w-[120px] transition-colors text-sm ${
+                        showBlurSelector
+                          ? "bg-indigo-600 hover:bg-indigo-700"
+                          : "bg-[var(--bg-accent)] hover:bg-gray-700"
+                      } text-white disabled:opacity-50 disabled:cursor-not-allowed`}
+                      disabled={isCapturing || !selectedWindowId}
+                      title={
+                        showBlurSelector
+                          ? "블러 영역 설정 완료"
+                          : "캡처 영상에서 제외할 영역 설정"
+                      }
+                    >
+                      {showBlurSelector ? "영역 설정 완료" : "블러 영역 설정"}
+                    </button>
 
-                {showBlurSelector && (
-                  <div className="mt-4 p-6 bg-[var(--bg-primary)] rounded-lg mx-auto max-w-[90%]">
-                    <h3 className="text-xl font-semibold mb-3 text-[var(--primary-color)]">
-                      블러 처리할 영역 선택
-                    </h3>
-                    <p className="text-sm text-[var(--text-muted)] mb-5">
-                      블러 처리할 영역을 드래그하여 설정하세요. 타임랩스 생성 시
-                      선택한 영역은 블러 처리됩니다.
-                    </p>
-
-                    <div className="bg-[var(--bg-secondary)] p-4 rounded-md shadow-inner">
-                      <BlurRegionSelector
-                        thumbnailUrl={thumbnailUrl}
-                        thumbnailWidth={thumbnailWidth}
-                        thumbnailHeight={thumbnailHeight}
-                        regions={blurRegions}
-                        onRegionsChange={handleBlurRegionsChange}
-                        isEditable={!isCapturing}
-                      />
-                    </div>
-
-                    <div className="mt-5 flex justify-end space-x-3">
-                      <button
-                        onClick={toggleBlurSelector}
-                        className="py-2 px-5 bg-[var(--primary-color)] text-white rounded hover:bg-[var(--primary-color-hover)] transition-colors duration-200 font-medium"
-                      >
-                        완료
-                      </button>
+                    {/* 블러 영역 전체 삭제 버튼 */}
+                    {blurRegions.length > 0 && (
                       <button
                         onClick={handleClearAllBlurRegions}
-                        className="py-2 px-5 bg-[var(--bg-secondary)] text-[var(--text-normal)] rounded hover:bg-[var(--bg-hover)] transition-colors duration-200"
+                        className="py-2 px-4 rounded-md bg-red-600 hover:bg-red-700 text-white text-sm min-w-[120px]"
+                        title="설정된 모든 블러 영역 삭제"
+                        disabled={isCapturing}
                       >
-                        모두 삭제
+                        전체 삭제
                       </button>
-                    </div>
+                    )}
                   </div>
-                )}
+                </div>
+
+                <WindowSelector
+                  selectedWindowId={selectedWindowId}
+                  activeWindows={activeWindows}
+                  isLoading={isLoadingWindows}
+                  onSelect={handleWindowChange}
+                  onRefresh={refreshActiveWindows}
+                  disabled={isCapturing || isPaused || showBlurSelector}
+                />
+              </div>
+            </div>
+
+            {/* 안내 메시지 */}
+            {error && <div className="mt-2 text-red-500 text-sm">{error}</div>}
+            {blurRegions.length > 0 && (
+              <div className="mt-2 text-green-500 text-sm">
+                {blurRegions.length}개의 블러 영역이 설정되었습니다.
               </div>
             )}
           </div>
-        )}
+        </div>
 
-        <TimelapseTimer formattedTime={formattedTime} />
-
-        {!showGeneratePrompt && (
-          <TimelapseControls
-            isCapturing={isCapturing}
-            onStart={handleStartCapture}
-            onStop={handleStopCapture}
-            isPaused={isPaused}
+        {/* 블러 영역 선택기 (show/hide 토글) */}
+        {showBlurSelector && selectedWindowId && (
+          <BlurRegionSelector
+            windowId={selectedWindowId}
+            activeWindows={activeWindows}
+            initialRegions={blurRegions}
+            onRegionsChange={handleBlurRegionsChange}
           />
         )}
 
-        {showGeneratePrompt && (
-          <GeneratePrompt
-            onGenerate={handleGenerateTimelapse}
-            onCancel={handleCancelCapture}
-            isGenerating={isGeneratingTimelapse}
-            progress={timelapseProgress}
-            duration={duration}
-            defaultSpeedFactor={timelapseOptions.speedFactor}
-            timelapseEnabled={timelapseOptions.enabled !== false}
-          />
+        {/* 타이머 및 제어 영역 */}
+        {!showBlurSelector && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start mt-8">
+            {/* 타이머 및 상태 표시 */}
+            <TimelapseTimer
+              isCapturing={isCapturing}
+              duration={formattedWorkTime}
+              isPaused={isPaused}
+            />
+
+            {/* 제어 버튼 */}
+            <TimelapseControls
+              isCapturing={isCapturing}
+              isPaused={isPaused}
+              onStart={handleStartCapture}
+              onStop={handleStopCapture}
+              onCancel={handleCancelCapture}
+              disabled={!selectedWindowId || showBlurSelector}
+            />
+          </div>
         )}
       </div>
+
+      {/* 타임랩스 생성 프롬프트 (모달) */}
+      {showGeneratePrompt && (
+        <GeneratePrompt
+          onGenerate={handleGenerateTimelapse}
+          onCancel={handleCancelCapture}
+          isGenerating={isGeneratingTimelapse}
+          progress={timelapseProgress}
+          captureTime={workTime}
+        />
+      )}
     </div>
   );
 };

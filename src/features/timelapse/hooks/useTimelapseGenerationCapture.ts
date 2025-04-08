@@ -1,21 +1,12 @@
 import { useTimelapseOptions } from "./useTimelapseOptions";
-import { useWindowManager } from "./useWindowManager";
+import { useWindowManager } from "../../../features/window";
 import { useCaptureState } from "./useCaptureState";
 import { useTimelapseGeneration } from "./useTimelapseGeneration";
 import { useCallback } from "react";
 
-// 타입 재내보내기 - 기존 코드 호환성 유지
-export type {
-  BlurRegion,
-  TimelapseOptions,
-  WindowInfo,
-  TimelapseProgress,
-  NativeImage,
-} from "./types";
-
 /**
  * 타임랩스 생성 및 캡처 통합 훅
- * - 여러 개의 특화된 훅을 조합하여 기존 기능 유지
+ * - 여러 개의 특화된 훅을 조합하여 타임랩스 캡처 및 생성 기능 제공
  */
 export const useTimelapseGenerationCapture = () => {
   // 창 관리 훅

@@ -3,8 +3,9 @@ import {
   STORAGE_KEYS,
   saveToLocalStorage,
   loadFromLocalStorage,
-} from "../utils/localStorage";
-import { TimelapseOptions } from "./types";
+} from "../../../utils/localStorage";
+import { TimelapseOptions } from "../types";
+import { isElectronEnv } from "../../../types/common";
 
 /**
  * 타임랩스 옵션 관리를 위한 훅
@@ -17,7 +18,7 @@ export const useTimelapseOptions = () => {
       return loadFromLocalStorage<TimelapseOptions>(
         STORAGE_KEYS.TIMELAPSE_OPTIONS,
         {
-          speedFactor: 3, // 기본 3배속
+          speedFactor: 6, // 기본 6배속
           outputQuality: "medium",
           outputFormat: "mp4",
           preserveOriginals: true, // 기본적으로 원본 파일 보존
@@ -63,10 +64,7 @@ export const useTimelapseOptions = () => {
       saveToLocalStorage(STORAGE_KEYS.TIMELAPSE_OPTIONS, newOptions);
 
       // 일렉트론 환경이 있는 경우 메인 프로세스에도 설정 변경 전달
-      if (
-        typeof window !== "undefined" &&
-        typeof window.electron !== "undefined"
-      ) {
+      if (isElectronEnv()) {
         try {
           console.log("일렉트론에 타임랩스 옵션 업데이트:", newOptions);
           // 비동기적으로 처리하되 오류는 무시 (사용자 경험 방해 방지)

@@ -3,8 +3,9 @@ import {
   STORAGE_KEYS,
   saveToLocalStorage,
   loadStringFromLocalStorage,
-} from "../utils/localStorage";
-import { WindowInfo, TimelapseOptions, TimelapseProgress } from "./types";
+} from "../../../utils/localStorage";
+import { WindowInfo } from "../../window/types";
+import { TimelapseOptions, TimelapseProgress } from "../types";
 
 /**
  * 타임랩스 생성 기능을 위한 훅
@@ -36,23 +37,25 @@ export const useTimelapseGeneration = (
 
     if (electronAvailable) {
       // 타임랩스 생성 진행 상황 이벤트 리스너 등록
-      progressCleanup = window.electron.onTimelapseProgress((progress) => {
-        setTimelapseProgress(progress);
+      progressCleanup = window.electron.onTimelapseProgress(
+        (progress: TimelapseProgress) => {
+          setTimelapseProgress(progress);
 
-        // 상태에 따라 isGeneratingTimelapse 상태 갱신
-        if (progress.status === "start" || progress.status === "processing") {
-          setIsGeneratingTimelapse(true);
-        } else {
-          setIsGeneratingTimelapse(false);
-        }
+          // 상태에 따라 isGeneratingTimelapse 상태 갱신
+          if (progress.status === "start" || progress.status === "processing") {
+            setIsGeneratingTimelapse(true);
+          } else {
+            setIsGeneratingTimelapse(false);
+          }
 
-        // 에러 상태 처리
-        if (progress.status === "error" && progress.error) {
-          setError(progress.error);
-        } else if (progress.status === "complete") {
-          setError(null);
+          // 에러 상태 처리
+          if (progress.status === "error" && progress.error) {
+            setError(progress.error);
+          } else if (progress.status === "complete") {
+            setError(null);
+          }
         }
-      });
+      );
     }
 
     // 컴포넌트 언마운트 시 이벤트 리스너 정리
