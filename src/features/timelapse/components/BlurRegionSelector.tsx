@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { WindowInfo } from "../../../features/window/types";
 import { BlurRegion } from "../types";
 
@@ -26,6 +26,7 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
   const [hoveredDeleteButton, setHoveredDeleteButton] = useState<string | null>(
     null
   );
+  const [scale, setScale] = useState(1);
 
   // 이미지 캐싱
   const [cachedImage, setCachedImage] = useState<HTMLImageElement | null>(null);
@@ -38,31 +39,8 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
   const selectedWindow = activeWindows.find((win) => win.id === windowId);
   const thumbnailUrl = selectedWindow?.thumbnailDataUrl || "";
 
-  // 이미지 로드 및 초기화
-  useEffect(() => {
-    if (!thumbnailUrl) return;
-
-    const img = new Image();
-    img.onload = () => {
-      setImageLoaded(true);
-      setImageSize({ width: img.width, height: img.height });
-      setCachedImage(img);
-
-      // 초기 영역 그리기
-      if (canvasRef.current && regions.length > 0) {
-        drawRegions();
-      }
-    };
-    img.src = thumbnailUrl;
-  }, [thumbnailUrl]);
-
-  // regions 변경시 부모 컴포넌트에 알림
-  useEffect(() => {
-    onRegionsChange(regions);
-  }, [regions, onRegionsChange]);
-
-  // 영역 그리기 함수
-  const drawRegions = () => {
+  // 영역 그리기 함수 (useCallback으로 감싸서 의존성 문제 해결)
+  const drawRegions = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || !imageLoaded || !cachedImage) return;
 
@@ -102,7 +80,7 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
       ctx.fillText(`${index + 1}`, scaledX + 8, scaledY + 20);
 
       // X 버튼 그리기 (크기 증가 및 효과 개선)
-      const btnSize = 24;
+      const btnSize = 28; // 크기 더 키움
       const btnX = scaledX + scaledWidth - btnSize - 4;
       const btnY = scaledY + 4;
 
@@ -159,7 +137,67 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
       ctx.fillRect(scaledX, scaledY, scaledWidth, scaledHeight);
       ctx.strokeRect(scaledX, scaledY, scaledWidth, scaledHeight);
     }
-  };
+  }, [
+    regions,
+    imageLoaded,
+    cachedImage,
+    imageSize,
+    currentRegion,
+    isDrawing,
+    selectedRegionId,
+    hoveredDeleteButton,
+  ]);
+
+  // 컨테이너 크기 조정 및 스케일 계산
+  useEffect(() => {
+    const updateScale = () => {
+      if (!containerRef.current || !imageSize.width || !imageSize.height)
+        return;
+
+      // 컨테이너 크기에서 패딩 고려
+      const containerWidth = containerRef.current.clientWidth - 20; // 패딩 고려
+      const containerHeight = Math.min(window.innerHeight - 260, 800); // 최대 높이 증가
+
+      // 이미지 비율 유지하면서 컨테이너에 맞추기
+      const widthScale = containerWidth / imageSize.width;
+      const heightScale = containerHeight / imageSize.height;
+
+      // 스케일 값 적용 (기본값 0.9로 더 크게 표시)
+      const newScale = Math.min(widthScale, heightScale, 1.1); // 최대 원본 크기보다 약간 더 크게
+
+      setScale(newScale);
+    };
+
+    updateScale();
+    window.addEventListener("resize", updateScale);
+
+    return () => {
+      window.removeEventListener("resize", updateScale);
+    };
+  }, [imageSize]);
+
+  // 이미지 로드 및 초기화
+  useEffect(() => {
+    if (!thumbnailUrl) return;
+
+    const img = new Image();
+    img.onload = () => {
+      setImageLoaded(true);
+      setImageSize({ width: img.width, height: img.height });
+      setCachedImage(img);
+
+      // 초기 영역 그리기
+      if (canvasRef.current && regions.length > 0) {
+        drawRegions();
+      }
+    };
+    img.src = thumbnailUrl;
+  }, [thumbnailUrl, regions.length, drawRegions]);
+
+  // regions 변경시 부모 컴포넌트에 알림
+  useEffect(() => {
+    onRegionsChange(regions);
+  }, [regions, onRegionsChange]);
 
   // 마우스 이벤트 핸들러
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -181,7 +219,7 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
       const scaledWidth =
         region.width * (canvasRef.current.width / imageSize.width);
 
-      const btnSize = 24; // X 버튼 크기 업데이트
+      const btnSize = 28; // X 버튼 크기 키움
       const btnX = scaledX + scaledWidth - btnSize - 4;
       const btnY = scaledY + 4;
 
@@ -239,6 +277,14 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
+    // 실제 이미지 좌표로 변환
+    const imageX = Math.floor(
+      mouseX * (imageSize.width / canvasRef.current.width)
+    );
+    const imageY = Math.floor(
+      mouseY * (imageSize.height / canvasRef.current.height)
+    );
+
     // 삭제 버튼 호버 체크
     let foundHover = false;
     for (const region of regions) {
@@ -247,7 +293,7 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
       const scaledWidth =
         region.width * (canvasRef.current.width / imageSize.width);
 
-      const btnSize = 24;
+      const btnSize = 28; // X 버튼 크기 키움
       const btnX = scaledX + scaledWidth - btnSize - 4;
       const btnY = scaledY + 4;
 
@@ -266,31 +312,25 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
 
     if (!foundHover) {
       setHoveredDeleteButton(null);
-      canvasRef.current.style.cursor = isDrawing ? "crosshair" : "default";
+      // 드로잉 중이거나 일반 상태에서는 crosshair 커서 유지 (+ 모양)
+      canvasRef.current.style.cursor = "crosshair";
     }
 
     // 드로잉 중 로직
     if (isDrawing && currentRegion) {
-      const x = Math.floor(
-        (e.clientX - rect.left) * (imageSize.width / canvasRef.current.width)
-      );
-      const y = Math.floor(
-        (e.clientY - rect.top) * (imageSize.height / canvasRef.current.height)
-      );
-
       // 영역 크기 업데이트
-      const width = Math.max(0, x - startPoint.x);
-      const height = Math.max(0, y - startPoint.y);
+      const width = Math.max(0, imageX - startPoint.x);
+      const height = Math.max(0, imageY - startPoint.y);
 
       setCurrentRegion({
         ...currentRegion,
         width,
         height,
       });
-    }
 
-    // 미리보기 그리기
-    drawRegions();
+      // 미리보기 그리기
+      drawRegions();
+    }
   };
 
   const handleMouseUp = () => {
@@ -308,15 +348,6 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
     drawRegions();
   };
 
-  // 영역 삭제
-  const handleDeleteRegion = () => {
-    if (selectedRegionId) {
-      const updatedRegions = regions.filter((r) => r.id !== selectedRegionId);
-      setRegions(updatedRegions);
-      setSelectedRegionId(null);
-    }
-  };
-
   // 모든 영역 삭제
   const handleClearAllRegions = () => {
     if (regions.length > 0) {
@@ -330,7 +361,18 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
   // 캔버스 크기 업데이트
   useEffect(() => {
     drawRegions();
-  }, [imageLoaded, regions, selectedRegionId, hoveredDeleteButton]);
+  }, [
+    imageLoaded,
+    regions,
+    selectedRegionId,
+    hoveredDeleteButton,
+    scale,
+    drawRegions,
+  ]);
+
+  // 스케일에 맞춘 캔버스 크기 계산
+  const scaledWidth = imageSize.width * scale;
+  const scaledHeight = imageSize.height * scale;
 
   return (
     <div className="bg-[var(--bg-tertiary)] p-4 rounded-lg">
@@ -354,13 +396,9 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
       </div>
 
       <div
-        className="overflow-auto border border-[var(--border-color)] rounded-lg"
+        className="overflow-hidden border border-[var(--border-color)] rounded-lg flex justify-center items-center bg-black"
         ref={containerRef}
-        style={{
-          height: "calc(100vh - 240px)",
-          minHeight: "500px",
-          width: "100%",
-        }}
+        style={{ height: Math.min(scaledHeight + 10, 800), maxHeight: "800px" }}
       >
         {thumbnailUrl ? (
           <canvas
@@ -374,7 +412,11 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
               handleMouseUp();
               setHoveredDeleteButton(null);
             }}
-            style={{ width: "100%", height: "auto" }}
+            style={{
+              width: scaledWidth,
+              height: scaledHeight,
+            }}
+            className="cursor-crosshair"
           ></canvas>
         ) : (
           <div className="flex items-center justify-center h-[300px] bg-[var(--bg-secondary)]">

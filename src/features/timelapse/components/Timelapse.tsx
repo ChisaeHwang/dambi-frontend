@@ -205,27 +205,6 @@ const Timelapse: React.FC = () => {
     }
   };
 
-  // 모든 블러 영역 삭제
-  const handleClearAllBlurRegions = () => {
-    if (blurRegions.length > 0) {
-      if (
-        window.confirm(
-          "모든 블러 영역을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
-        )
-      ) {
-        setBlurRegions([]);
-        // 전역 옵션에서도 블러 영역 삭제
-        changeTimelapseOptions({
-          ...timelapseOptions,
-          blurRegions: [],
-        });
-        console.log("모든 블러 영역 삭제됨");
-      }
-    } else {
-      alert("삭제할 블러 영역이 없습니다.");
-    }
-  };
-
   // 작업 시간 표시
   const formattedWorkTime = formatTime(workTime);
 
