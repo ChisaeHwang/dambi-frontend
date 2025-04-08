@@ -44,8 +44,15 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
     const canvas = canvasRef.current;
     if (!canvas || !imageLoaded || !cachedImage) return;
 
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", {
+      alpha: false,
+      willReadFrequently: true,
+    });
     if (!ctx) return;
+
+    // 이미지 스무딩 비활성화 (선명한 이미지)
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
 
     // 캔버스 클리어
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -57,14 +64,7 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
     const scaleFactorX = imageSize.width / canvas.width;
     const scaleFactorY = imageSize.height / canvas.height;
 
-    // 디버깅용 로그 (문제 해결 후 제거 가능)
-    console.log(`스케일 팩터: X=${scaleFactorX}, Y=${scaleFactorY}`);
-    console.log(`캔버스 크기: ${canvas.width}x${canvas.height}`);
-    console.log(`이미지 크기: ${imageSize.width}x${imageSize.height}`);
-    console.log(`현재 스케일: ${scale}`);
-    console.log(
-      `표시 크기: ${imageSize.width * scale}x${imageSize.height * scale}`
-    );
+    // 디버깅용 로그 제거 (성능 향상)
 
     // 블러 영역 그리기
     regions.forEach((region, index) => {
@@ -76,39 +76,60 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
       const scaledWidth = region.width / scaleFactorX;
       const scaledHeight = region.height / scaleFactorY;
 
-      // 디버깅용 로그 (문제 해결 후 제거 가능)
-      console.log(
-        `영역 ${index + 1}: 원본(${region.x},${region.y},${region.width},${region.height}), 스케일(${scaledX},${scaledY},${scaledWidth},${scaledHeight})`
-      );
-
       // 선택된 영역은 다른 색상으로 표시
       ctx.strokeStyle = isSelected
-        ? "rgba(255, 0, 0, 0.8)"
-        : "rgba(255, 255, 255, 0.8)";
+        ? "rgba(255, 0, 0, 0.9)"
+        : "rgba(255, 255, 255, 0.9)";
       ctx.lineWidth = isSelected ? 3 : 2;
-      ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+
+      // 영역 채우기 - 더 뚜렷한 효과를 위해 투명도 조정
+      ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+
+      // 외곽선 그림자 효과 추가
+      ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+      ctx.shadowBlur = 3;
+      ctx.shadowOffsetX = 1;
+      ctx.shadowOffsetY = 1;
 
       // 영역 채우기 및 테두리 그리기
       ctx.fillRect(scaledX, scaledY, scaledWidth, scaledHeight);
       ctx.strokeRect(scaledX, scaledY, scaledWidth, scaledHeight);
 
-      // 영역 번호 표시
+      // 그림자 초기화 (영역 번호에는 적용 안함)
+      ctx.shadowColor = "transparent";
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+
+      // 영역 번호 표시 - 더 선명하게
       ctx.fillStyle = "white";
-      ctx.font = "14px Arial";
+      ctx.font = "bold 14px Arial";
+
+      // 텍스트에 검은색 외곽선 효과 추가
+      ctx.strokeStyle = "black";
+      ctx.lineWidth = 3;
+      ctx.strokeText(`${index + 1}`, scaledX + 8, scaledY + 20);
+
+      // 텍스트 내용
       ctx.fillText(`${index + 1}`, scaledX + 8, scaledY + 20);
 
-      // X 버튼 그리기 (크기 조정 및 디자인 개선)
-      const btnSize = 20; // 크기 줄임
-      const btnX = scaledX + scaledWidth - btnSize - 4;
-      const btnY = scaledY + 4;
+      // X 버튼 그리기 (더 크고 예쁜 디자인)
+      const btnSize = 32; // 크기 키움 (22 -> 32)
+      const btnX = scaledX + scaledWidth - btnSize - 6;
+      const btnY = scaledY + 6;
 
       // X 버튼 배경 - 호버 효과 적용
       const isHovered = region.id === hoveredDeleteButton;
-      ctx.fillStyle = isHovered
-        ? "rgba(255, 0, 0, 1)"
-        : "rgba(255, 0, 0, 0.75)";
 
-      // 원형 배경
+      // 그림자 효과 (hover시 강조)
+      if (isHovered) {
+        ctx.shadowColor = "rgba(0, 0, 0, 0.7)";
+        ctx.shadowBlur = 6;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
+      }
+
+      // 원형 배경 - 색상 및 디자인 개선
       ctx.beginPath();
       ctx.arc(
         btnX + btnSize / 2,
@@ -117,27 +138,56 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
         0,
         Math.PI * 2
       );
-      ctx.fill();
 
-      // 그림자 효과
+      // 그라데이션 배경 생성
+      const gradient = ctx.createRadialGradient(
+        btnX + btnSize / 2,
+        btnY + btnSize / 2,
+        btnSize / 8,
+        btnX + btnSize / 2,
+        btnY + btnSize / 2,
+        btnSize / 2
+      );
+
       if (isHovered) {
-        ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
-        ctx.shadowBlur = 3;
+        gradient.addColorStop(0, "rgba(255, 80, 80, 1)");
+        gradient.addColorStop(1, "rgba(220, 40, 40, 1)");
+      } else {
+        gradient.addColorStop(0, "rgba(255, 80, 80, 0.95)");
+        gradient.addColorStop(1, "rgba(220, 50, 50, 0.85)");
       }
 
-      // X 표시
+      ctx.fillStyle = gradient;
+      ctx.fill();
+
+      // 테두리 추가 (좀 더 밝은 테두리)
+      ctx.strokeStyle = "rgba(255, 200, 200, 0.7)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // X 표시 (더 굵고 세련되게)
       ctx.strokeStyle = "white";
-      ctx.lineWidth = isHovered ? 2 : 1.5;
+      ctx.lineWidth = isHovered ? 3.5 : 3; // 선 두께 증가
+      ctx.lineCap = "round"; // 선 끝 부분을 둥글게
+
+      // 중심에서 시작하는 X 표시
+      const centerX = btnX + btnSize / 2;
+      const centerY = btnY + btnSize / 2;
+      const offset = btnSize / 3.5;
+
       ctx.beginPath();
-      ctx.moveTo(btnX + 6, btnY + 6);
-      ctx.lineTo(btnX + btnSize - 6, btnY + btnSize - 6);
-      ctx.moveTo(btnX + btnSize - 6, btnY + 6);
-      ctx.lineTo(btnX + 6, btnY + btnSize - 6);
+      ctx.moveTo(centerX - offset, centerY - offset);
+      ctx.lineTo(centerX + offset, centerY + offset);
+      ctx.moveTo(centerX + offset, centerY - offset);
+      ctx.lineTo(centerX - offset, centerY + offset);
       ctx.stroke();
 
       // 그림자 초기화
       ctx.shadowColor = "transparent";
       ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+      ctx.lineCap = "butt"; // 기본값으로 리셋
     });
 
     // 현재 그리는 영역 미리보기
@@ -147,11 +197,21 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
       const scaledWidth = currentRegion.width / scaleFactorX;
       const scaledHeight = currentRegion.height / scaleFactorY;
 
-      ctx.strokeStyle = "rgba(255, 0, 0, 0.8)";
+      // 그리는 중인 영역 강조 효과
+      ctx.strokeStyle = "rgba(255, 60, 60, 0.9)";
       ctx.lineWidth = 2;
-      ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+
+      // 약간의 그림자 효과
+      ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+      ctx.shadowBlur = 4;
+
+      ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
       ctx.fillRect(scaledX, scaledY, scaledWidth, scaledHeight);
       ctx.strokeRect(scaledX, scaledY, scaledWidth, scaledHeight);
+
+      // 그림자 초기화
+      ctx.shadowColor = "transparent";
+      ctx.shadowBlur = 0;
     }
   }, [
     regions,
@@ -216,8 +276,6 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
       setImageSize({ width: img.width, height: img.height });
       setCachedImage(img);
 
-      console.log(`이미지 로드됨: ${img.width}x${img.height}`);
-
       // 초기 영역 그리기
       if (canvasRef.current && regions.length > 0) {
         drawRegions();
@@ -254,10 +312,6 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
     const x = Math.floor(canvasX * scaleFactorX);
     const y = Math.floor(canvasY * scaleFactorY);
 
-    console.log(
-      `마우스 다운: clientXY(${e.clientX},${e.clientY}), canvasXY(${canvasX},${canvasY}), imageXY(${x},${y})`
-    );
-
     // X 버튼 클릭 확인
     for (let i = 0; i < regions.length; i++) {
       const region = regions[i];
@@ -267,9 +321,9 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
       const scaledY = region.y / scaleFactorY;
       const scaledWidth = region.width / scaleFactorX;
 
-      const btnSize = 20; // X 버튼 크기 (줄임)
-      const btnX = scaledX + scaledWidth - btnSize - 4;
-      const btnY = scaledY + 4;
+      const btnSize = 32; // X 버튼 크기 (키움)
+      const btnX = scaledX + scaledWidth - btnSize - 6;
+      const btnY = scaledY + 6;
 
       // 버튼 중심 좌표
       const btnCenterX = btnX + btnSize / 2;
@@ -280,15 +334,8 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
         Math.pow(canvasX - btnCenterX, 2) + Math.pow(canvasY - btnCenterY, 2)
       );
 
-      // 디버깅용 로그
-      console.log(
-        `버튼 ${i + 1}: 중심(${btnCenterX},${btnCenterY}), 거리=${distance}, 크기=${btnSize / 2}`
-      );
-
       // 버튼 반경 내에 클릭했는지 확인
       if (distance <= btnSize / 2) {
-        console.log(`X 버튼 ${i + 1} 클릭됨`);
-
         // X 버튼 클릭 - 영역 삭제
         const updatedRegions = regions.filter((r) => r.id !== region.id);
         setRegions(updatedRegions);
@@ -324,8 +371,6 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
         height: 0,
       };
       setCurrentRegion(newRegion);
-
-      console.log(`새 영역 시작: (${x},${y})`);
     }
   };
 
@@ -359,9 +404,9 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
       const scaledY = region.y / scaleFactorY;
       const scaledWidth = region.width / scaleFactorX;
 
-      const btnSize = 20; // X 버튼 크기 (줄임)
-      const btnX = scaledX + scaledWidth - btnSize - 4;
-      const btnY = scaledY + 4;
+      const btnSize = 32; // X 버튼 크기 (키움)
+      const btnX = scaledX + scaledWidth - btnSize - 6;
+      const btnY = scaledY + 6;
 
       // 버튼 중심 좌표
       const btnCenterX = btnX + btnSize / 2;
@@ -397,13 +442,6 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
         width,
         height,
       });
-
-      // 디버깅용 로그
-      if (width > 0 && height > 0) {
-        console.log(
-          `드래그 중: 시작(${startPoint.x},${startPoint.y}), 현재(${imageX},${imageY}), 크기(${width},${height})`
-        );
-      }
 
       // 미리보기 그리기
       drawRegions();
@@ -492,7 +530,9 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
             style={{
               width: scaledWidth,
               height: scaledHeight,
-              imageRendering: "crisp-edges", // 이미지 렌더링 품질 개선
+              imageRendering: "auto", // 브라우저 기본 렌더링으로 변경 (pixelated 대신)
+              WebkitFontSmoothing: "antialiased", // 텍스트 부드럽게
+              backfaceVisibility: "hidden", // 렌더링 개선
             }}
             className="cursor-crosshair"
           ></canvas>
