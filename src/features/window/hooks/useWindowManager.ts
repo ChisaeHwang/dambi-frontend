@@ -1,12 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
-import {
-  STORAGE_KEYS,
-  saveToLocalStorage,
-  loadFromLocalStorage,
-  loadStringFromLocalStorage,
-} from "../../../utils/localStorage";
 import { WindowInfo } from "../types";
-import { isElectronEnv } from "../../../types/common";
+import {
+  windowService,
+  windowStorageService,
+  isElectronAvailable,
+} from "../../../services";
 
 /**
  * 창 관리를 위한 훅
@@ -16,29 +14,23 @@ export const useWindowManager = () => {
   const [electronAvailable, setElectronAvailable] = useState<boolean>(false);
   const [selectedWindowId, setSelectedWindowId] = useState<string>(() => {
     // 로컬 스토리지에서 선택된 창 ID 불러오기
-    const savedWindowId = loadStringFromLocalStorage(
-      STORAGE_KEYS.SELECTED_WINDOW_ID,
-      null
-    );
-    // null이 반환될 경우 빈 문자열 사용 (전체 화면 옵션 제거)
-    return savedWindowId || "";
+    return windowStorageService.getSelectedWindowId();
   });
   const [activeWindows, setActiveWindows] = useState<WindowInfo[]>(() => {
     // 로컬 스토리지에서 활성 창 목록 불러오기
-    return loadFromLocalStorage<WindowInfo[]>(STORAGE_KEYS.ACTIVE_WINDOWS, []);
+    return windowStorageService.getActiveWindows<WindowInfo>();
   });
   const [isLoadingWindows, setIsLoadingWindows] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   // activeWindows 상태가 변경될 때마다 localStorage에 저장
   useEffect(() => {
-    saveToLocalStorage(STORAGE_KEYS.ACTIVE_WINDOWS, activeWindows);
+    windowStorageService.saveActiveWindows(activeWindows);
   }, [activeWindows]);
 
   // 컴포넌트 초기화 시 Electron 환경 확인
   useEffect(() => {
-    const electronEnv = isElectronEnv();
-    setElectronAvailable(electronEnv);
+    setElectronAvailable(isElectronAvailable());
   }, []);
 
   // 활성 창 목록 가져오기
@@ -56,8 +48,8 @@ export const useWindowManager = () => {
       // 현재 선택된 창 ID 저장 (새로고침 후에도 유지하기 위해)
       const currentSelectedId = selectedWindowId;
 
-      // any 타입으로 임시 처리 (Electron IPC 통신이 정확한 타입을 보장하지 않음)
-      const windows: any[] = await window.electron.getActiveWindows();
+      // 서비스를 통해 활성 창 목록 가져오기
+      const windows = await windowService.getActiveWindows();
 
       if (windows && Array.isArray(windows)) {
         // 타임스탬프 추가 및 중복 ID 처리
@@ -87,7 +79,7 @@ export const useWindowManager = () => {
 
             // 로컬 상태 및 스토리지 업데이트 (이벤트 없이)
             setSelectedWindowId(firstWindowId);
-            saveToLocalStorage(STORAGE_KEYS.SELECTED_WINDOW_ID, firstWindowId);
+            windowStorageService.saveSelectedWindowId(firstWindowId);
           }
         } else {
           // 활성 창이 없는 경우 빈 배열 설정
@@ -131,7 +123,7 @@ export const useWindowManager = () => {
 
       // 상태 업데이트 및 로컬 스토리지에 저장
       setSelectedWindowId(windowId);
-      saveToLocalStorage(STORAGE_KEYS.SELECTED_WINDOW_ID, windowId);
+      windowStorageService.saveSelectedWindowId(windowId);
     },
     [activeWindows, selectedWindowId]
   );

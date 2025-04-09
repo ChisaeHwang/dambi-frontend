@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
-import {
-  STORAGE_KEYS,
-  saveToLocalStorage,
-  loadStringFromLocalStorage,
-} from "../../../utils/localStorage";
 import { WindowInfo } from "../../window/types";
 import { TimelapseOptions, TimelapseProgress } from "../types";
+import {
+  timelapseService,
+  fileService,
+  timelapseStorageService,
+} from "../../../services";
 
 /**
  * 타임랩스 생성 기능을 위한 훅
@@ -18,7 +18,7 @@ export const useTimelapseGeneration = (
   // 상태 관리
   const [outputPath, setOutputPath] = useState<string>("");
   const [saveFolderPath, setSaveFolderPath] = useState<string | null>(
-    loadStringFromLocalStorage(STORAGE_KEYS.SAVE_PATH, null)
+    timelapseStorageService.getPath()
   );
   const [isGeneratingTimelapse, setIsGeneratingTimelapse] =
     useState<boolean>(false);
@@ -37,7 +37,7 @@ export const useTimelapseGeneration = (
 
     if (electronAvailable) {
       // 타임랩스 생성 진행 상황 이벤트 리스너 등록
-      progressCleanup = window.electron.onTimelapseProgress(
+      progressCleanup = timelapseService.onTimelapseProgress(
         (progress: TimelapseProgress) => {
           setTimelapseProgress(progress);
 
@@ -76,15 +76,15 @@ export const useTimelapseGeneration = (
     }
 
     try {
-      // 일렉트론의 dialog API를 통해 폴더 선택 다이얼로그 표시
-      const result = await window.electron.selectSaveFolder();
+      // 서비스를 통해 폴더 선택 다이얼로그 표시
+      const result = await fileService.selectSaveFolder();
 
       if (result && result.filePaths && result.filePaths.length > 0) {
         const selectedPath = result.filePaths[0];
         setSaveFolderPath(selectedPath);
 
         // 로컬 스토리지에 경로 저장
-        saveToLocalStorage(STORAGE_KEYS.SAVE_PATH, selectedPath);
+        timelapseStorageService.savePath(selectedPath);
 
         console.log(`타임랩스 저장 경로 설정됨: ${selectedPath}`);
         return selectedPath;
@@ -180,7 +180,8 @@ export const useTimelapseGeneration = (
             });
           }
 
-          const path = await window.electron.generateTimelapse(mergedOptions);
+          // 서비스를 통해 타임랩스 생성
+          const path = await timelapseService.generateTimelapse(mergedOptions);
           setOutputPath(path);
           return path;
         } else {
@@ -203,10 +204,10 @@ export const useTimelapseGeneration = (
   );
 
   return {
-    isGeneratingTimelapse,
-    timelapseProgress,
     outputPath,
     saveFolderPath,
+    isGeneratingTimelapse,
+    timelapseProgress,
     error,
     generateTimelapse,
     selectSaveFolder,

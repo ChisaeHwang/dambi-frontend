@@ -1,11 +1,10 @@
 import { useState } from "react";
-import {
-  STORAGE_KEYS,
-  saveToLocalStorage,
-  loadFromLocalStorage,
-} from "../../../utils/localStorage";
 import { TimelapseOptions } from "../types";
-import { isElectronEnv } from "../../../types/common";
+import {
+  timelapseStorageService,
+  timelapseService,
+  isElectronAvailable,
+} from "../../../services";
 
 /**
  * 타임랩스 옵션 관리를 위한 훅
@@ -15,17 +14,14 @@ export const useTimelapseOptions = () => {
   const [timelapseOptions, setTimelapseOptions] = useState<TimelapseOptions>(
     () => {
       // 로컬 스토리지에서 설정 불러오기
-      return loadFromLocalStorage<TimelapseOptions>(
-        STORAGE_KEYS.TIMELAPSE_OPTIONS,
-        {
-          speedFactor: 6, // 기본 6배속
-          outputQuality: "medium",
-          outputFormat: "mp4",
-          preserveOriginals: true, // 기본적으로 원본 파일 보존
-          enabled: true, // 기본적으로 타임랩스 활성화
-          blurRegions: [], // 기본적으로 블러 영역 없음
-        }
-      );
+      return timelapseStorageService.getOptions<TimelapseOptions>({
+        speedFactor: 6, // 기본 6배속
+        outputQuality: "medium",
+        outputFormat: "mp4",
+        preserveOriginals: true, // 기본적으로 원본 파일 보존
+        enabled: true, // 기본적으로 타임랩스 활성화
+        blurRegions: [], // 기본적으로 블러 영역 없음
+      });
     }
   );
 
@@ -61,14 +57,14 @@ export const useTimelapseOptions = () => {
       };
 
       // 옵션 변경 시 로컬 스토리지에 저장
-      saveToLocalStorage(STORAGE_KEYS.TIMELAPSE_OPTIONS, newOptions);
+      timelapseStorageService.saveOptions(newOptions);
 
       // 일렉트론 환경이 있는 경우 메인 프로세스에도 설정 변경 전달
-      if (isElectronEnv()) {
+      if (isElectronAvailable()) {
         try {
           console.log("일렉트론에 타임랩스 옵션 업데이트:", newOptions);
           // 비동기적으로 처리하되 오류는 무시 (사용자 경험 방해 방지)
-          window.electron.updateTimelapseOptions?.(newOptions).catch((err) => {
+          timelapseService.updateTimelapseOptions(newOptions).catch((err) => {
             console.error("타임랩스 옵션 업데이트 오류:", err);
           });
         } catch (error) {
