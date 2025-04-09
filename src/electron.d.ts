@@ -37,6 +37,11 @@ interface ElectronAPI {
 
   // 타임랩스 캡처 기능
   getActiveWindows: () => Promise<WindowInfo[]>;
+  getRecordingStatus: () => Promise<{
+    isRecording: boolean;
+    isCapturing?: boolean;
+    duration: number;
+  }>;
   startCapture: (
     windowId: string,
     windowName: string

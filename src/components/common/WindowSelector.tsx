@@ -1,22 +1,26 @@
 import React, { useEffect } from "react";
-import type { WindowInfo } from "../../hooks/useTimelapseGenerationCapture";
+import type { WindowInfo } from "../../features/window/types";
 import WindowThumbnail from "./window/WindowThumbnail";
 import { STORAGE_KEYS } from "../../utils/localStorage";
 
 interface WindowSelectorProps {
   activeWindows: WindowInfo[];
   selectedWindowId: string;
-  onWindowChange: (windowId: string) => void;
-  isLoadingWindows: boolean;
-  onRefreshWindows: () => void;
+  onSelect: (windowId: string) => void;
+  isLoading: boolean;
+  onRefresh: () => void;
+  disabled?: boolean;
+  renderButtons?: () => React.ReactNode;
 }
 
 const WindowSelector: React.FC<WindowSelectorProps> = ({
   activeWindows,
   selectedWindowId,
-  onWindowChange,
-  isLoadingWindows,
-  onRefreshWindows,
+  onSelect,
+  isLoading,
+  onRefresh,
+  disabled = false,
+  renderButtons,
 }) => {
   // 컴포넌트 마운트 시 로컬 스토리지에서 선택된 창 ID 확인
   useEffect(() => {
@@ -43,18 +47,18 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
       activeWindows.some((window) => window.id === savedWindowId)
     ) {
       // 이전 선택 내용 복원
-      onWindowChange(savedWindowId);
+      onSelect(savedWindowId);
     } else if (activeWindows.length > 0) {
       // 저장된 ID가 없거나 유효하지 않으면 첫 번째 창으로 설정
-      onWindowChange(activeWindows[0].id);
+      onSelect(activeWindows[0].id);
     }
-  }, [activeWindows, selectedWindowId, onWindowChange]);
+  }, [activeWindows, selectedWindowId, onSelect]);
 
   // 새로고침 버튼 처리기
   const handleRefresh = () => {
     try {
       // 부모 컴포넌트의 새로고침 함수 호출
-      onRefreshWindows();
+      onRefresh();
     } catch (error) {
       console.error("창 목록 새로고침 중 오류 발생:", error);
     }
@@ -62,7 +66,7 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
 
   // 선택한 창 변경 시 로컬 스토리지에 저장
   const handleWindowChange = (windowId: string) => {
-    if (!windowId) return; // 유효하지 않은 ID 방지
+    if (!windowId || disabled) return; // 유효하지 않은 ID 방지
 
     // 이미 선택된 창이면 중복 이벤트 방지
     if (windowId === selectedWindowId) {
@@ -74,7 +78,7 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
       localStorage.setItem(STORAGE_KEYS.SELECTED_WINDOW_ID, windowId);
 
       // 부모 컴포넌트에 알림
-      onWindowChange(windowId);
+      onSelect(windowId);
     } catch (error) {
       console.error("WindowSelector: 창 선택 변경 중 오류 발생", error);
     }
@@ -86,21 +90,26 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
         <label className="text-base font-semibold text-white">
           녹화할 화면
         </label>
-        <button
-          onClick={handleRefresh}
-          disabled={isLoadingWindows}
-          className={`py-2 px-4 rounded border-none bg-[var(--bg-accent)] text-white text-sm ${
-            isLoadingWindows
-              ? "opacity-70 cursor-wait"
-              : "opacity-100 cursor-pointer"
-          }`}
-        >
-          새로고침
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleRefresh}
+            disabled={isLoading || disabled}
+            className={`py-2 px-4 rounded bg-[var(--bg-accent)] text-white text-sm min-w-[120px] ${
+              isLoading || disabled
+                ? "opacity-70 cursor-wait"
+                : "opacity-100 cursor-pointer hover:bg-gray-700"
+            }`}
+          >
+            새로고침
+          </button>
+          {renderButtons && renderButtons()}
+        </div>
       </div>
 
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4 mt-2.5">
-        {isLoadingWindows ? (
+      <div
+        className={`grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4 ${disabled ? "opacity-60" : "opacity-100"}`}
+      >
+        {isLoading ? (
           <div className="col-span-full p-5 text-center rounded bg-[var(--input-bg)] text-[var(--text-normal)]">
             창 목록 불러오는 중...
           </div>
@@ -119,8 +128,8 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
                 selectedWindowId === window.id
                   ? "bg-gradient-to-br from-[#35395c] to-[#2d3249] scale-[1.02] shadow-lg ring-2 ring-[var(--primary-color)]"
                   : "bg-gradient-to-br from-[#33363f] to-[#2a2d36] scale-100 hover:from-[#373a44] hover:to-[#2e313a]"
-              } transition-all duration-200`}
-              onClick={() => handleWindowChange(window.id)}
+              } transition-all duration-200 ${disabled ? "cursor-not-allowed" : ""}`}
+              onClick={() => !disabled && handleWindowChange(window.id)}
             >
               <div className="aspect-video relative overflow-hidden">
                 <WindowThumbnail window={window} />

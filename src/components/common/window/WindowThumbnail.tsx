@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import type { WindowInfo } from "../../../hooks/useTimelapseGenerationCapture";
+import type { WindowInfo } from "../../../features/window/types";
 import {
   saveThumbnail,
   loadThumbnail,

@@ -1,11 +1,15 @@
 import React, { useState, lazy, Suspense } from "react";
-import AppTitleBar from "./components/AppTitleBar";
-import Navigation, { Page } from "./components/Navigation";
+import AppTitleBar from "./components/layout/AppTitleBar";
+import Navigation from "./components/layout/Navigation";
+import { Page } from "./types/navigation";
+import { isElectronEnv } from "./types/common";
 
 // 지연 로딩으로 각 페이지 컴포넌트 불러오기
-const Timelapse = lazy(() => import("./components/Timelapse"));
-const Calendar = lazy(() => import("./components/Calendar"));
-const Settings = lazy(() => import("./components/Settings"));
+const TimelapseWorkspacePage = lazy(
+  () => import("./pages/TimelapseWorkspacePage")
+);
+const CalendarPage = lazy(() => import("./pages/CalendarPage"));
+const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 
 // 로딩 중 표시할 컴포넌트
 const PageLoader = () => (
@@ -18,7 +22,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState<Page>("workspace");
 
   // 일렉트론 환경에서 실행 중인지 확인
-  const isElectron = window.electron !== undefined;
+  const isElectron = isElectronEnv();
 
   // 페이지 전환 핸들러
   const handlePageChange = (page: Page) => {
@@ -35,9 +39,9 @@ function App() {
         {/* 메인 컨텐츠 영역 - 조건부 렌더링 개선 */}
         <main className="flex-1 overflow-hidden bg-[var(--bg-primary)]">
           <Suspense fallback={<PageLoader />}>
-            {currentPage === "workspace" && <Timelapse />}
-            {currentPage === "calendar" && <Calendar />}
-            {currentPage === "settings" && <Settings />}
+            {currentPage === "workspace" && <TimelapseWorkspacePage />}
+            {currentPage === "calendar" && <CalendarPage />}
+            {currentPage === "settings" && <SettingsPage />}
           </Suspense>
         </main>
       </div>

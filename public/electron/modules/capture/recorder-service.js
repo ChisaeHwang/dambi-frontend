@@ -55,7 +55,7 @@ class SourceManager {
     try {
       const sources = await desktopCapturer.getSources({
         types: ["window", "screen"],
-        thumbnailSize: { width: 300, height: 300 },
+        thumbnailSize: { width: 1280, height: 720 },
       });
 
       return sources.map((source) => ({
@@ -81,7 +81,7 @@ class SourceManager {
   async findCaptureSource(windowId) {
     const sources = await desktopCapturer.getSources({
       types: ["window", "screen"],
-      thumbnailSize: { width: 300, height: 300 },
+      thumbnailSize: { width: 1280, height: 720 },
     });
 
     const selectedSource = sources.find((source) => source.id === windowId);
