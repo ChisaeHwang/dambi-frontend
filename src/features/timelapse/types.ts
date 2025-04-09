@@ -25,6 +25,7 @@ export interface TimelapseOptions {
   thumbnailHeight?: number;
   videoWidth?: number;
   videoHeight?: number;
+  videoBitrate?: number; // 비디오 비트레이트 (bps)
 }
 
 // 캡처 상태 인터페이스

@@ -7,7 +7,8 @@ interface GeneratePromptProps {
   onCancel: () => void;
   isGenerating: boolean;
   progress: TimelapseProgress;
-  captureTime: number;
+  captureTime: number; // 초 단위
+  defaultSpeedFactor?: number; // 설정에서 지정한 기본 배속값
 }
 
 const GeneratePrompt: React.FC<GeneratePromptProps> = ({
@@ -16,8 +17,11 @@ const GeneratePrompt: React.FC<GeneratePromptProps> = ({
   isGenerating,
   progress,
   captureTime,
+  defaultSpeedFactor = 6, // 기본값은 6배속
 }) => {
-  const [selectedSpeed, setSelectedSpeed] = useState<number>(6);
+  // 초기값을 설정에서 지정한 값으로 설정
+  const [selectedSpeed, setSelectedSpeed] =
+    useState<number>(defaultSpeedFactor);
   const [estimatedDuration, setEstimatedDuration] = useState<string>("");
 
   // 속도 옵션
@@ -50,27 +54,30 @@ const GeneratePrompt: React.FC<GeneratePromptProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-      <div className="bg-[var(--bg-secondary)] rounded-lg shadow-xl max-w-md w-full p-6">
+    <div className="fixed inset-0 bg-[rgba(0,0,0,0.7)] flex items-center justify-center z-50">
+      <div className="bg-[var(--bg-secondary)] rounded-lg shadow-lg p-6 w-[90%] max-w-[450px]">
         {isGenerating ? (
           <div>
             <h3 className="text-xl font-semibold mb-4 text-center">
               타임랩스 생성 중...
             </h3>
-            <div className="w-full h-2 bg-[var(--bg-tertiary)] rounded-full overflow-hidden mb-3">
-              <div
-                className="h-full bg-blue-500 transition-all duration-300 ease-in-out"
-                style={{ width: `${progress.progress}%` }}
-              ></div>
+            <div className="mb-4 mt-5">
+              <div className="text-center text-sm text-[var(--text-muted)] mb-1">
+                {progress.stage || "처리 중"}
+              </div>
+              <div className="h-3 bg-[var(--bg-primary)] rounded-full">
+                <div
+                  className="h-full bg-[var(--primary-color)] rounded-full"
+                  style={{ width: `${Math.min(progress.progress, 1) * 100}%` }}
+                ></div>
+              </div>
+              <div className="text-right text-xs text-[var(--text-muted)] mt-1">
+                {Math.min(Math.round(progress.progress * 100), 100)}%
+              </div>
             </div>
-            <p className="text-sm text-center text-[var(--text-muted)]">
-              {progress.stage}
+            <p className="text-center text-sm text-[var(--text-muted)]">
+              완료까지 잠시 기다려 주세요.
             </p>
-            {progress.error && (
-              <p className="text-sm text-red-500 mt-3 text-center">
-                {progress.error}
-              </p>
-            )}
           </div>
         ) : (
           <div>

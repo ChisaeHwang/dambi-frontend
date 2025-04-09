@@ -8,8 +8,8 @@ import { isElectronEnv } from "./types/common";
 const TimelapseWorkspacePage = lazy(
   () => import("./pages/TimelapseWorkspacePage")
 );
-const Calendar = lazy(() => import("./features/calendar/components/Calendar"));
-const Settings = lazy(() => import("./features/settings/components/Settings"));
+const CalendarPage = lazy(() => import("./pages/CalendarPage"));
+const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 
 // 로딩 중 표시할 컴포넌트
 const PageLoader = () => (
@@ -40,8 +40,8 @@ function App() {
         <main className="flex-1 overflow-hidden bg-[var(--bg-primary)]">
           <Suspense fallback={<PageLoader />}>
             {currentPage === "workspace" && <TimelapseWorkspacePage />}
-            {currentPage === "calendar" && <Calendar />}
-            {currentPage === "settings" && <Settings />}
+            {currentPage === "calendar" && <CalendarPage />}
+            {currentPage === "settings" && <SettingsPage />}
           </Suspense>
         </main>
       </div>

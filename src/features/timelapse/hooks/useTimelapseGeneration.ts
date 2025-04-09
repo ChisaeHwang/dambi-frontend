@@ -142,11 +142,41 @@ export const useTimelapseGeneration = (
               mergedOptions.videoHeight = 1080;
             }
 
+            // 품질 설정에 따른 해상도 및 비트레이트 조정
+            if (mergedOptions.outputQuality === "low") {
+              // 낮은 품질: 해상도 감소, 낮은 비트레이트
+              mergedOptions.videoWidth = Math.round(
+                mergedOptions.videoWidth * 0.6
+              );
+              mergedOptions.videoHeight = Math.round(
+                mergedOptions.videoHeight * 0.6
+              );
+              mergedOptions.videoBitrate = 1000000; // 1Mbps
+            } else if (mergedOptions.outputQuality === "medium") {
+              // 중간 품질: 기본 해상도, 중간 비트레이트
+              mergedOptions.videoBitrate = 3000000; // 3Mbps
+            } else if (mergedOptions.outputQuality === "high") {
+              // 높은 품질: 해상도 증가, 높은 비트레이트
+              mergedOptions.videoWidth = Math.round(
+                mergedOptions.videoWidth * 1.2
+              );
+              mergedOptions.videoHeight = Math.round(
+                mergedOptions.videoHeight * 1.2
+              );
+              mergedOptions.videoBitrate = 6000000; // 6Mbps
+            }
+
             console.log("타임랩스 생성 옵션:", {
               thumbnailSize: `${mergedOptions.thumbnailWidth}x${mergedOptions.thumbnailHeight}`,
               videoSize: `${mergedOptions.videoWidth}x${mergedOptions.videoHeight}`,
               isScreen: selectedWindow.isScreen || false,
               blurRegions: mergedOptions.blurRegions?.length || 0,
+              quality: mergedOptions.outputQuality,
+              videoBitrate: mergedOptions.videoBitrate
+                ? `${mergedOptions.videoBitrate / 1000000}Mbps`
+                : "기본값",
+              speedFactor: mergedOptions.speedFactor,
+              preserveOriginals: mergedOptions.preserveOriginals,
             });
           }
 

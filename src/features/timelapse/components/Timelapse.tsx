@@ -324,6 +324,7 @@ const Timelapse: React.FC = () => {
           isGenerating={isGeneratingTimelapse}
           progress={timelapseProgress}
           captureTime={duration / 1000} // ms를 초로 변환
+          defaultSpeedFactor={timelapseOptions.speedFactor} // 설정에서 지정한 배속값 전달
         />
       )}
     </>
