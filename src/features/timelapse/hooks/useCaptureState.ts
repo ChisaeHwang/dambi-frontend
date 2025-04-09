@@ -26,7 +26,7 @@ export const useCaptureState = (
       // 마운트 시 즉시 현재 녹화 상태 요청
       const initializeStatus = async () => {
         try {
-          const status = await window.electron.getRecordingStatus();
+          const status = await window.electron.getRecordingStatus(); 
           // Electron API 호환성을 위한 필드 매핑
           setIsCapturing(status.isRecording || status.isCapturing || false);
           setDuration(status.duration || 0);

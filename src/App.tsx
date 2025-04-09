@@ -9,7 +9,7 @@ const TimelapseWorkspacePage = lazy(
   () => import("./pages/TimelapseWorkspacePage")
 );
 const Calendar = lazy(() => import("./components/Calendar"));
-const Settings = lazy(() => import("./components/Settings"));
+const Settings = lazy(() => import("./features/settings/components/Settings"));
 
 // 로딩 중 표시할 컴포넌트
 const PageLoader = () => (
