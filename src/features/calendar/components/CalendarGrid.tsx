@@ -1,14 +1,10 @@
 import React from "react";
-import { WorkSession } from "../../types/calendar";
+import { CalendarGridProps } from "../types";
 import CalendarDayCard from "./CalendarDayCard";
 
-interface CalendarGridProps {
-  currentMonth: Date;
-  selectedDate: Date;
-  getSessionsForDate: (date: Date) => WorkSession[];
-  onSelectDate: (date: Date) => void;
-}
-
+/**
+ * 캘린더 그리드 컴포넌트
+ */
 const CalendarGrid: React.FC<CalendarGridProps> = ({
   currentMonth,
   selectedDate,

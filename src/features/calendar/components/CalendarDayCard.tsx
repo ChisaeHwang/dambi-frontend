@@ -1,15 +1,10 @@
 import React from "react";
+import { CalendarDayCardProps } from "../types";
+import { formatWorkTime } from "../utils";
 
-interface CalendarDayCardProps {
-  date: Date;
-  isCurrentMonth: boolean;
-  isToday: boolean;
-  isSelected: boolean;
-  sessionsCount: number;
-  totalWorkTime: number; // 총 작업 시간 (분)
-  onSelectDate: (date: Date) => void;
-}
-
+/**
+ * 캘린더 일자 카드 컴포넌트
+ */
 const CalendarDayCard: React.FC<CalendarDayCardProps> = ({
   date,
   isCurrentMonth,
@@ -30,18 +25,6 @@ const CalendarDayCard: React.FC<CalendarDayCardProps> = ({
     return "bg-[#5865f20d]"; // 1시간 미만
   };
 
-  // 작업 시간 포맷팅 (시:분)
-  const formatWorkTime = () => {
-    const hours = Math.floor(totalWorkTime / 60);
-    const minutes = totalWorkTime % 60;
-
-    if (hours === 0) {
-      return `${minutes}분`;
-    }
-
-    return `${hours}시간 ${minutes > 0 ? `${minutes}분` : ""}`;
-  };
-
   return (
     <div
       onClick={() => onSelectDate(date)}
@@ -49,8 +32,8 @@ const CalendarDayCard: React.FC<CalendarDayCardProps> = ({
         isSelected
           ? "bg-[var(--bg-modifier-selected)]"
           : isToday
-          ? "bg-[var(--bg-modifier-active)]"
-          : "bg-[var(--bg-primary)]"
+            ? "bg-[var(--bg-modifier-active)]"
+            : "bg-[var(--bg-primary)]"
       } ${getWorkTimeIntensityClass()} ${
         isCurrentMonth
           ? "text-[var(--text-normal)]"
@@ -73,7 +56,7 @@ const CalendarDayCard: React.FC<CalendarDayCardProps> = ({
             {sessionsCount}개 작업
           </div>
           <div className="text-xs text-[var(--text-positive)] mt-0.5 font-medium">
-            {formatWorkTime()}
+            {formatWorkTime(totalWorkTime)}
           </div>
         </>
       )}

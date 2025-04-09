@@ -1,11 +1,9 @@
 import React from "react";
+import { CalendarHeaderProps } from "../types";
 
-interface CalendarHeaderProps {
-  currentMonth: Date;
-  onPrevMonth: () => void;
-  onNextMonth: () => void;
-}
-
+/**
+ * 캘린더 헤더 컴포넌트
+ */
 const CalendarHeader: React.FC<CalendarHeaderProps> = ({
   currentMonth,
   onPrevMonth,

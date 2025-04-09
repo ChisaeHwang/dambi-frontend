@@ -1,11 +1,9 @@
 import React from "react";
-import { WorkSession } from "../../types/calendar";
+import { SessionsListProps } from "../types";
 
-interface SessionsListProps {
-  selectedDate: Date;
-  sessions: WorkSession[];
-}
-
+/**
+ * 세션 목록 컴포넌트
+ */
 const SessionsList: React.FC<SessionsListProps> = ({
   selectedDate,
   sessions,

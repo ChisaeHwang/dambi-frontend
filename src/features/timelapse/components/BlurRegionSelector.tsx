@@ -222,7 +222,6 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
     isDrawing,
     selectedRegionId,
     hoveredDeleteButton,
-    scale,
   ]);
 
   // 컨테이너 크기 조정 및 스케일 계산
