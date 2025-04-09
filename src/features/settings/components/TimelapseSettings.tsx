@@ -26,6 +26,10 @@ const TimelapseSettings: React.FC<TimelapseSettingsProps> = ({
   // 속도 옵션
   const speedOptions = [3, 6, 9, 20];
 
+  // 토글 활성화 상태 확인
+  console.log("타임랩스 활성화 상태:", timelapseOptions.enabled);
+  console.log("원본 이미지 보존 상태:", timelapseOptions.preserveOriginals);
+
   return (
     <>
       {/* 타임랩스 ON/OFF 토글 */}
@@ -49,7 +53,11 @@ const TimelapseSettings: React.FC<TimelapseSettingsProps> = ({
             />
             <label
               htmlFor="timelapseEnabled"
-              className="flex items-center cursor-pointer w-12 h-6 rounded-full relative bg-[var(--bg-accent)] transition-colors duration-300"
+              className={`flex items-center cursor-pointer w-12 h-6 rounded-full relative ${
+                timelapseOptions.enabled !== false
+                  ? "bg-[var(--primary-color)]"
+                  : "bg-[var(--bg-accent)]"
+              } transition-colors duration-300`}
             >
               <span
                 className={`toggle-dot absolute transition-transform duration-300 left-1 top-1 bg-white w-4 h-4 rounded-full ${
@@ -149,7 +157,11 @@ const TimelapseSettings: React.FC<TimelapseSettingsProps> = ({
             />
             <label
               htmlFor="preserveOriginals"
-              className="flex items-center cursor-pointer w-12 h-6 rounded-full relative bg-[var(--bg-accent)] transition-colors duration-300"
+              className={`flex items-center cursor-pointer w-12 h-6 rounded-full relative ${
+                timelapseOptions.preserveOriginals !== false
+                  ? "bg-[var(--primary-color)]"
+                  : "bg-[var(--bg-accent)]"
+              } transition-colors duration-300`}
             >
               <span
                 className={`toggle-dot absolute transition-transform duration-300 left-1 top-1 bg-white w-4 h-4 rounded-full ${
