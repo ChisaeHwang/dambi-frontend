@@ -326,11 +326,18 @@ const Timelapse: React.FC = () => {
 
   // 메인 컨텐츠 렌더링 결정
   const renderMainContent = () => {
+    // 이미 캡처 중이라면 즉시 녹화 화면 표시
+    if (isCapturing) {
+      return renderRecordingContent();
+    }
+
+    // 상태 초기화 중이라면 로딩 화면 표시
     if (!isStatusInitialized) {
       return renderLoadingContent();
     }
 
-    return isCapturing ? renderRecordingContent() : renderNormalContent();
+    // 그 외에는 일반 화면 표시
+    return renderNormalContent();
   };
 
   return (

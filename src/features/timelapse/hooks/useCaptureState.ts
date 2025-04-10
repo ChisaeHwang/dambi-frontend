@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { WindowInfo } from "../../window/types";
 import { CaptureStatus } from "../types";
 import { captureService } from "../../../services";
@@ -12,12 +12,55 @@ export const useCaptureState = (
   activeWindows: WindowInfo[] = []
 ) => {
   // 상태 관리
-  const [isCapturing, setIsCapturing] = useState<boolean>(false);
-  const [duration, setDuration] = useState<number>(0);
+  const [isCapturing, setIsCapturing] = useState<boolean>(() => {
+    // localStorage에서 이전 상태를 가져와 초기값으로 사용
+    try {
+      const cachedState = localStorage.getItem("capture_state");
+      if (cachedState) {
+        const parsed = JSON.parse(cachedState);
+        return parsed.isCapturing || false;
+      }
+    } catch (e) {
+      console.error("캐시된 상태 로드 실패:", e);
+    }
+    return false;
+  });
+
+  const [duration, setDuration] = useState<number>(() => {
+    // localStorage에서 이전 duration을 가져와 초기값으로 사용
+    try {
+      const cachedState = localStorage.getItem("capture_state");
+      if (cachedState) {
+        const parsed = JSON.parse(cachedState);
+        return parsed.duration || 0;
+      }
+    } catch (e) {
+      console.error("캐시된 상태 로드 실패:", e);
+    }
+    return 0;
+  });
+
   const [error, setError] = useState<string | null>(null);
-  // 상태 로딩 여부 추가
+  // 상태 로딩 여부
   const [isStatusInitialized, setIsStatusInitialized] =
     useState<boolean>(false);
+
+  // lastKnownState를 ref로 관리
+  const lastKnownStateRef = useRef({ isCapturing, duration });
+
+  // 상태가 변경될 때마다 localStorage에 캐시
+  useEffect(() => {
+    try {
+      // 현재 상태 저장
+      lastKnownStateRef.current = { isCapturing, duration };
+      localStorage.setItem(
+        "capture_state",
+        JSON.stringify({ isCapturing, duration })
+      );
+    } catch (e) {
+      console.error("상태 캐싱 실패:", e);
+    }
+  }, [isCapturing, duration]);
 
   // 컴포넌트 초기화 시 이벤트 리스너 등록
   useEffect(() => {
