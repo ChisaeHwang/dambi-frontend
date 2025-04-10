@@ -209,9 +209,12 @@ const Timelapse: React.FC = () => {
   const renderRecordingContent = () => (
     <div className="flex flex-col items-center justify-center flex-grow py-8">
       <div className="text-center mb-8">
-        <div className="text-xl font-medium mb-2">녹화 진행 중...</div>
-        <div className="text-5xl font-mono tracking-widest font-semibold">
-          {formattedDuration}
+        <div className="text-xl font-medium mb-3">녹화 진행 중...</div>
+        <div className="relative inline-flex items-center">
+          <div className="text-6xl font-digital tracking-wide font-semibold text-shadow-glow">
+            {formattedDuration}
+          </div>
+          <div className="ml-3 h-3 w-3 bg-red-600 rounded-full animate-pulse"></div>
         </div>
       </div>
 

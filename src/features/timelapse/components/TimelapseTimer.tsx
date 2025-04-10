@@ -16,14 +16,14 @@ const TimelapseTimer: React.FC<TimelapseTimerProps> = ({
       <div className="text-sm mb-3 font-medium text-[var(--text-muted)]">
         {isCapturing ? "녹화 진행 중..." : isPaused ? "일시 중지됨" : "대기 중"}
       </div>
-      <div className="text-5xl font-digital tracking-wide font-semibold text-shadow-glow">
-        {duration}
-      </div>
-      {isCapturing && (
-        <div className="mt-3 h-2 w-16 relative">
-          <div className="absolute top-0 left-0 h-2 w-2 bg-red-600 rounded-full animate-pulse"></div>
+      <div className="relative inline-flex items-center">
+        <div className="text-5xl font-digital tracking-wide font-semibold text-shadow-glow">
+          {duration}
         </div>
-      )}
+        {isCapturing && (
+          <div className="ml-3 h-3 w-3 bg-red-600 rounded-full animate-pulse"></div>
+        )}
+      </div>
     </div>
   );
 };
