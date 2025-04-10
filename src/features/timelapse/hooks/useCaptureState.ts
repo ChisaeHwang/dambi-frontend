@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { WindowInfo } from "../../window/types";
 import { CaptureStatus } from "../types";
+import { captureService } from "../../../services";
 
 /**
  * 캡처 상태 관리를 위한 훅
@@ -11,12 +12,55 @@ export const useCaptureState = (
   activeWindows: WindowInfo[] = []
 ) => {
   // 상태 관리
-  const [isCapturing, setIsCapturing] = useState<boolean>(false);
-  const [duration, setDuration] = useState<number>(0);
+  const [isCapturing, setIsCapturing] = useState<boolean>(() => {
+    // localStorage에서 이전 상태를 가져와 초기값으로 사용
+    try {
+      const cachedState = localStorage.getItem("capture_state");
+      if (cachedState) {
+        const parsed = JSON.parse(cachedState);
+        return parsed.isCapturing || false;
+      }
+    } catch (e) {
+      console.error("캐시된 상태 로드 실패:", e);
+    }
+    return false;
+  });
+
+  const [duration, setDuration] = useState<number>(() => {
+    // localStorage에서 이전 duration을 가져와 초기값으로 사용
+    try {
+      const cachedState = localStorage.getItem("capture_state");
+      if (cachedState) {
+        const parsed = JSON.parse(cachedState);
+        return parsed.duration || 0;
+      }
+    } catch (e) {
+      console.error("캐시된 상태 로드 실패:", e);
+    }
+    return 0;
+  });
+
   const [error, setError] = useState<string | null>(null);
-  // 상태 로딩 여부 추가
+  // 상태 로딩 여부
   const [isStatusInitialized, setIsStatusInitialized] =
     useState<boolean>(false);
+
+  // lastKnownState를 ref로 관리
+  const lastKnownStateRef = useRef({ isCapturing, duration });
+
+  // 상태가 변경될 때마다 localStorage에 캐시
+  useEffect(() => {
+    try {
+      // 현재 상태 저장
+      lastKnownStateRef.current = { isCapturing, duration };
+      localStorage.setItem(
+        "capture_state",
+        JSON.stringify({ isCapturing, duration })
+      );
+    } catch (e) {
+      console.error("상태 캐싱 실패:", e);
+    }
+  }, [isCapturing, duration]);
 
   // 컴포넌트 초기화 시 이벤트 리스너 등록
   useEffect(() => {
@@ -26,7 +70,7 @@ export const useCaptureState = (
       // 마운트 시 즉시 현재 녹화 상태 요청
       const initializeStatus = async () => {
         try {
-          const status = await window.electron.getRecordingStatus(); 
+          const status = await captureService.getRecordingStatus();
           // Electron API 호환성을 위한 필드 매핑
           setIsCapturing(status.isRecording || status.isCapturing || false);
           setDuration(status.duration || 0);
@@ -42,7 +86,7 @@ export const useCaptureState = (
       initializeStatus();
 
       // 캡처 상태 이벤트 리스너 등록
-      cleanup = window.electron.onCaptureStatus((status: CaptureStatus) => {
+      cleanup = captureService.onCaptureStatus((status: CaptureStatus) => {
         setIsCapturing(status.isCapturing);
         setDuration(status.duration);
         setIsStatusInitialized(true);
@@ -79,24 +123,19 @@ export const useCaptureState = (
 
       console.log(`선택된 창 이름: ${windowName}`);
 
-      try {
-        // ID와 이름 모두 전달하고 그 결과를 로그로 출력
-        window.electron
-          .startCapture(selectedWindowId, windowName)
-          .then((result: any) => {
-            console.log("캡처 시작 결과:", result);
-            if (!result.success) {
-              setError(result.error || "캡처 시작 실패");
-            }
-          })
-          .catch((err: Error) => {
-            console.error("캡처 시작 오류:", err);
-            setError(err.message || "캡처 시작 중 오류 발생");
-          });
-      } catch (error) {
-        console.error("캡처 시작 예외:", error);
-        setError(String(error));
-      }
+      // 서비스를 통해 캡처 시작
+      captureService
+        .startCapture(selectedWindowId, windowName)
+        .then((result) => {
+          console.log("캡처 시작 결과:", result);
+          if (!result.success) {
+            setError(result.error || "캡처 시작 실패");
+          }
+        })
+        .catch((err: Error) => {
+          console.error("캡처 시작 오류:", err);
+          setError(err.message || "캡처 시작 중 오류 발생");
+        });
     } else {
       console.log("모의 환경: 캡처 시작");
       setIsCapturing(true);
@@ -107,9 +146,11 @@ export const useCaptureState = (
   const stopCapture = useCallback(() => {
     if (electronAvailable) {
       console.log("캡처 중지 요청");
-      window.electron
+
+      // 서비스를 통해 캡처 중지
+      captureService
         .stopCapture()
-        .then((result: any) => {
+        .then((result) => {
           console.log("캡처 중지 결과:", result);
           if (!result.success) {
             setError(result.error || "캡처 중지 실패");

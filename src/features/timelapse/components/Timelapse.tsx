@@ -80,17 +80,16 @@ const Timelapse: React.FC = () => {
       wasCapturingRef.current &&
       !isCapturing &&
       duration > 0 &&
-      !showGeneratePrompt &&
-      !isPaused
+      !showGeneratePrompt
     ) {
       // 녹화가 중지되었고, duration이 있으며, 모달이 표시되지 않은 경우
-      setIsPaused(true);
+      // isPaused 플래그는 사용하지 않도록 변경
       setShowGeneratePrompt(true);
     }
 
     // 현재 상태 저장
     wasCapturingRef.current = isCapturing;
-  }, [isCapturing, duration, showGeneratePrompt, isPaused]);
+  }, [isCapturing, duration, showGeneratePrompt]);
 
   // 캡처 시작 핸들러
   const handleStartCapture = () => {
@@ -102,15 +101,8 @@ const Timelapse: React.FC = () => {
       return;
     }
 
-    if (isPaused) {
-      // 일시 중지 상태에서 다시 시작
-      setIsPaused(false);
-      setShowGeneratePrompt(false);
-      startCapture();
-    } else {
-      // 새로운 캡처 시작
-      startCapture();
-    }
+    // 새로운 캡처 시작
+    startCapture();
 
     // 블러 선택기 닫기 (블러 영역은 변경하지 않고 유지)
     setShowBlurSelector(false);
@@ -123,7 +115,6 @@ const Timelapse: React.FC = () => {
 
   // 캡처 취소 핸들러
   const handleCancelCapture = () => {
-    setIsPaused(false);
     setShowGeneratePrompt(false);
   };
 
@@ -218,9 +209,12 @@ const Timelapse: React.FC = () => {
   const renderRecordingContent = () => (
     <div className="flex flex-col items-center justify-center flex-grow py-8">
       <div className="text-center mb-8">
-        <div className="text-xl font-medium mb-2">녹화 진행 중...</div>
-        <div className="text-5xl font-mono tracking-widest font-semibold">
-          {formattedDuration}
+        <div className="text-xl font-medium mb-3">녹화 진행 중...</div>
+        <div className="relative inline-flex items-center">
+          <div className="text-6xl font-digital tracking-wide font-semibold text-shadow-glow">
+            {formattedDuration}
+          </div>
+          <div className="ml-3 h-3 w-3 bg-red-600 rounded-full animate-pulse"></div>
         </div>
       </div>
 
@@ -332,11 +326,18 @@ const Timelapse: React.FC = () => {
 
   // 메인 컨텐츠 렌더링 결정
   const renderMainContent = () => {
+    // 이미 캡처 중이라면 즉시 녹화 화면 표시
+    if (isCapturing) {
+      return renderRecordingContent();
+    }
+
+    // 상태 초기화 중이라면 로딩 화면 표시
     if (!isStatusInitialized) {
       return renderLoadingContent();
     }
 
-    return isCapturing ? renderRecordingContent() : renderNormalContent();
+    // 그 외에는 일반 화면 표시
+    return renderNormalContent();
   };
 
   return (
