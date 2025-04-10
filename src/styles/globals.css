@@ -5,6 +5,8 @@
 
 /* Pretendard 폰트 import */
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css");
+/* Digital 폰트 import */
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&display=swap");
 
 @layer base {
   :root {
@@ -67,8 +69,13 @@
   html,
   body {
     @apply max-w-full overflow-x-hidden bg-[var(--bg-tertiary)] text-[var(--text-normal)] select-none;
-    font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui,
-      Roboto, sans-serif;
+    font-family:
+      "Pretendard",
+      -apple-system,
+      BlinkMacSystemFont,
+      system-ui,
+      Roboto,
+      sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -92,6 +99,14 @@
 
   a {
     @apply text-[var(--primary-color)] no-underline;
+  }
+
+  .font-digital {
+    font-family: "Orbitron", sans-serif;
+  }
+
+  .text-shadow-glow {
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
   }
 }
 

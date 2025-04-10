@@ -31,18 +31,9 @@ const TimelapseControls: React.FC<TimelapseControlsProps> = ({
             disabled={disabled}
             className="w-full sm:flex-1 py-3 px-6 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            <span className="text-xl">{isPaused ? "▶" : "⏺"}</span>
-            {isPaused ? "계속하기" : "녹화 시작"}
+            <span className="text-xl">⏺</span>
+            녹화 시작
           </button>
-
-          {isPaused && onCancel && (
-            <button
-              onClick={onCancel}
-              className="w-full sm:flex-1 py-3 px-6 rounded-lg bg-gray-600 hover:bg-gray-700 text-white font-medium transition-colors"
-            >
-              취소
-            </button>
-          )}
         </div>
       ) : (
         <button

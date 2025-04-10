@@ -80,17 +80,16 @@ const Timelapse: React.FC = () => {
       wasCapturingRef.current &&
       !isCapturing &&
       duration > 0 &&
-      !showGeneratePrompt &&
-      !isPaused
+      !showGeneratePrompt
     ) {
       // 녹화가 중지되었고, duration이 있으며, 모달이 표시되지 않은 경우
-      setIsPaused(true);
+      // isPaused 플래그는 사용하지 않도록 변경
       setShowGeneratePrompt(true);
     }
 
     // 현재 상태 저장
     wasCapturingRef.current = isCapturing;
-  }, [isCapturing, duration, showGeneratePrompt, isPaused]);
+  }, [isCapturing, duration, showGeneratePrompt]);
 
   // 캡처 시작 핸들러
   const handleStartCapture = () => {
@@ -102,15 +101,8 @@ const Timelapse: React.FC = () => {
       return;
     }
 
-    if (isPaused) {
-      // 일시 중지 상태에서 다시 시작
-      setIsPaused(false);
-      setShowGeneratePrompt(false);
-      startCapture();
-    } else {
-      // 새로운 캡처 시작
-      startCapture();
-    }
+    // 새로운 캡처 시작
+    startCapture();
 
     // 블러 선택기 닫기 (블러 영역은 변경하지 않고 유지)
     setShowBlurSelector(false);
@@ -123,7 +115,6 @@ const Timelapse: React.FC = () => {
 
   // 캡처 취소 핸들러
   const handleCancelCapture = () => {
-    setIsPaused(false);
     setShowGeneratePrompt(false);
   };
 
