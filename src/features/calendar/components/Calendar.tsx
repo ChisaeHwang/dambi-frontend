@@ -1,12 +1,10 @@
-import React, { useState } from "react";
+import React from "react";
 import { useCalendar } from "../hooks/useCalendar";
 import CalendarHeader from "./CalendarHeader";
 import CalendarGrid from "./CalendarGrid";
 import SessionsList from "./SessionsList";
 import StatsView from "./StatsView";
 import TimerPanel from "./TimerPanel";
-import SessionForm from "./SessionForm";
-import { WorkSession } from "../types";
 
 /**
  * 메인 캘린더 컴포넌트
@@ -23,43 +21,7 @@ const Calendar: React.FC = () => {
     setSelectedDate,
     selectedDateSessions,
     monthStats,
-    addSession,
-    updateSession,
-    deleteSession,
   } = useCalendar();
-
-  const [showAddForm, setShowAddForm] = useState<boolean>(false);
-  const [editingSession, setEditingSession] = useState<WorkSession | null>(
-    null
-  );
-
-  // 세션 추가 폼 표시
-  const handleShowAddForm = () => {
-    setEditingSession(null);
-    setShowAddForm(true);
-  };
-
-  // 세션 편집 폼 표시
-  const handleEditSession = (session: WorkSession) => {
-    setEditingSession(session);
-    setShowAddForm(true);
-  };
-
-  // 세션 저장 처리
-  const handleSaveSession = (session: WorkSession) => {
-    if (editingSession) {
-      updateSession(session);
-    } else {
-      addSession(session);
-    }
-    setShowAddForm(false);
-  };
-
-  // 세션 폼 취소
-  const handleCancelForm = () => {
-    setShowAddForm(false);
-    setEditingSession(null);
-  };
 
   return (
     <div className="bg-[var(--bg-primary)] text-[var(--text-normal)] h-screen w-full flex flex-col p-3">
@@ -105,42 +67,27 @@ const Calendar: React.FC = () => {
                 onSelectDate={setSelectedDate}
               />
 
-              {showAddForm ? (
-                <div className="mt-6">
-                  <SessionForm
-                    session={editingSession || undefined}
-                    onSave={handleSaveSession}
-                    onCancel={handleCancelForm}
-                  />
-                </div>
-              ) : (
-                <div className="mt-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-bold">
-                      {selectedDate.toLocaleDateString("ko-KR", {
-                        month: "long",
-                        day: "numeric",
-                      })}{" "}
-                      작업 목록
-                    </h3>
-                    <button
-                      onClick={handleShowAddForm}
-                      className="px-3 py-1.5 rounded text-sm bg-[var(--primary-color)] text-white"
-                    >
-                      작업 추가
-                    </button>
+              <div className="mt-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-bold">
+                    {selectedDate.toLocaleDateString("ko-KR", {
+                      month: "long",
+                      day: "numeric",
+                    })}{" "}
+                    작업 목록
+                  </h3>
+                  <div className="text-sm text-[var(--text-muted)]">
+                    작업은 워크스페이스에서 관리합니다
                   </div>
-                  <SessionsList
-                    selectedDate={selectedDate}
-                    sessions={selectedDateSessions}
-                    onEditSession={handleEditSession}
-                    onDeleteSession={deleteSession}
-                  />
                 </div>
-              )}
+                <SessionsList
+                  selectedDate={selectedDate}
+                  sessions={selectedDateSessions}
+                />
+              </div>
             </div>
 
-            {/* 타이머 패널 */}
+            {/* 타이머 패널 - 오늘의 작업 요약만 표시 */}
             <div>
               <TimerPanel />
             </div>

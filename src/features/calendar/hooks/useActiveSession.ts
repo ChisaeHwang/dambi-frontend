@@ -92,9 +92,9 @@ export const useActiveSession = () => {
    * 작업 세션 시작 함수
    */
   const startSession = useCallback(
-    (title: string, category: string) => {
+    (title: string, taskType: string) => {
       const source = isElectron ? "electron" : "browser";
-      return timerService.startSession(title, category, source);
+      return timerService.startSession(title, taskType, source);
     },
     [isElectron]
   );

@@ -1,0 +1,218 @@
+import { useState, useEffect, useCallback } from "react";
+import { v4 as uuidv4 } from "uuid";
+import { WorkSession } from "../../calendar/types";
+import { electronSessionAdapter } from "../../calendar/services/ElectronSessionAdapter";
+import { timerService } from "../../calendar/services/TimerService";
+import { sessionStorageService } from "../../calendar/utils";
+
+/**
+ * 작업 세션 관리를 위한 훅
+ */
+export function useWorkSession() {
+  const [activeSession, setActiveSession] = useState<WorkSession | null>(null);
+  const [elapsedTime, setElapsedTime] = useState<number>(0); // 초 단위
+  const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [userTaskTypes, setUserTaskTypes] = useState<string[]>(() => {
+    const savedTypes = localStorage.getItem("userTaskTypes");
+    return savedTypes
+      ? JSON.parse(savedTypes)
+      : ["개발", "디자인", "회의", "기획", "리서치"];
+  });
+  const [todaySessions, setTodaySessions] = useState<WorkSession[]>([]);
+  const [allSessions, setAllSessions] = useState<WorkSession[]>([]);
+
+  // 사용자 작업 유형 추가
+  const addTaskType = useCallback((taskType: string) => {
+    setUserTaskTypes((prev) => {
+      const updated = [...prev, taskType];
+      localStorage.setItem("userTaskTypes", JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
+  // 오늘 작업 세션 로드
+  const loadTodaySessions = useCallback(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const sessions = sessionStorageService.getSessionsByDate(today);
+    setTodaySessions(sessions);
+
+    // 활성 세션 찾기
+    const active = sessions.find((session) => session.isActive);
+    if (active) {
+      setActiveSession(active);
+
+      // 경과 시간 계산
+      const start = new Date(active.startTime).getTime();
+      const now = Date.now();
+      const elapsed = Math.floor((now - start) / 1000); // 초 단위로 변환
+      setElapsedTime(elapsed);
+
+      // 녹화 상태 확인
+      setIsRecording(active.isRecording);
+    } else {
+      setActiveSession(null);
+      setElapsedTime(0);
+      setIsRecording(false);
+    }
+  }, []);
+
+  // 모든 세션 로드
+  const loadAllSessions = useCallback(() => {
+    const sessions = sessionStorageService.getSessions();
+    setAllSessions(sessions);
+  }, []);
+
+  // 초기 로드
+  useEffect(() => {
+    loadTodaySessions();
+    loadAllSessions();
+  }, [loadTodaySessions, loadAllSessions]);
+
+  // 타이머 효과
+  useEffect(() => {
+    if (!activeSession || !activeSession.isActive) return;
+
+    const interval = setInterval(() => {
+      setElapsedTime((prev) => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [activeSession]);
+
+  // 세션 종료
+  const stopSession = useCallback(() => {
+    if (!activeSession) return;
+
+    const now = new Date();
+    const start = new Date(activeSession.startTime);
+    const durationMs = now.getTime() - start.getTime();
+    const durationMinutes = Math.floor(durationMs / (1000 * 60));
+
+    const updatedSession = {
+      ...activeSession,
+      endTime: now,
+      duration: durationMinutes,
+      isActive: false,
+    };
+
+    sessionStorageService.updateSession(updatedSession);
+    setActiveSession(null);
+    setElapsedTime(0);
+
+    // 녹화 중이었다면 중지
+    if (isRecording && electronSessionAdapter.isElectronEnvironment()) {
+      electronSessionAdapter.stopCapture();
+      setIsRecording(false);
+    }
+
+    loadTodaySessions();
+    loadAllSessions();
+  }, [activeSession, isRecording, loadTodaySessions, loadAllSessions]);
+
+  // 세션 시작
+  const startSession = useCallback(
+    (sessionData: Omit<WorkSession, "id" | "date" | "duration">) => {
+      const now = new Date();
+      const today = new Date(now);
+      today.setHours(0, 0, 0, 0);
+
+      const newSession: WorkSession = {
+        id: uuidv4(),
+        date: today,
+        duration: 0,
+        ...sessionData,
+      };
+
+      // 활성 세션이 있으면 중지
+      if (activeSession && activeSession.isActive) {
+        stopSession();
+      }
+
+      // 저장 및 상태 업데이트
+      sessionStorageService.addSession(newSession);
+      setActiveSession(newSession);
+      setElapsedTime(0);
+      setIsRecording(newSession.isRecording);
+
+      // 녹화 옵션이 켜져 있으면 녹화 시작
+      if (
+        newSession.isRecording &&
+        electronSessionAdapter.isElectronEnvironment()
+      ) {
+        // 먼저 창 목록을 다시 가져옵니다
+        electronSessionAdapter.getAvailableWindows().then((windows) => {
+          if (windows.length > 0) {
+            // 첫 번째 창을 기본으로 선택
+            const firstWindow = windows[0];
+            electronSessionAdapter.startCapture(
+              firstWindow.id,
+              firstWindow.name || ""
+            );
+          }
+        });
+      }
+
+      loadTodaySessions();
+      return newSession;
+    },
+    [activeSession, loadTodaySessions]
+  );
+
+  // 세션 일시 정지
+  const pauseSession = useCallback(() => {
+    if (!activeSession) return;
+
+    const updatedSession = {
+      ...activeSession,
+      isActive: false,
+    };
+
+    sessionStorageService.updateSession(updatedSession);
+    setActiveSession(updatedSession);
+
+    // 녹화 중이었다면 일시 정지
+    if (isRecording && electronSessionAdapter.isElectronEnvironment()) {
+      electronSessionAdapter.pauseCapture();
+    }
+
+    loadTodaySessions();
+  }, [activeSession, isRecording, loadTodaySessions]);
+
+  // 세션 재개
+  const resumeSession = useCallback(() => {
+    if (!activeSession) return;
+
+    const updatedSession = {
+      ...activeSession,
+      isActive: true,
+    };
+
+    sessionStorageService.updateSession(updatedSession);
+    setActiveSession(updatedSession);
+
+    // 녹화 옵션이 켜져 있었다면 녹화 재개
+    if (isRecording && electronSessionAdapter.isElectronEnvironment()) {
+      electronSessionAdapter.resumeCapture();
+    }
+
+    loadTodaySessions();
+  }, [activeSession, isRecording, loadTodaySessions]);
+
+  return {
+    activeSession,
+    elapsedTime,
+    isRecording,
+    todaySessions,
+    allSessions,
+    userTaskTypes,
+    startSession,
+    pauseSession,
+    resumeSession,
+    stopSession,
+    addTaskType,
+    loadTodaySessions,
+    loadAllSessions,
+  };
+}

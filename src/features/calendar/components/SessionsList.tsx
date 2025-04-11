@@ -41,56 +41,42 @@ const SessionsList: React.FC<SessionsListProps> = ({
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center">
             <div>
               <h4 className="text-lg font-medium">{session.title}</h4>
-              <div className="flex items-center mt-1 gap-2">
-                <span className="text-sm px-2 py-0.5 rounded bg-[var(--bg-accent)] text-[var(--text-muted)]">
-                  {session.category}
+              <div className="flex items-center mt-1 gap-2 flex-wrap">
+                <span className="text-sm px-2 py-0.5 rounded bg-[var(--primary-color)] text-white">
+                  {session.taskType}
                 </span>
                 <span className="text-sm text-[var(--text-muted)]">
                   {formatWorkTime(session.duration)}
                 </span>
+                {session.isRecording && (
+                  <span className="text-sm px-2 py-0.5 rounded bg-red-500 text-white flex items-center">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white mr-1 animate-pulse"></span>
+                    녹화
+                  </span>
+                )}
               </div>
             </div>
 
-            <div className="mt-3 sm:mt-0 flex items-center gap-2">
-              {onEditSession && (
-                <button
-                  onClick={() => onEditSession(session)}
-                  className="text-sm px-3 py-1 border rounded hover:bg-[var(--bg-accent)]"
-                >
-                  편집
-                </button>
-              )}
-              {onDeleteSession && (
-                <button
-                  onClick={() => onDeleteSession(session.id)}
-                  className="text-sm px-3 py-1 border rounded text-red-500 hover:bg-red-50"
-                >
-                  삭제
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-3 text-sm text-[var(--text-muted)]">
-            <div>
+            <div className="mt-3 sm:mt-0 text-sm text-[var(--text-muted)]">
               {new Date(session.startTime).toLocaleTimeString()} -
               {session.endTime
                 ? new Date(session.endTime).toLocaleTimeString()
                 : "진행 중"}
             </div>
-            {session.tags && session.tags.length > 0 && (
-              <div className="mt-1 flex gap-1 flex-wrap">
-                {session.tags.map((tag, index) => (
-                  <span
-                    key={index}
-                    className="text-xs px-1.5 py-0.5 rounded-full bg-[var(--bg-hover)]"
-                  >
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
+
+          {session.tags && session.tags.length > 0 && (
+            <div className="mt-3 flex gap-1 flex-wrap">
+              {session.tags.map((tag, index) => (
+                <span
+                  key={index}
+                  className="text-xs px-1.5 py-0.5 rounded-full bg-[var(--bg-hover)]"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       ))}
     </div>

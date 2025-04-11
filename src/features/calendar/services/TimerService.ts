@@ -73,7 +73,7 @@ export class TimerService {
    */
   startSession(
     title: string,
-    category: string,
+    taskType: string,
     source: "electron" | "browser" | "manual" = "manual"
   ): WorkSession {
     // 기존 세션이 있으면 중지
@@ -90,7 +90,8 @@ export class TimerService {
       endTime: null,
       duration: 0,
       title,
-      category,
+      taskType,
+      isRecording: false, // 기본값으로 녹화하지 않음
       source,
       isActive: true,
       tags: [],

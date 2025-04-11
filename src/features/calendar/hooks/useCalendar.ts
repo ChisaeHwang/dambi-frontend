@@ -142,10 +142,10 @@ export const useCalendar = () => {
     let totalMonthTime = 0;
 
     monthSessions.forEach((session) => {
-      if (!categoryStats[session.category]) {
-        categoryStats[session.category] = 0;
+      if (!categoryStats[session.taskType]) {
+        categoryStats[session.taskType] = 0;
       }
-      categoryStats[session.category] += session.duration;
+      categoryStats[session.taskType] += session.duration;
       totalMonthTime += session.duration;
     });
 
@@ -206,7 +206,7 @@ const generateSampleWorkSessions = (): WorkSession[] => {
       const hours = 9 + Math.floor(Math.random() * 8); // 9시-17시 사이
       const minutes = Math.floor(Math.random() * 6) * 10; // 0, 10, 20, 30, 40, 50분
       const duration = 30 + Math.floor(Math.random() * 12) * 15; // 30분-3시간
-      const category =
+      const taskType =
         categories[Math.floor(Math.random() * categories.length)];
 
       const sessionDate = new Date(startDate);
@@ -222,8 +222,9 @@ const generateSampleWorkSessions = (): WorkSession[] => {
         startTime: startTime,
         endTime: endTime,
         duration,
-        title: `${category} 작업 ${i + 1}`,
-        category,
+        title: `${taskType} 작업 ${i + 1}`,
+        taskType,
+        isRecording: false,
         source: "manual",
         isActive: false,
       });

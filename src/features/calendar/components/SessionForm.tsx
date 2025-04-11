@@ -18,25 +18,32 @@ const SessionForm: React.FC<SessionFormProps> = ({
   onCancel,
 }) => {
   const [title, setTitle] = useState<string>("");
-  const [category, setCategory] = useState<string>("개발");
+  const [taskType, setTaskType] = useState<string>("개발");
   const [date, setDate] = useState<string>("");
   const [startTime, setStartTime] = useState<string>("");
   const [endTime, setEndTime] = useState<string>("");
   const [duration, setDuration] = useState<number>(0);
-  const [categories, setCategories] = useState<string[]>([]);
+  const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [taskTypes, setTaskTypes] = useState<string[]>([]);
   const [isEditing, setIsEditing] = useState<boolean>(false);
 
   // 초기 데이터 설정
   useEffect(() => {
-    // 앱 설정에서 카테고리 목록 가져오기
+    // 앱 설정에서 작업 유형 목록 가져오기
     const settings = sessionStorageService.getSettings();
-    setCategories(settings.categories);
+    const savedTypes = localStorage.getItem("userTaskTypes");
+    setTaskTypes(
+      savedTypes
+        ? JSON.parse(savedTypes)
+        : settings.categories || ["개발", "디자인", "회의", "기획", "리서치"]
+    );
 
     if (session) {
       // 기존 세션 편집
       setIsEditing(true);
       setTitle(session.title);
-      setCategory(session.category);
+      setTaskType(session.taskType);
+      setIsRecording(session.isRecording);
       setDate(formatDateForInput(session.date));
       setStartTime(formatTimeForInput(session.startTime));
       setEndTime(session.endTime ? formatTimeForInput(session.endTime) : "");
@@ -45,7 +52,8 @@ const SessionForm: React.FC<SessionFormProps> = ({
       // 새 세션 추가
       setIsEditing(false);
       setTitle("");
-      setCategory("개발");
+      setTaskType("개발");
+      setIsRecording(false);
 
       // 현재 날짜와 시간 설정
       const now = new Date();
@@ -96,7 +104,8 @@ const SessionForm: React.FC<SessionFormProps> = ({
       const updatedSession: WorkSession = {
         ...session,
         title,
-        category,
+        taskType,
+        isRecording,
         date: sessionDate,
         startTime: startDateTime,
         endTime: endDateTime,
@@ -109,7 +118,7 @@ const SessionForm: React.FC<SessionFormProps> = ({
       // 새 세션 생성
       const newSession = sessionManager.createSession(
         title,
-        category,
+        taskType,
         sessionDate,
         duration,
         "manual",
@@ -119,6 +128,7 @@ const SessionForm: React.FC<SessionFormProps> = ({
       // 시작 시간과 종료 시간 설정
       newSession.startTime = startDateTime;
       newSession.endTime = endDateTime;
+      newSession.isRecording = isRecording;
 
       // 업데이트
       sessionManager.updateSession(newSession);
@@ -168,21 +178,34 @@ const SessionForm: React.FC<SessionFormProps> = ({
           />
         </div>
 
-        {/* 카테고리 선택 */}
+        {/* 작업 유형 선택 */}
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-1">카테고리</label>
+          <label className="block text-sm font-medium mb-1">작업 유형</label>
           <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
+            value={taskType}
+            onChange={(e) => setTaskType(e.target.value)}
             className="w-full p-2 border rounded bg-[var(--bg-primary)] text-[var(--text-normal)]"
             required
           >
-            {categories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
+            {taskTypes.map((type) => (
+              <option key={type} value={type}>
+                {type}
               </option>
             ))}
           </select>
+        </div>
+
+        {/* 녹화 여부 */}
+        <div className="mb-4">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={isRecording}
+              onChange={(e) => setIsRecording(e.target.checked)}
+              className="w-4 h-4"
+            />
+            <span className="text-sm font-medium">화면 녹화 포함</span>
+          </label>
         </div>
 
         {/* 날짜 선택 */}
@@ -248,7 +271,7 @@ const SessionForm: React.FC<SessionFormProps> = ({
             type="submit"
             className="px-4 py-2 bg-[var(--primary-color)] text-white rounded hover:opacity-90"
           >
-            {isEditing ? "저장" : "추가"}
+            저장
           </button>
         </div>
       </form>

@@ -9,11 +9,12 @@ export interface WorkSession {
   startTime: Date;
   endTime: Date | null; // 진행 중인 경우 null
   duration: number; // 분 단위
-  title: string;
-  category: string;
+  title: string; // 세부 작업 내용
+  taskType: string; // 작업 유형 (개발, 디자인, 회의 등)
+  isRecording: boolean; // 녹화 여부
   source: "electron" | "browser" | "manual"; // 작업 소스
   isActive: boolean; // 활성 상태 여부
-  tags?: string[]; // 선택적 태그
+  tags?: string[]; // 선택적 태그 (필요시 사용)
 }
 
 // 캘린더 뷰 타입

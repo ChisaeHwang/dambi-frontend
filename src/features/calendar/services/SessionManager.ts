@@ -86,10 +86,17 @@ export class SessionManager {
   }
 
   /**
+   * 특정 작업 유형의 세션 가져오기
+   */
+  getSessionsByTaskType(taskType: string): WorkSession[] {
+    return this.sessions.filter((session) => session.taskType === taskType);
+  }
+
+  /**
    * 특정 카테고리의 세션 가져오기
    */
   getSessionsByCategory(category: string): WorkSession[] {
-    return this.sessions.filter((session) => session.category === category);
+    return this.sessions.filter((session) => session.taskType === category);
   }
 
   /**
@@ -111,7 +118,7 @@ export class SessionManager {
    */
   createSession(
     title: string,
-    category: string,
+    taskType: string,
     date: Date = new Date(),
     duration: number = 0,
     source: "electron" | "browser" | "manual" = "manual",
@@ -122,12 +129,13 @@ export class SessionManager {
       id: uuidv4(),
       date,
       startTime: date,
-      endTime: source === "manual" ? new Date() : null,
-      duration,
+      endTime: null,
+      duration: 0,
       title,
-      category,
+      taskType,
+      isRecording: false,
       source,
-      isActive: source !== "manual",
+      isActive: true,
       tags,
     };
 
@@ -148,10 +156,10 @@ export class SessionManager {
    */
   startSession(
     title: string,
-    category: string,
+    taskType: string,
     source: "electron" | "browser" | "manual" = "manual"
   ): WorkSession {
-    return timerService.startSession(title, category, source);
+    return timerService.startSession(title, taskType, source);
   }
 
   /**
@@ -362,10 +370,10 @@ export class SessionManager {
     let totalMonthTime = 0;
 
     monthSessions.forEach((session) => {
-      if (!categoryStats[session.category]) {
-        categoryStats[session.category] = 0;
+      if (!categoryStats[session.taskType]) {
+        categoryStats[session.taskType] = 0;
       }
-      categoryStats[session.category] += session.duration;
+      categoryStats[session.taskType] += session.duration;
       totalMonthTime += session.duration;
     });
 

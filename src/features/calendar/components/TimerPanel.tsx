@@ -21,10 +21,22 @@ const TimerPanel: React.FC = () => {
 
   const [showNewSessionForm, setShowNewSessionForm] = useState<boolean>(false);
   const [newSessionTitle, setNewSessionTitle] = useState<string>("");
-  const [newSessionCategory, setNewSessionCategory] = useState<string>("개발");
-  const [categories, setCategories] = useState<string[]>(
-    sessionStorageService.getSettings().categories
-  );
+  const [newSessionTaskType, setNewSessionTaskType] = useState<string>("개발");
+  const [newSessionRecording, setNewSessionRecording] =
+    useState<boolean>(false);
+
+  const [taskTypes, setTaskTypes] = useState<string[]>(() => {
+    const savedTypes = localStorage.getItem("userTaskTypes");
+    return savedTypes
+      ? JSON.parse(savedTypes)
+      : sessionStorageService.getSettings().categories || [
+          "개발",
+          "디자인",
+          "회의",
+          "기획",
+          "리서치",
+        ];
+  });
 
   /**
    * 새 세션 시작 폼 제출 핸들러
@@ -32,7 +44,14 @@ const TimerPanel: React.FC = () => {
   const handleStartSession = (e: React.FormEvent) => {
     e.preventDefault();
 
-    startSession(newSessionTitle, newSessionCategory);
+    // 녹화 옵션을 포함한 세션 시작
+    const session = startSession(newSessionTitle, newSessionTaskType);
+
+    // 세션이 생성되었고 녹화 옵션이 켜져 있다면 녹화 시작
+    if (session && newSessionRecording && isElectron) {
+      startCapture();
+    }
+
     setShowNewSessionForm(false);
     setNewSessionTitle("");
   };
@@ -42,6 +61,7 @@ const TimerPanel: React.FC = () => {
    */
   const handleStartCapture = async () => {
     // 먼저 작업 세션 시작 폼 표시
+    setNewSessionRecording(true);
     setShowNewSessionForm(true);
   };
 
@@ -71,8 +91,8 @@ const TimerPanel: React.FC = () => {
         <div className="flex flex-col">
           <div className="flex justify-between items-center mb-3">
             <h3 className="text-lg font-bold">{activeSession.title}</h3>
-            <span className="px-2 py-1 text-xs rounded bg-[var(--bg-accent)]">
-              {activeSession.category}
+            <span className="px-2 py-1 text-xs rounded bg-[var(--primary-color)] text-white">
+              {activeSession.taskType}
             </span>
           </div>
 
@@ -98,8 +118,12 @@ const TimerPanel: React.FC = () => {
           <div className="mt-4 text-sm text-[var(--text-muted)]">
             <div>시작: {activeSession.startTime.toLocaleTimeString()}</div>
             <div>
-              소스:{" "}
-              {activeSession.source === "electron" ? "일렉트론" : "브라우저"}
+              {activeSession.isRecording && (
+                <span className="text-red-500 flex items-center">
+                  <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse mr-1"></span>
+                  녹화 중
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -121,19 +145,31 @@ const TimerPanel: React.FC = () => {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm mb-1">카테고리</label>
+            <label className="block text-sm mb-1">작업 유형</label>
             <select
-              value={newSessionCategory}
-              onChange={(e) => setNewSessionCategory(e.target.value)}
+              value={newSessionTaskType}
+              onChange={(e) => setNewSessionTaskType(e.target.value)}
               className="w-full p-2 border rounded bg-[var(--bg-primary)]"
               required
             >
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
+              {taskTypes.map((type) => (
+                <option key={type} value={type}>
+                  {type}
                 </option>
               ))}
             </select>
+          </div>
+
+          <div className="mb-4">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={newSessionRecording}
+                onChange={(e) => setNewSessionRecording(e.target.checked)}
+                className="w-4 h-4"
+              />
+              <span className="text-sm">화면 녹화 포함</span>
+            </label>
           </div>
 
           <div className="flex justify-end gap-2">

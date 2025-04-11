@@ -61,13 +61,13 @@ export class ElectronSessionAdapter {
 
           // 작업 세션 시작
           const title = status.windowTitle || "녹화 세션";
-          const category = "녹화";
+          const taskType = "녹화";
 
           // 이미 활성화된 세션이 있는지 확인
           const activeSession = timerService.getActiveSession();
           if (!activeSession || activeSession.source !== "electron") {
             // 새 세션 시작
-            timerService.startSession(title, category, "electron");
+            timerService.startSession(title, taskType, "electron");
           }
         } else if (!status.isCapturing && this.isActive) {
           // 캡처 중지됨
@@ -108,8 +108,8 @@ export class ElectronSessionAdapter {
         if (!activeSession || activeSession.source !== "electron") {
           // 새 세션 시작
           const title = "녹화 세션";
-          const category = "녹화";
-          timerService.startSession(title, category, "electron");
+          const taskType = "녹화";
+          timerService.startSession(title, taskType, "electron");
         }
       }
 
@@ -248,6 +248,17 @@ export class ElectronSessionAdapter {
       console.error("창 목록 가져오기 실패:", error);
       return [];
     }
+  }
+
+  /**
+   * 일렉트론 환경인지 확인합니다.
+   */
+  isElectronEnvironment(): boolean {
+    return (
+      typeof window !== "undefined" &&
+      window.electron !== undefined &&
+      typeof window.electron.onCaptureStatus === "function"
+    );
   }
 }
 
