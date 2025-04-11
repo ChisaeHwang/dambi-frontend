@@ -1,10 +1,11 @@
-import React, { Suspense, useState } from "react";
-import { Page } from "./types/navigation";
+import React, { Suspense } from "react";
 import { isElectronEnv } from "./types/common";
 import Navigation from "./components/layout/Navigation";
 import AppTitleBar from "./components/layout/AppTitleBar";
 import PageLoader from "./components/Loaders/PageLoader";
 import Calendar from "./features/calendar/components/Calendar";
+import { AppContextProvider, AppContext } from "./context/AppContext";
+import { Page } from "./types/navigation";
 
 // 지연 로딩으로 각 페이지 컴포넌트 불러오기
 const TimelapseWorkspacePage = React.lazy(
@@ -13,8 +14,19 @@ const TimelapseWorkspacePage = React.lazy(
 const SettingsPage = React.lazy(() => import("./pages/SettingsPage"));
 
 function App() {
-  const [currentPage, setCurrentPage] = useState<Page>("calendar");
   const isElectron = isElectronEnv();
+
+  return (
+    <AppContextProvider>
+      <AppContent isElectron={isElectron} />
+    </AppContextProvider>
+  );
+}
+
+// 컨텍스트를 사용하는 앱 내용 컴포넌트
+const AppContent: React.FC<{ isElectron: boolean }> = ({ isElectron }) => {
+  // 컨텍스트에서 페이지 상태 가져오기
+  const { currentPage, setCurrentPage } = React.useContext(AppContext);
 
   const handlePageChange = (page: Page) => {
     setCurrentPage(page);
@@ -38,6 +50,6 @@ function App() {
       </div>
     </div>
   );
-}
+};
 
 export default App;

@@ -4,7 +4,7 @@ import CalendarHeader from "./CalendarHeader";
 import CalendarGrid from "./CalendarGrid";
 import SessionsList from "./SessionsList";
 import StatsView from "./StatsView";
-import TimerPanel from "./TimerPanel";
+import WorkspaceTimelapseSection from "./WorkspaceTimelapseSection";
 
 /**
  * 메인 캘린더 컴포넌트
@@ -87,9 +87,9 @@ const Calendar: React.FC = () => {
               </div>
             </div>
 
-            {/* 타이머 패널 - 오늘의 작업 요약만 표시 */}
+            {/* 작업 상태 및 워크스페이스 링크 섹션 */}
             <div>
-              <TimerPanel />
+              <WorkspaceTimelapseSection />
             </div>
           </div>
         ) : (
