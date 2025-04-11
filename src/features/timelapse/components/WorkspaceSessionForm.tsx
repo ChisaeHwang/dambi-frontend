@@ -22,7 +22,6 @@ const WorkspaceSessionForm: React.FC<WorkspaceSessionFormProps> = ({
   const [title, setTitle] = useState<string>("");
   const [taskType, setTaskType] = useState<string>("");
   const [customTaskType, setCustomTaskType] = useState<string>("");
-  const [isRecording, setIsRecording] = useState<boolean>(false);
   const [showCustomTaskType, setShowCustomTaskType] = useState<boolean>(false);
 
   // 폼 제출 핸들러
@@ -42,7 +41,7 @@ const WorkspaceSessionForm: React.FC<WorkspaceSessionFormProps> = ({
       taskType: taskType === "custom" ? customTaskType.trim() : taskType,
       startTime: now,
       endTime: null,
-      isRecording,
+      isRecording: true, // 항상 녹화 활성화
       source: "manual",
       isActive: true,
       tags: [],
@@ -142,21 +141,6 @@ const WorkspaceSessionForm: React.FC<WorkspaceSessionFormProps> = ({
               </button>
             </div>
           )}
-
-          {/* 녹화 여부 */}
-          <div className="flex items-center gap-2">
-            <input
-              id="isRecording"
-              type="checkbox"
-              checked={isRecording}
-              onChange={(e) => setIsRecording(e.target.checked)}
-              className="w-4 h-4"
-              disabled={isDisabled}
-            />
-            <label htmlFor="isRecording" className="font-medium">
-              화면 녹화 포함
-            </label>
-          </div>
 
           {/* 제출 버튼 */}
           <button
