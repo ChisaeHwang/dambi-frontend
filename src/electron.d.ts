@@ -29,6 +29,11 @@ interface DialogResult {
 
 // 일렉트론 API 인터페이스
 interface ElectronAPI {
+  // 기본 IPC 메서드
+  invoke: (channel: string, ...args: any[]) => Promise<any>;
+  on: (channel: string, callback: (...args: any[]) => void) => void;
+  removeListener: (channel: string, callback: (...args: any[]) => void) => void;
+
   // 창 관리 기능
   minimize: () => Promise<boolean>;
   maximize: () => Promise<boolean>;

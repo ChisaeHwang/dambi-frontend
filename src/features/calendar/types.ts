@@ -6,9 +6,14 @@
 export interface WorkSession {
   id: string;
   date: Date;
+  startTime: Date;
+  endTime: Date | null; // 진행 중인 경우 null
   duration: number; // 분 단위
   title: string;
   category: string;
+  source: "electron" | "browser" | "manual"; // 작업 소스
+  isActive: boolean; // 활성 상태 여부
+  tags?: string[]; // 선택적 태그
 }
 
 // 캘린더 뷰 타입
@@ -51,4 +56,12 @@ export interface CalendarDayCardProps {
 export interface SessionsListProps {
   selectedDate: Date;
   sessions: WorkSession[];
+}
+
+// 앱 설정 타입
+export interface AppSettings {
+  language: "ko" | "en";
+  timezone: string;
+  resetHour: number; // 리셋 시간 (0-23)
+  categories: string[]; // 사용자 정의 카테고리
 }

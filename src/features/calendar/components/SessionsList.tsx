@@ -1,100 +1,98 @@
 import React from "react";
-import { SessionsListProps } from "../types";
+import { WorkSession } from "../types";
+import { formatWorkTime } from "../utils";
+
+interface SessionsListProps {
+  selectedDate: Date;
+  sessions: WorkSession[];
+  onEditSession?: (session: WorkSession) => void;
+  onDeleteSession?: (sessionId: string) => void;
+}
 
 /**
- * 세션 목록 컴포넌트
+ * 특정 날짜의 작업 세션 목록 컴포넌트
  */
 const SessionsList: React.FC<SessionsListProps> = ({
   selectedDate,
   sessions,
+  onEditSession,
+  onDeleteSession,
 }) => {
-  // 날짜 포맷 함수
-  const formatSessionTime = (minutes: number): string => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hours}시간 ${mins}분`;
-  };
+  if (sessions.length === 0) {
+    return (
+      <div className="p-4 bg-[var(--bg-secondary)] rounded-lg text-[var(--text-muted)] text-center">
+        {selectedDate.toLocaleDateString()} 에 기록된 작업이 없습니다.
+      </div>
+    );
+  }
 
-  // 모든 세션의 총 작업 시간 계산
-  const totalWorkTime = sessions.reduce(
-    (total, session) => total + session.duration,
-    0
+  // 시작 시간 기준으로 정렬
+  const sortedSessions = [...sessions].sort(
+    (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
   );
 
   return (
-    <div className="mt-5 border-t border-[var(--input-bg)] pt-4">
-      <div className="flex justify-between items-center mb-3">
-        <h3 className="text-white text-base">
-          {`${selectedDate.getFullYear()}년 ${
-            selectedDate.getMonth() + 1
-          }월 ${selectedDate.getDate()}일 작업`}
-        </h3>
-
-        {sessions.length > 0 && (
-          <div className="text-sm text-[var(--text-positive)] font-medium bg-[var(--bg-modifier-accent)] py-1 px-3 rounded-full">
-            총 {formatSessionTime(totalWorkTime)}
-          </div>
-        )}
-      </div>
-
-      {sessions.length === 0 ? (
-        <div className="py-4 text-center text-[var(--text-muted)]">
-          이 날짜에 기록된 작업이 없습니다.
-        </div>
-      ) : (
-        <div>
-          {sessions.map((session) => (
-            <div
-              key={session.id}
-              className="p-3 mb-2 bg-[var(--bg-secondary)] rounded-lg border-l-4 border-l-[var(--primary-color)]"
-            >
-              <div className="flex justify-between mb-2">
-                <span className="font-bold">{session.title}</span>
-                <span className="text-xs bg-[var(--bg-modifier-accent)] px-2 py-0.5 rounded-full text-[var(--text-muted)]">
+    <div className="space-y-3">
+      {sortedSessions.map((session) => (
+        <div
+          key={session.id}
+          className="p-4 bg-[var(--bg-secondary)] rounded-lg shadow-sm border border-[var(--border-subtle)]"
+        >
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center">
+            <div>
+              <h4 className="text-lg font-medium">{session.title}</h4>
+              <div className="flex items-center mt-1 gap-2">
+                <span className="text-sm px-2 py-0.5 rounded bg-[var(--bg-accent)] text-[var(--text-muted)]">
                   {session.category}
                 </span>
-              </div>
-              <div className="flex justify-between text-sm text-[var(--text-muted)]">
-                <span>
-                  {session.date.getHours().toString().padStart(2, "0")}:
-                  {session.date.getMinutes().toString().padStart(2, "0")}
+                <span className="text-sm text-[var(--text-muted)]">
+                  {formatWorkTime(session.duration)}
                 </span>
-                <span>{formatSessionTime(session.duration)}</span>
               </div>
             </div>
-          ))}
 
-          {/* 작업 시간 분포 차트 */}
-          <div className="mt-6 p-3 bg-[var(--bg-secondary)] rounded-lg">
-            <h4 className="text-white text-sm mb-3">작업 시간 분포</h4>
-            <div className="flex items-end h-32 space-x-1">
-              {sessions.map((session, index) => {
-                // 전체 작업 시간 중 비율 계산 (최대 높이 100%)
-                const heightPercentage = Math.max(
-                  10, // 최소 높이
-                  Math.floor((session.duration / totalWorkTime) * 100)
-                );
-
-                return (
-                  <div
-                    key={index}
-                    className="flex flex-col items-center flex-1"
-                  >
-                    <div
-                      className="w-full bg-[var(--primary-color)] rounded-t"
-                      style={{ height: `${heightPercentage}%` }}
-                    ></div>
-                    <div className="text-[10px] text-[var(--text-muted)] mt-1 overflow-hidden text-ellipsis w-full text-center">
-                      {session.date.getHours()}:
-                      {session.date.getMinutes().toString().padStart(2, "0")}
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="mt-3 sm:mt-0 flex items-center gap-2">
+              {onEditSession && (
+                <button
+                  onClick={() => onEditSession(session)}
+                  className="text-sm px-3 py-1 border rounded hover:bg-[var(--bg-accent)]"
+                >
+                  편집
+                </button>
+              )}
+              {onDeleteSession && (
+                <button
+                  onClick={() => onDeleteSession(session.id)}
+                  className="text-sm px-3 py-1 border rounded text-red-500 hover:bg-red-50"
+                >
+                  삭제
+                </button>
+              )}
             </div>
           </div>
+
+          <div className="mt-3 text-sm text-[var(--text-muted)]">
+            <div>
+              {new Date(session.startTime).toLocaleTimeString()} -
+              {session.endTime
+                ? new Date(session.endTime).toLocaleTimeString()
+                : "진행 중"}
+            </div>
+            {session.tags && session.tags.length > 0 && (
+              <div className="mt-1 flex gap-1 flex-wrap">
+                {session.tags.map((tag, index) => (
+                  <span
+                    key={index}
+                    className="text-xs px-1.5 py-0.5 rounded-full bg-[var(--bg-hover)]"
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      )}
+      ))}
     </div>
   );
 };
