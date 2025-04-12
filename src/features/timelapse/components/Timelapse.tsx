@@ -7,6 +7,8 @@ import TimelapseControls from "./TimelapseControls";
 import GeneratePrompt from "./GeneratePrompt";
 import BlurRegionSelector from "./BlurRegionSelector";
 import { BlurRegion } from "../types";
+import WorkspaceSessionForm from "./WorkspaceSessionForm";
+import { useWorkSession } from "../hooks/useWorkSession";
 
 const Timelapse: React.FC = () => {
   const {
@@ -28,9 +30,13 @@ const Timelapse: React.FC = () => {
     isStatusInitialized,
   } = useTimelapseGenerationCapture();
 
+  // WorkSession 관련 훅 추가
+  const { startSession, userTaskTypes, addTaskType } = useWorkSession();
+
   // 상태 관리
   const [showGeneratePrompt, setShowGeneratePrompt] = useState<boolean>(false);
   const [isPaused, setIsPaused] = useState<boolean>(false);
+  const [showSessionForm, setShowSessionForm] = useState<boolean>(false);
 
   // 블러 영역 관리
   const [blurRegions, setBlurRegions] = useState<BlurRegion[]>(() => {
@@ -91,7 +97,7 @@ const Timelapse: React.FC = () => {
     wasCapturingRef.current = isCapturing;
   }, [isCapturing, duration, showGeneratePrompt]);
 
-  // 캡처 시작 핸들러
+  // 캡처 시작 핸들러 - 작업 세션 폼 모달 표시로 변경
   const handleStartCapture = () => {
     // 타임랩스가 비활성화되었는지 확인
     if (timelapseOptions.enabled === false) {
@@ -101,8 +107,31 @@ const Timelapse: React.FC = () => {
       return;
     }
 
+    // 작업 세션 모달 표시
+    setShowSessionForm(true);
+  };
+
+  // 작업 세션 시작 후 캡처 시작
+  const handleStartSessionAndCapture = (
+    sessionData: Omit<
+      import("../../calendar/types").WorkSession,
+      "id" | "date" | "duration"
+    >
+  ) => {
+    // 항상 녹화 옵션을 true로 설정 (화면 녹화 포함 체크박스 무시)
+    const sessionWithRecording = {
+      ...sessionData,
+      isRecording: true,
+    };
+
+    // 작업 세션 시작
+    startSession(sessionWithRecording);
+
     // 새로운 캡처 시작
     startCapture();
+
+    // 모달 닫기
+    setShowSessionForm(false);
 
     // 블러 선택기 닫기 (블러 영역은 변경하지 않고 유지)
     setShowBlurSelector(false);
@@ -116,6 +145,11 @@ const Timelapse: React.FC = () => {
   // 캡처 취소 핸들러
   const handleCancelCapture = () => {
     setShowGeneratePrompt(false);
+  };
+
+  // 작업 폼 모달 닫기 핸들러
+  const handleCloseSessionForm = () => {
+    setShowSessionForm(false);
   };
 
   // 타임랩스 생성 핸들러
@@ -248,17 +282,11 @@ const Timelapse: React.FC = () => {
                   onClick={toggleBlurSelector}
                   className={`py-2 px-4 rounded min-w-[120px] text-sm text-white ${
                     showBlurSelector
-                      ? "bg-indigo-600 hover:bg-indigo-700"
-                      : "bg-[var(--bg-accent)] hover:bg-gray-700"
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                  disabled={isCapturing || !selectedWindowId}
-                  title={
-                    showBlurSelector
-                      ? "블러 영역 설정 완료"
-                      : "캡처 영상에서 제외할 영역 설정"
-                  }
+                      ? "bg-red-600 hover:bg-red-700"
+                      : "bg-blue-600 hover:bg-blue-700"
+                  }`}
                 >
-                  {showBlurSelector ? "영역 설정 완료" : "블러 영역 설정"}
+                  {showBlurSelector ? "블러 완료" : "블러 영역 설정"}
                 </button>
               )}
             />
@@ -310,6 +338,32 @@ const Timelapse: React.FC = () => {
         </div>
       )}
 
+      {/* 작업 세션 시작 모달 */}
+      {showSessionForm && (
+        <div className="fixed inset-0 bg-[rgba(0,0,0,0.7)] flex items-center justify-center z-50">
+          <div className="bg-[var(--bg-secondary)] rounded-lg shadow-lg p-6 w-[90%] max-w-[450px]">
+            <h3 className="text-xl font-semibold mb-4 text-center">
+              새 작업 시작
+            </h3>
+
+            <WorkspaceSessionForm
+              onStartSession={handleStartSessionAndCapture}
+              userTaskTypes={userTaskTypes}
+              onAddTaskType={addTaskType}
+            />
+
+            <div className="flex justify-end mt-4">
+              <button
+                onClick={handleCloseSessionForm}
+                className="py-2 px-4 bg-gray-500 hover:bg-gray-600 text-white rounded-md"
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 타임랩스 생성 모달 */}
       {showGeneratePrompt && !isCapturing && (
         <GeneratePrompt
@@ -344,7 +398,6 @@ const Timelapse: React.FC = () => {
     <div className="bg-[var(--bg-primary)] text-[var(--text-normal)] h-screen w-full flex flex-col p-3">
       <div className="bg-[var(--bg-secondary)] rounded-lg shadow-md p-5 w-[98%] max-w-[1400px] min-w-auto mx-auto mb-5 h-[calc(100vh-30px)] overflow-y-auto">
         <h2 className="text-xl mb-4 font-semibold">타임랩스 워크스페이스</h2>
-
         {renderMainContent()}
       </div>
     </div>

@@ -1,5 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
-import { WorkSession, MonthStats, CalendarViewType } from "../types";
+import {
+  WorkSession,
+  MonthStats,
+  CalendarViewType,
+  AppSettings,
+} from "../types";
+import { sessionStorageService } from "../utils";
+import { timerService } from "../services/TimerService";
 
 /**
  * 캘린더 기능을 관리하는 훅
@@ -9,11 +16,47 @@ export const useCalendar = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [sessions, setSessions] = useState<WorkSession[]>([]);
   const [view, setView] = useState<CalendarViewType>("calendar");
+  const [settings, setSettings] = useState<AppSettings>(
+    sessionStorageService.getSettings()
+  );
 
-  // 컴포넌트 마운트 시 샘플 데이터 생성
+  // 세션 데이터 로드
   useEffect(() => {
-    setSessions(generateSampleWorkSessions());
+    // 로컬 스토리지에서 세션 데이터 로드
+    const loadedSessions = sessionStorageService.getSessions();
+    if (loadedSessions.length > 0) {
+      setSessions(loadedSessions);
+    } else {
+      // 세션 데이터가 없으면 샘플 데이터 생성 (개발용)
+      const sampleSessions = generateSampleWorkSessions();
+      setSessions(sampleSessions);
+      sessionStorageService.saveSessions(sampleSessions);
+    }
+
+    // 오전 9시 리셋 확인
+    timerService.checkDailyReset();
+
+    // 타이머 이벤트 리스너 등록
+    const removeListener = timerService.addEventListener(
+      (event, session, duration) => {
+        if (event === "start" || event === "stop" || event === "reset") {
+          // 세션 변경 시 세션 목록 갱신
+          setSessions(sessionStorageService.getSessions());
+        }
+      }
+    );
+
+    // 컴포넌트 언마운트 시 리스너 제거
+    return () => {
+      removeListener();
+    };
   }, []);
+
+  // 설정 변경 감지 및 적용
+  useEffect(() => {
+    // 설정 변경 시 저장
+    sessionStorageService.saveSettings(settings);
+  }, [settings]);
 
   // 월 이동 함수
   const prevMonth = useCallback(() => {
@@ -44,6 +87,47 @@ export const useCalendar = () => {
   // 선택된 날짜의 세션 목록
   const selectedDateSessions = getSessionsForDate(selectedDate);
 
+  // 세션 추가 함수
+  const addSession = useCallback((session: WorkSession) => {
+    setSessions((prev) => {
+      const newSessions = [...prev, session];
+      sessionStorageService.saveSessions(newSessions);
+      return newSessions;
+    });
+  }, []);
+
+  // 세션 업데이트 함수
+  const updateSession = useCallback((updatedSession: WorkSession) => {
+    setSessions((prev) => {
+      const index = prev.findIndex((s) => s.id === updatedSession.id);
+      if (index !== -1) {
+        const newSessions = [...prev];
+        newSessions[index] = updatedSession;
+        sessionStorageService.saveSessions(newSessions);
+        return newSessions;
+      }
+      return prev;
+    });
+  }, []);
+
+  // 세션 삭제 함수
+  const deleteSession = useCallback((sessionId: string) => {
+    setSessions((prev) => {
+      const newSessions = prev.filter((s) => s.id !== sessionId);
+      sessionStorageService.saveSessions(newSessions);
+      return newSessions;
+    });
+  }, []);
+
+  // 설정 업데이트 함수
+  const updateSettings = useCallback((newSettings: Partial<AppSettings>) => {
+    setSettings((prev) => {
+      const updatedSettings = { ...prev, ...newSettings };
+      sessionStorageService.saveSettings(updatedSettings);
+      return updatedSettings;
+    });
+  }, []);
+
   // 월 통계 계산
   const calculateMonthStats = useCallback((): MonthStats => {
     // 현재 월에 해당하는 세션만 필터링
@@ -58,10 +142,10 @@ export const useCalendar = () => {
     let totalMonthTime = 0;
 
     monthSessions.forEach((session) => {
-      if (!categoryStats[session.category]) {
-        categoryStats[session.category] = 0;
+      if (!categoryStats[session.taskType]) {
+        categoryStats[session.taskType] = 0;
       }
-      categoryStats[session.category] += session.duration;
+      categoryStats[session.taskType] += session.duration;
       totalMonthTime += session.duration;
     });
 
@@ -85,6 +169,7 @@ export const useCalendar = () => {
     selectedDate,
     sessions,
     view,
+    settings,
     setView,
     prevMonth,
     nextMonth,
@@ -92,6 +177,10 @@ export const useCalendar = () => {
     setSelectedDate,
     selectedDateSessions,
     monthStats: calculateMonthStats(),
+    addSession,
+    updateSession,
+    deleteSession,
+    updateSettings,
   };
 };
 
@@ -117,18 +206,27 @@ const generateSampleWorkSessions = (): WorkSession[] => {
       const hours = 9 + Math.floor(Math.random() * 8); // 9시-17시 사이
       const minutes = Math.floor(Math.random() * 6) * 10; // 0, 10, 20, 30, 40, 50분
       const duration = 30 + Math.floor(Math.random() * 12) * 15; // 30분-3시간
-      const category =
+      const taskType =
         categories[Math.floor(Math.random() * categories.length)];
 
       const sessionDate = new Date(startDate);
       sessionDate.setHours(hours, minutes);
 
+      const startTime = new Date(sessionDate);
+      const endTime = new Date(sessionDate);
+      endTime.setMinutes(endTime.getMinutes() + duration);
+
       sessions.push({
         id: id.toString(),
         date: sessionDate,
+        startTime: startTime,
+        endTime: endTime,
         duration,
-        title: `${category} 작업 ${i + 1}`,
-        category,
+        title: `${taskType} 작업 ${i + 1}`,
+        taskType,
+        isRecording: false,
+        source: "manual",
+        isActive: false,
       });
 
       id++;

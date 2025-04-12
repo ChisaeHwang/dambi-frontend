@@ -1,0 +1,282 @@
+import React, { useState, useEffect } from "react";
+import { WorkSession } from "../types";
+import { sessionManager } from "../services/SessionManager";
+import { sessionStorageService } from "../utils";
+
+interface SessionFormProps {
+  session?: WorkSession;
+  onSave: (session: WorkSession) => void;
+  onCancel: () => void;
+}
+
+/**
+ * 작업 세션 폼 컴포넌트
+ */
+const SessionForm: React.FC<SessionFormProps> = ({
+  session,
+  onSave,
+  onCancel,
+}) => {
+  const [title, setTitle] = useState<string>("");
+  const [taskType, setTaskType] = useState<string>("개발");
+  const [date, setDate] = useState<string>("");
+  const [startTime, setStartTime] = useState<string>("");
+  const [endTime, setEndTime] = useState<string>("");
+  const [duration, setDuration] = useState<number>(0);
+  const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [taskTypes, setTaskTypes] = useState<string[]>([]);
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+
+  // 초기 데이터 설정
+  useEffect(() => {
+    // 앱 설정에서 작업 유형 목록 가져오기
+    const settings = sessionStorageService.getSettings();
+    const savedTypes = localStorage.getItem("userTaskTypes");
+    setTaskTypes(
+      savedTypes
+        ? JSON.parse(savedTypes)
+        : settings.categories || ["개발", "디자인", "회의", "기획", "리서치"]
+    );
+
+    if (session) {
+      // 기존 세션 편집
+      setIsEditing(true);
+      setTitle(session.title);
+      setTaskType(session.taskType);
+      setIsRecording(session.isRecording);
+      setDate(formatDateForInput(session.date));
+      setStartTime(formatTimeForInput(session.startTime));
+      setEndTime(session.endTime ? formatTimeForInput(session.endTime) : "");
+      setDuration(session.duration);
+    } else {
+      // 새 세션 추가
+      setIsEditing(false);
+      setTitle("");
+      setTaskType("개발");
+      setIsRecording(false);
+
+      // 현재 날짜와 시간 설정
+      const now = new Date();
+      setDate(formatDateForInput(now));
+      setStartTime(formatTimeForInput(now));
+      setEndTime("");
+      setDuration(30); // 기본 30분
+    }
+  }, [session]);
+
+  // 시간 변경 시 자동으로 기간 계산
+  useEffect(() => {
+    if (startTime && endTime) {
+      const start = new Date(`${date}T${startTime}`);
+      const end = new Date(`${date}T${endTime}`);
+
+      if (end > start) {
+        const durationMs = end.getTime() - start.getTime();
+        const durationMinutes = Math.round(durationMs / (60 * 1000));
+        setDuration(durationMinutes);
+      }
+    }
+  }, [date, startTime, endTime]);
+
+  // 날짜를 input 요소에 맞는 형식으로 변환
+  const formatDateForInput = (date: Date): string => {
+    const d = new Date(date);
+    return d.toISOString().split("T")[0];
+  };
+
+  // 시간을 input 요소에 맞는 형식으로 변환
+  const formatTimeForInput = (date: Date): string => {
+    const d = new Date(date);
+    return d.toTimeString().substring(0, 5);
+  };
+
+  // 폼 제출 핸들러
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // 날짜와 시간 객체 생성
+    const sessionDate = new Date(date);
+    const startDateTime = new Date(`${date}T${startTime}`);
+    const endDateTime = endTime ? new Date(`${date}T${endTime}`) : null;
+
+    if (isEditing && session) {
+      // 기존 세션 업데이트
+      const updatedSession: WorkSession = {
+        ...session,
+        title,
+        taskType,
+        isRecording,
+        date: sessionDate,
+        startTime: startDateTime,
+        endTime: endDateTime,
+        duration: duration,
+      };
+
+      sessionManager.updateSession(updatedSession);
+      onSave(updatedSession);
+    } else {
+      // 새 세션 생성
+      const newSession = sessionManager.createSession(
+        title,
+        taskType,
+        sessionDate,
+        duration,
+        "manual",
+        []
+      );
+
+      // 시작 시간과 종료 시간 설정
+      newSession.startTime = startDateTime;
+      newSession.endTime = endDateTime;
+      newSession.isRecording = isRecording;
+
+      // 업데이트
+      sessionManager.updateSession(newSession);
+      onSave(newSession);
+    }
+  };
+
+  // 기간 형식 변환 (분 -> 시:분)
+  const formatDuration = (minutes: number): string => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours > 0 ? `${hours}시간 ` : ""}${mins}분`;
+  };
+
+  // 기간 변경 핸들러
+  const handleDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newDuration = parseInt(e.target.value);
+    if (!isNaN(newDuration) && newDuration >= 0) {
+      setDuration(newDuration);
+
+      // 종료 시간 자동 계산
+      if (startTime) {
+        const start = new Date(`${date}T${startTime}`);
+        const end = new Date(start.getTime() + newDuration * 60 * 1000);
+        setEndTime(formatTimeForInput(end));
+      }
+    }
+  };
+
+  return (
+    <div className="bg-[var(--bg-secondary)] p-5 rounded-lg shadow-md w-full max-w-md">
+      <h2 className="text-xl font-bold mb-4">
+        {isEditing ? "작업 세션 편집" : "새 작업 세션 추가"}
+      </h2>
+
+      <form onSubmit={handleSubmit}>
+        {/* 제목 입력 */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-1">제목</label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="w-full p-2 border rounded bg-[var(--bg-primary)] text-[var(--text-normal)]"
+            placeholder="작업 제목"
+            required
+          />
+        </div>
+
+        {/* 작업 유형 선택 */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-1">작업 유형</label>
+          <select
+            value={taskType}
+            onChange={(e) => setTaskType(e.target.value)}
+            className="w-full p-2 border rounded bg-[var(--bg-primary)] text-[var(--text-normal)]"
+            required
+          >
+            {taskTypes.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* 녹화 여부 */}
+        <div className="mb-4">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={isRecording}
+              onChange={(e) => setIsRecording(e.target.checked)}
+              className="w-4 h-4"
+            />
+            <span className="text-sm font-medium">화면 녹화 포함</span>
+          </label>
+        </div>
+
+        {/* 날짜 선택 */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-1">날짜</label>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="w-full p-2 border rounded bg-[var(--bg-primary)] text-[var(--text-normal)]"
+            required
+          />
+        </div>
+
+        {/* 시간 범위 */}
+        <div className="flex gap-4 mb-4">
+          <div className="flex-1">
+            <label className="block text-sm font-medium mb-1">시작 시간</label>
+            <input
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              className="w-full p-2 border rounded bg-[var(--bg-primary)] text-[var(--text-normal)]"
+              required
+            />
+          </div>
+          <div className="flex-1">
+            <label className="block text-sm font-medium mb-1">종료 시간</label>
+            <input
+              type="time"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+              className="w-full p-2 border rounded bg-[var(--bg-primary)] text-[var(--text-normal)]"
+            />
+          </div>
+        </div>
+
+        {/* 작업 시간 */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium mb-1">
+            작업 시간 (분) - {formatDuration(duration)}
+          </label>
+          <input
+            type="number"
+            value={duration}
+            onChange={handleDurationChange}
+            className="w-full p-2 border rounded bg-[var(--bg-primary)] text-[var(--text-normal)]"
+            min="1"
+            required
+          />
+        </div>
+
+        {/* 버튼 */}
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-4 py-2 border rounded hover:bg-[var(--bg-accent)]"
+          >
+            취소
+          </button>
+          <button
+            type="submit"
+            className="px-4 py-2 bg-[var(--primary-color)] text-white rounded hover:opacity-90"
+          >
+            저장
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+export default SessionForm;
