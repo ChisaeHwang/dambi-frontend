@@ -260,6 +260,23 @@ export class ElectronSessionAdapter {
       typeof window.electron.onCaptureStatus === "function"
     );
   }
+
+  /**
+   * 녹화 상태 확인
+   * @returns {Promise<any>} 현재 녹화 상태 정보
+   */
+  async getRecordingStatus(): Promise<any> {
+    if (!window.electron || !window.electron.getRecordingStatus) {
+      return { isRecording: false, isCapturing: false };
+    }
+
+    try {
+      return await window.electron.getRecordingStatus();
+    } catch (error) {
+      console.error("녹화 상태 확인 실패:", error);
+      return { isRecording: false, isCapturing: false };
+    }
+  }
 }
 
 // 전역에서 접근 가능한 싱글톤 인스턴스
