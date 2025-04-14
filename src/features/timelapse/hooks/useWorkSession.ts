@@ -66,9 +66,72 @@ export function useWorkSession() {
 
   // 초기 로드
   useEffect(() => {
+    // 이전에 비정상적으로 종료된 세션들을 정리
+    cleanupIncompleteSessions();
+
+    // 정상적인 세션 로드
     loadTodaySessions();
     loadAllSessions();
   }, [loadTodaySessions, loadAllSessions]);
+
+  // 비정상적으로 종료된 세션 정리
+  const cleanupIncompleteSessions = useCallback(() => {
+    const sessions = sessionStorageService.getSessions();
+    let hasChanges = false;
+
+    // 오늘 날짜 (0시 0분 0초)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const updatedSessions = sessions.map((session) => {
+      // 케이스 1: 활성 상태인데 오늘 날짜가 아닌 세션 정리
+      if (
+        session.isActive &&
+        new Date(session.date).getTime() < today.getTime()
+      ) {
+        hasChanges = true;
+        const endTime = new Date(session.startTime);
+        // 최대 8시간으로 제한
+        const maxDuration = 8 * 60;
+        // 실제 지속 시간 계산 (최대 8시간으로 제한)
+        const calculatedDuration = Math.min(
+          maxDuration,
+          session.duration || 60
+        );
+
+        endTime.setMinutes(endTime.getMinutes() + calculatedDuration);
+
+        return {
+          ...session,
+          endTime,
+          isActive: false,
+          duration: calculatedDuration,
+          tags: [...(session.tags || []), "자동완료"],
+        };
+      }
+
+      // 케이스 2: 비활성 상태인데 endTime이 없는 경우
+      if (!session.isActive && !session.endTime) {
+        hasChanges = true;
+        const endTime = new Date(session.startTime);
+        endTime.setMinutes(endTime.getMinutes() + (session.duration || 60));
+
+        return {
+          ...session,
+          endTime,
+          tags: [...(session.tags || []), "자동완료"],
+        };
+      }
+
+      return session;
+    });
+
+    // 변경사항이 있으면 저장
+    if (hasChanges) {
+      console.log("비정상 종료된 세션 정리 완료");
+      sessionStorageService.saveSessions(updatedSessions);
+    }
+  }, []);
 
   // 타이머 효과
   useEffect(() => {

@@ -40,12 +40,21 @@ const WorkspaceTimelapseSection: React.FC = () => {
 
   // 오늘 총 작업 시간 계산 (분 단위)
   const totalWorkTimeToday = todaySessions.reduce((total, session) => {
-    return total + session.duration;
+    // 완료된 작업(endTime이 있는 작업)만 포함
+    if (session.endTime) {
+      return total + session.duration;
+    }
+    return total;
   }, 0);
 
   // 작업 종류별 시간 계산
   const taskTypeStats = todaySessions.reduce(
     (stats: { [key: string]: number }, session) => {
+      // 완료된 작업(endTime이 있는 작업)만 포함
+      if (!session.endTime) {
+        return stats;
+      }
+
       const taskType = session.taskType || "기타";
       if (!stats[taskType]) {
         stats[taskType] = 0;
