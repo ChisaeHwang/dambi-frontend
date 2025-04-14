@@ -74,7 +74,7 @@ const Calendar: React.FC = () => {
                       month: "long",
                       day: "numeric",
                     })}{" "}
-                    작업 목록
+                    작업 시간 통계
                   </h3>
                   <div className="text-sm text-[var(--text-muted)]">
                     작업은 워크스페이스에서 관리합니다
