@@ -48,7 +48,7 @@ const SessionsList: React.FC<SessionsListProps> = ({
                 <span className="text-sm text-[var(--text-muted)]">
                   {formatWorkTime(session.duration)}
                 </span>
-                {session.isRecording && (
+                {session.isRecording && session.isActive && (
                   <span className="text-sm px-2 py-0.5 rounded bg-red-500 text-white flex items-center">
                     <span className="w-1.5 h-1.5 rounded-full bg-white mr-1 animate-pulse"></span>
                     녹화

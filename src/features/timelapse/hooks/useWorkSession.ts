@@ -95,21 +95,63 @@ export function useWorkSession() {
       endTime: now,
       duration: durationMinutes,
       isActive: false,
+      isRecording: false,
     };
 
     sessionStorageService.updateSession(updatedSession);
     setActiveSession(null);
     setElapsedTime(0);
+    setIsRecording(false);
 
     // 녹화 중이었다면 중지
     if (isRecording && electronSessionAdapter.isElectronEnvironment()) {
       electronSessionAdapter.stopCapture();
-      setIsRecording(false);
     }
 
     loadTodaySessions();
     loadAllSessions();
   }, [activeSession, isRecording, loadTodaySessions, loadAllSessions]);
+
+  // 추가: 녹화 상태 주기적 확인
+  useEffect(() => {
+    // 활성 세션이 있고 녹화 중으로 표시된 경우에만 실행
+    if (
+      !activeSession ||
+      !isRecording ||
+      !electronSessionAdapter.isElectronEnvironment()
+    ) {
+      return;
+    }
+
+    // 10초마다 실제 녹화 상태 확인
+    const checkInterval = setInterval(async () => {
+      try {
+        const recordingStatus =
+          await electronSessionAdapter.getRecordingStatus();
+
+        // 실제로는 녹화 중이 아닌데 상태는 녹화 중이라면 상태 수정
+        if (!recordingStatus.isRecording && isRecording) {
+          console.log("녹화 상태 불일치 감지: 상태 수정");
+
+          // 세션 상태 업데이트
+          if (activeSession) {
+            const updatedSession = {
+              ...activeSession,
+              isRecording: false,
+            };
+
+            sessionStorageService.updateSession(updatedSession);
+            setActiveSession(updatedSession);
+            setIsRecording(false);
+          }
+        }
+      } catch (error) {
+        console.error("녹화 상태 확인 중 오류:", error);
+      }
+    }, 10000); // 10초마다 체크
+
+    return () => clearInterval(checkInterval);
+  }, [activeSession, isRecording]);
 
   // 세션 시작
   const startSession = useCallback(

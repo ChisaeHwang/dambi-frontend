@@ -32,7 +32,7 @@ const TimelapseControls: React.FC<TimelapseControlsProps> = ({
             className="w-full sm:flex-1 py-3 px-6 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             <span className="text-xl">⏺</span>
-            녹화 시작
+            작업 시작
           </button>
         </div>
       ) : (
@@ -41,7 +41,7 @@ const TimelapseControls: React.FC<TimelapseControlsProps> = ({
           className="w-full py-3 px-6 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition-colors flex items-center justify-center gap-2"
         >
           <span className="text-xl">⏹</span>
-          녹화 중지
+          작업 완료
         </button>
       )}
     </div>
