@@ -31,7 +31,8 @@ const Timelapse: React.FC = () => {
   } = useTimelapseGenerationCapture();
 
   // WorkSession 관련 훅 추가
-  const { startSession, userTaskTypes, addTaskType } = useWorkSession();
+  const { startSession, userTaskTypes, addTaskType, todaySessions } =
+    useWorkSession();
 
   // 상태 관리
   const [showGeneratePrompt, setShowGeneratePrompt] = useState<boolean>(false);
@@ -256,7 +257,7 @@ const Timelapse: React.FC = () => {
         onClick={handleStopCapture}
         className="py-3 px-6 bg-red-600 hover:bg-red-700 text-white rounded-lg text-lg font-medium"
       >
-        녹화 중지
+        작업 종료
       </button>
     </div>
   );
@@ -340,26 +341,23 @@ const Timelapse: React.FC = () => {
 
       {/* 작업 세션 시작 모달 */}
       {showSessionForm && (
-        <div className="fixed inset-0 bg-[rgba(0,0,0,0.7)] flex items-center justify-center z-50">
-          <div className="bg-[var(--bg-secondary)] rounded-lg shadow-lg p-6 w-[90%] max-w-[450px]">
-            <h3 className="text-xl font-semibold mb-4 text-center">
-              새 작업 시작
-            </h3>
-
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-[var(--bg-primary)] rounded-lg shadow-xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold">새 작업 시작</h3>
+              <button
+                onClick={handleCloseSessionForm}
+                className="text-[var(--text-muted)] hover:text-[var(--text-normal)]"
+              >
+                ✕
+              </button>
+            </div>
             <WorkspaceSessionForm
               onStartSession={handleStartSessionAndCapture}
               userTaskTypes={userTaskTypes}
               onAddTaskType={addTaskType}
+              todaySessions={todaySessions}
             />
-
-            <div className="flex justify-end mt-4">
-              <button
-                onClick={handleCloseSessionForm}
-                className="py-2 px-4 bg-gray-500 hover:bg-gray-600 text-white rounded-md"
-              >
-                취소
-              </button>
-            </div>
           </div>
         </div>
       )}

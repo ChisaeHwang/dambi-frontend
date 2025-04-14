@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { WorkSession } from "../../calendar/types";
 
 interface WorkspaceSessionFormProps {
@@ -8,37 +8,60 @@ interface WorkspaceSessionFormProps {
   userTaskTypes: string[]; // 사용자가 정의한 작업 유형 목록
   onAddTaskType: (taskType: string) => void;
   isDisabled?: boolean;
+  todaySessions?: WorkSession[]; // 오늘의 세션 목록 추가
 }
 
 /**
  * 워크스페이스에서 작업 세션을 시작하기 위한 폼 컴포넌트
+ * - 작업 제목 제거 및 카테고리 중심으로 변경
+ * - 같은 카테고리 작업 이어하기 기능 추가
  */
 const WorkspaceSessionForm: React.FC<WorkspaceSessionFormProps> = ({
   onStartSession,
   userTaskTypes,
   onAddTaskType,
   isDisabled = false,
+  todaySessions = [],
 }) => {
-  const [title, setTitle] = useState<string>("");
   const [taskType, setTaskType] = useState<string>("");
   const [customTaskType, setCustomTaskType] = useState<string>("");
   const [showCustomTaskType, setShowCustomTaskType] = useState<boolean>(false);
+  const [continueSession, setContinueSession] = useState<boolean>(false);
+
+  // 오늘 이미 작업한 카테고리 목록
+  const [todayCategories, setTodayCategories] = useState<string[]>([]);
+
+  // 오늘 세션 분석하여 작업한 카테고리 목록 추출
+  useEffect(() => {
+    if (todaySessions && todaySessions.length > 0) {
+      // Set 대신 filter와 includes를 사용하여 중복 제거
+      const categories: string[] = [];
+      todaySessions.forEach((session) => {
+        if (!categories.includes(session.taskType)) {
+          categories.push(session.taskType);
+        }
+      });
+      setTodayCategories(categories);
+    }
+  }, [todaySessions]);
 
   // 폼 제출 핸들러
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!title.trim()) {
-      alert("작업 제목을 입력해주세요.");
+    if (!taskType.trim()) {
+      alert("작업 유형을 선택해주세요.");
       return;
     }
 
     // 현재 시간 기준으로 세션 생성
     const now = new Date();
+    const finalTaskType =
+      taskType === "custom" ? customTaskType.trim() : taskType;
 
     const session: Omit<WorkSession, "id" | "date" | "duration"> = {
-      title: title.trim(),
-      taskType: taskType === "custom" ? customTaskType.trim() : taskType,
+      title: finalTaskType, // 작업 제목을 카테고리명으로 자동 설정
+      taskType: finalTaskType,
       startTime: now,
       endTime: null,
       isRecording: true, // 항상 녹화 활성화
@@ -50,7 +73,6 @@ const WorkspaceSessionForm: React.FC<WorkspaceSessionFormProps> = ({
     onStartSession(session);
 
     // 폼 초기화
-    setTitle("");
     setCustomTaskType("");
     setShowCustomTaskType(false);
   };
@@ -60,6 +82,13 @@ const WorkspaceSessionForm: React.FC<WorkspaceSessionFormProps> = ({
     const value = e.target.value;
     setTaskType(value);
     setShowCustomTaskType(value === "custom");
+
+    // 선택한 작업이 오늘 이미 작업한 카테고리인지 확인
+    if (todayCategories.includes(value)) {
+      setContinueSession(true);
+    } else {
+      setContinueSession(false);
+    }
   };
 
   // 사용자 정의 작업 유형 추가 핸들러
@@ -81,23 +110,6 @@ const WorkspaceSessionForm: React.FC<WorkspaceSessionFormProps> = ({
 
       <form onSubmit={handleSubmit}>
         <div className="grid gap-4">
-          {/* 작업 제목 */}
-          <div className="flex flex-col">
-            <label htmlFor="title" className="mb-1 font-medium">
-              작업 제목
-            </label>
-            <input
-              id="title"
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="px-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-md"
-              placeholder="작업 내용을 입력하세요"
-              disabled={isDisabled}
-              required
-            />
-          </div>
-
           {/* 작업 유형 */}
           <div className="flex flex-col">
             <label htmlFor="taskType" className="mb-1 font-medium">
@@ -113,11 +125,19 @@ const WorkspaceSessionForm: React.FC<WorkspaceSessionFormProps> = ({
               <option value="">작업 유형 선택</option>
               {userTaskTypes.map((type) => (
                 <option key={type} value={type}>
-                  {type}
+                  {type}{" "}
+                  {todayCategories.includes(type) ? "(오늘 작업 있음)" : ""}
                 </option>
               ))}
               <option value="custom">직접 입력</option>
             </select>
+
+            {/* 오늘 이미 같은 카테고리로 작업했을 경우 안내 메시지 */}
+            {continueSession && (
+              <div className="mt-1 text-green-600 text-sm">
+                오늘 이미 이 카테고리로 작업했습니다. 이어서 작업합니다.
+              </div>
+            )}
           </div>
 
           {/* 사용자 정의 작업 유형 */}
@@ -148,11 +168,11 @@ const WorkspaceSessionForm: React.FC<WorkspaceSessionFormProps> = ({
             className="mt-2 px-4 py-2 bg-[var(--primary-color)] text-white rounded-md font-medium disabled:opacity-50"
             disabled={
               isDisabled ||
-              !title.trim() ||
+              !taskType.trim() ||
               (showCustomTaskType && !customTaskType.trim())
             }
           >
-            작업 시작
+            {continueSession ? "이어서 작업 시작" : "새 작업 시작"}
           </button>
         </div>
       </form>
