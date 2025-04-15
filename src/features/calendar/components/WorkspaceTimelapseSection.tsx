@@ -55,7 +55,14 @@ const WorkspaceTimelapseSection: React.FC = () => {
         return stats;
       }
 
+      // taskType만 사용하여 통계 집계 (녹화 여부는 별도로 집계하지 않음)
       const taskType = session.taskType || "기타";
+
+      // "녹화" 카테고리는 건너뛰기 (이미 타입에서 해당 기능을 지원하므로 별도 카테고리로 표시할 필요 없음)
+      if (taskType.toLowerCase() === "녹화") {
+        return stats;
+      }
+
       if (!stats[taskType]) {
         stats[taskType] = 0;
       }

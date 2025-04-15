@@ -223,12 +223,26 @@ export function useWorkSession() {
       const today = new Date(now);
       today.setHours(0, 0, 0, 0);
 
+      // 디버깅 로그 추가
+      console.log("세션 시작 데이터:", {
+        ...sessionData,
+        startTime: now.toISOString(),
+      });
+
       const newSession: WorkSession = {
         id: uuidv4(),
         date: today,
         duration: 0,
         ...sessionData,
       };
+
+      // 디버깅 로그 추가
+      console.log("새 세션 생성:", {
+        id: newSession.id,
+        title: newSession.title,
+        taskType: newSession.taskType,
+        isRecording: newSession.isRecording,
+      });
 
       // 활성 세션이 있으면 중지
       if (activeSession && activeSession.isActive) {

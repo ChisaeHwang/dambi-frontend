@@ -34,6 +34,12 @@ const SessionsList: React.FC<SessionsListProps> = ({
   // 세션을 돌면서 카테고리별 작업 시간 누적
   sessions.forEach((session) => {
     const category = session.taskType;
+
+    // "녹화" 카테고리는 건너뛰기
+    if (category && category.toLowerCase() === "녹화") {
+      return;
+    }
+
     if (!categoryStats[category]) {
       categoryStats[category] = 0;
     }

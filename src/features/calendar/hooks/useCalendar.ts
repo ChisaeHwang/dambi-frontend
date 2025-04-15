@@ -142,6 +142,11 @@ export const useCalendar = () => {
     let totalMonthTime = 0;
 
     monthSessions.forEach((session) => {
+      // "녹화" 카테고리는 건너뛰기
+      if (session.taskType && session.taskType.toLowerCase() === "녹화") {
+        return;
+      }
+
       if (!categoryStats[session.taskType]) {
         categoryStats[session.taskType] = 0;
       }
@@ -152,6 +157,11 @@ export const useCalendar = () => {
     // 요일별 작업 시간 집계
     const weekdayStats: number[] = [0, 0, 0, 0, 0, 0, 0]; // 월-일
     monthSessions.forEach((session) => {
+      // "녹화" 카테고리는 건너뛰기
+      if (session.taskType && session.taskType.toLowerCase() === "녹화") {
+        return;
+      }
+
       const dayOfWeek = session.date.getDay(); // 0=일, 1=월, ..., 6=토
       const adjustedDay = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // 0=월, ..., 6=일
       weekdayStats[adjustedDay] += session.duration;

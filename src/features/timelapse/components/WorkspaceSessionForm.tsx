@@ -59,9 +59,10 @@ const WorkspaceSessionForm: React.FC<WorkspaceSessionFormProps> = ({
     const finalTaskType =
       taskType === "custom" ? customTaskType.trim() : taskType;
 
+    // 작업 세션 생성 - title과 taskType을 분리하여 "녹화" 카테고리 생성 방지
     const session: Omit<WorkSession, "id" | "date" | "duration"> = {
-      title: finalTaskType, // 작업 제목을 카테고리명으로 자동 설정
-      taskType: finalTaskType,
+      title: finalTaskType + (continueSession ? " (이어서)" : ""), // 이어서 작업인 경우 표시
+      taskType: finalTaskType, // 작업 유형은 그대로 유지
       startTime: now,
       endTime: null,
       isRecording: true, // 항상 녹화 활성화
@@ -69,6 +70,13 @@ const WorkspaceSessionForm: React.FC<WorkspaceSessionFormProps> = ({
       isActive: true,
       tags: [],
     };
+
+    // 디버깅 로그 추가
+    console.log("작업 세션 생성:", {
+      title: session.title,
+      taskType: session.taskType,
+      isRecording: session.isRecording,
+    });
 
     onStartSession(session);
 
