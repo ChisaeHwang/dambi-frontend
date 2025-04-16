@@ -119,8 +119,10 @@ export const captureService = {
     windowName: string
   ): Promise<{ success: boolean; captureDir?: string; error?: string }> => {
     if (!isElectronAvailable()) {
-      console.log("Electron 환경이 아닙니다. 캡처 시작 모의 처리");
-      return { success: true, captureDir: "/mock/path" };
+      console.error(
+        "Electron 환경이 아닙니다. 캡처 기능을 사용할 수 없습니다."
+      );
+      return { success: false, error: "Electron 환경이 아닙니다." };
     }
 
     try {
@@ -143,8 +145,10 @@ export const captureService = {
     error?: string;
   }> => {
     if (!isElectronAvailable()) {
-      console.log("Electron 환경이 아닙니다. 캡처 중지 모의 처리");
-      return { success: true, totalFrames: 0 };
+      console.error(
+        "Electron 환경이 아닙니다. 캡처 기능을 사용할 수 없습니다."
+      );
+      return { success: false, error: "Electron 환경이 아닙니다." };
     }
 
     try {
@@ -165,7 +169,7 @@ export const captureService = {
     callback: (status: CaptureStatus) => void
   ): (() => void) => {
     if (!isElectronAvailable()) {
-      console.log("Electron 환경이 아닙니다. 캡처 상태 이벤트 모의 처리");
+      console.error("Electron 환경이 아닙니다. 이벤트를 구독할 수 없습니다.");
       return () => {}; // 빈 정리 함수
     }
 
@@ -180,8 +184,10 @@ export const timelapseService = {
    */
   generateTimelapse: async (options: TimelapseOptions): Promise<string> => {
     if (!isElectronAvailable()) {
-      console.log("Electron 환경이 아닙니다. 타임랩스 생성 모의 처리");
-      return "/mock/path/timelapse.mp4";
+      console.error(
+        "Electron 환경이 아닙니다. 타임랩스 기능을 사용할 수 없습니다."
+      );
+      throw new Error("Electron 환경이 아닙니다.");
     }
 
     try {
@@ -199,8 +205,10 @@ export const timelapseService = {
     options: TimelapseOptions
   ): Promise<{ success: boolean; error?: string }> => {
     if (!isElectronAvailable()) {
-      console.log("Electron 환경이 아닙니다. 타임랩스 옵션 업데이트 모의 처리");
-      return { success: true };
+      console.error(
+        "Electron 환경이 아닙니다. 타임랩스 기능을 사용할 수 없습니다."
+      );
+      return { success: false, error: "Electron 환경이 아닙니다." };
     }
 
     try {
@@ -221,7 +229,7 @@ export const timelapseService = {
     callback: (progress: TimelapseProgress) => void
   ): (() => void) => {
     if (!isElectronAvailable()) {
-      console.log("Electron 환경이 아닙니다. 타임랩스 진행 이벤트 모의 처리");
+      console.error("Electron 환경이 아닙니다. 이벤트를 구독할 수 없습니다.");
       return () => {}; // 빈 정리 함수
     }
 
@@ -239,8 +247,10 @@ export const fileService = {
     filePaths: string[];
   }> => {
     if (!isElectronAvailable()) {
-      console.log("Electron 환경이 아닙니다. 폴더 선택 모의 처리");
-      return { canceled: false, filePaths: ["/mock/selected/path"] };
+      console.error(
+        "Electron 환경이 아닙니다. 파일 시스템 기능을 사용할 수 없습니다."
+      );
+      return { canceled: true, filePaths: [] };
     }
 
     try {
