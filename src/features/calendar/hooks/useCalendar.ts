@@ -24,14 +24,7 @@ export const useCalendar = () => {
   useEffect(() => {
     // 로컬 스토리지에서 세션 데이터 로드
     const loadedSessions = sessionStorageService.getSessions();
-    if (loadedSessions.length > 0) {
-      setSessions(loadedSessions);
-    } else {
-      // 세션 데이터가 없으면 샘플 데이터 생성 (개발용)
-      const sampleSessions = generateSampleWorkSessions();
-      setSessions(sampleSessions);
-      sessionStorageService.saveSessions(sampleSessions);
-    }
+    setSessions(loadedSessions);
 
     // 오전 9시 리셋 확인
     timerService.checkDailyReset();
@@ -192,59 +185,4 @@ export const useCalendar = () => {
     deleteSession,
     updateSettings,
   };
-};
-
-/**
- * 샘플 작업 세션 데이터 생성 함수
- */
-const generateSampleWorkSessions = (): WorkSession[] => {
-  const sessions: WorkSession[] = [];
-  const today = new Date();
-  const startDate = new Date(today);
-  startDate.setDate(1); // 현재 달의 1일부터
-
-  // 카테고리 목록
-  const categories = ["디자인", "개발", "미팅", "문서", "학습"];
-
-  // 최근 한 달 동안의 작업 세션 생성
-  let id = 1;
-  while (startDate <= today) {
-    // 각 날짜별로 0-3개의 세션 생성
-    const sessionsCount = Math.floor(Math.random() * 4);
-
-    for (let i = 0; i < sessionsCount; i++) {
-      const hours = 9 + Math.floor(Math.random() * 8); // 9시-17시 사이
-      const minutes = Math.floor(Math.random() * 6) * 10; // 0, 10, 20, 30, 40, 50분
-      const duration = 30 + Math.floor(Math.random() * 12) * 15; // 30분-3시간
-      const taskType =
-        categories[Math.floor(Math.random() * categories.length)];
-
-      const sessionDate = new Date(startDate);
-      sessionDate.setHours(hours, minutes);
-
-      const startTime = new Date(sessionDate);
-      const endTime = new Date(sessionDate);
-      endTime.setMinutes(endTime.getMinutes() + duration);
-
-      sessions.push({
-        id: id.toString(),
-        date: sessionDate,
-        startTime: startTime,
-        endTime: endTime,
-        duration,
-        title: `${taskType} 작업 ${i + 1}`,
-        taskType,
-        isRecording: false,
-        source: "manual",
-        isActive: false,
-      });
-
-      id++;
-    }
-
-    // 다음 날짜로 이동
-    startDate.setDate(startDate.getDate() + 1);
-  }
-
-  return sessions;
 };

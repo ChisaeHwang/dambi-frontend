@@ -171,6 +171,28 @@ export function useWorkSession() {
       electronSessionAdapter.stopCapture();
     }
 
+    // 연관된 '녹화' 세션도 함께 종료
+    const todaySess = sessionStorageService.getSessionsByDate(new Date());
+    const electronicSessions = todaySess.filter(
+      (s) => s.isActive && s.source === "electron" && s.taskType === "녹화"
+    );
+
+    if (electronicSessions.length > 0) {
+      electronicSessions.forEach((session) => {
+        const updatedElectronicSession = {
+          ...session,
+          endTime: now,
+          duration: Math.floor(
+            (now.getTime() - new Date(session.startTime).getTime()) /
+              (1000 * 60)
+          ),
+          isActive: false,
+          isRecording: false,
+        };
+        sessionStorageService.updateSession(updatedElectronicSession);
+      });
+    }
+
     loadTodaySessions();
     loadAllSessions();
   }, [activeSession, isRecording, loadTodaySessions, loadAllSessions]);
@@ -249,6 +271,28 @@ export function useWorkSession() {
         stopSession();
       }
 
+      // 추가: 동일 날짜의 활성 '녹화' 세션 종료 처리
+      const todaySess = sessionStorageService.getSessionsByDate(today);
+      const electronicSessions = todaySess.filter(
+        (s) => s.isActive && s.source === "electron" && s.taskType === "녹화"
+      );
+
+      if (electronicSessions.length > 0) {
+        electronicSessions.forEach((session) => {
+          const updatedElectronicSession = {
+            ...session,
+            endTime: now,
+            duration: Math.floor(
+              (now.getTime() - new Date(session.startTime).getTime()) /
+                (1000 * 60)
+            ),
+            isActive: false,
+            isRecording: false,
+          };
+          sessionStorageService.updateSession(updatedElectronicSession);
+        });
+      }
+
       // 저장 및 상태 업데이트
       sessionStorageService.addSession(newSession);
       setActiveSession(newSession);
@@ -276,7 +320,7 @@ export function useWorkSession() {
       loadTodaySessions();
       return newSession;
     },
-    [activeSession, loadTodaySessions]
+    [activeSession, loadTodaySessions, stopSession]
   );
 
   // 세션 일시 정지

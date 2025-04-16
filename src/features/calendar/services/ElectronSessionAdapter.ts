@@ -59,14 +59,17 @@ export class ElectronSessionAdapter {
           this.isActive = true;
           this.captureData = status;
 
-          // 작업 세션 시작
-          const title = status.windowTitle || "녹화 세션";
-          const taskType = "녹화";
-
           // 이미 활성화된 세션이 있는지 확인
           const activeSession = timerService.getActiveSession();
-          if (!activeSession || activeSession.source !== "electron") {
+
+          // 활성 세션이 없거나, 활성 세션이 electron 소스가 아니고 녹화 옵션이 활성화되지 않은 경우에만 새 녹화 세션 생성
+          if (
+            !activeSession ||
+            (activeSession.source !== "electron" && !activeSession.isRecording)
+          ) {
             // 새 세션 시작
+            const title = status.windowTitle || "녹화 세션";
+            const taskType = "녹화";
             timerService.startSession(title, taskType, "electron");
           }
         } else if (!status.isCapturing && this.isActive) {
@@ -74,7 +77,7 @@ export class ElectronSessionAdapter {
           this.isActive = false;
           this.captureData = null;
 
-          // 작업 세션 종료
+          // 작업 세션 종료 - 'electron' 소스 세션만 종료 (사용자가 시작한 세션은 그대로 유지)
           const activeSession = timerService.getActiveSession();
           if (activeSession && activeSession.source === "electron") {
             timerService.stopSession();
@@ -105,7 +108,12 @@ export class ElectronSessionAdapter {
 
         // 이전 세션 확인
         const activeSession = timerService.getActiveSession();
-        if (!activeSession || activeSession.source !== "electron") {
+
+        // 활성 세션이 없거나, 활성 세션이 electron 소스가 아니고 녹화 옵션이 활성화되지 않은 경우에만 새 녹화 세션 생성
+        if (
+          !activeSession ||
+          (activeSession.source !== "electron" && !activeSession.isRecording)
+        ) {
           // 새 세션 시작
           const title = "녹화 세션";
           const taskType = "녹화";

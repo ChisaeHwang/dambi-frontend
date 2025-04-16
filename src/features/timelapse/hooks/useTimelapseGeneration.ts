@@ -67,7 +67,7 @@ export const useTimelapseGeneration = (
   }, [electronAvailable]);
 
   // 저장 폴더 선택 핸들러
-  const selectSaveFolder = useCallback(async () => {
+  const selectSaveFolder = useCallback( async () => {
     if (!electronAvailable) {
       console.log(
         "일렉트론 환경이 아닙니다. 폴더 선택 기능을 사용할 수 없습니다."
