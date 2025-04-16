@@ -80,7 +80,11 @@ export const useTimelapseGeneration = (
       const result = await fileService.selectSaveFolder();
 
       if (result && result.filePaths && result.filePaths.length > 0) {
-        const selectedPath = result.filePaths[0];
+        let selectedPath = result.filePaths[0];
+
+        // 경로에 따옴표가 포함된 경우 제거
+        selectedPath = selectedPath.replace(/^["']|["']$/g, "");
+
         setSaveFolderPath(selectedPath);
 
         // 로컬 스토리지에 경로 저장
@@ -109,7 +113,9 @@ export const useTimelapseGeneration = (
 
           // 저장 경로가 설정되어 있으면 추가
           if (saveFolderPath) {
-            mergedOptions.outputPath = saveFolderPath;
+            // 경로에 따옴표가 포함된 경우 제거
+            const cleanPath = saveFolderPath.replace(/^["']|["']$/g, "");
+            mergedOptions.outputPath = cleanPath;
           }
 
           // 현재 선택된 창의 썸네일 해상도 정보 추가

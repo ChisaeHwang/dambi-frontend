@@ -119,7 +119,12 @@ export const timelapseStorageService = {
    * 타임랩스 저장 경로 가져오기
    */
   getPath: (): string | null => {
-    return getString(STORAGE_KEYS.SAVE_PATH, null);
+    const path = getString(STORAGE_KEYS.SAVE_PATH, null);
+    if (path) {
+      // 경로에 따옴표가 포함된 경우 제거
+      return path.replace(/^["']|["']$/g, "");
+    }
+    return path;
   },
 };
 

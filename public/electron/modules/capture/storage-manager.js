@@ -212,6 +212,11 @@ class StorageManager {
    */
   async prepareOutputDirectory(outputPath) {
     try {
+      // 경로에 따옴표가 포함되어 있으면 제거
+      if (typeof outputPath === "string") {
+        outputPath = outputPath.replace(/^["']|["']$/g, "");
+      }
+
       const outputDir = path.dirname(outputPath);
 
       try {
@@ -241,7 +246,13 @@ class StorageManager {
       const fileName = `timelapse_${Date.now()}.mp4`;
 
       if (options && options.outputPath) {
-        return path.join(options.outputPath, fileName);
+        // 경로에 따옴표가 포함되어 있으면 제거
+        let outputPath = options.outputPath;
+        if (typeof outputPath === "string") {
+          // 시작과 끝의 따옴표 제거
+          outputPath = outputPath.replace(/^["']|["']$/g, "");
+        }
+        return path.join(outputPath, fileName);
       }
 
       return path.join(app.getPath("videos"), fileName);
