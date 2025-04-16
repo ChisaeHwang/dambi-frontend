@@ -31,8 +31,13 @@ const Timelapse: React.FC = () => {
   } = useTimelapseGenerationCapture();
 
   // WorkSession 관련 훅 추가
-  const { startSession, userTaskTypes, addTaskType, todaySessions } =
-    useWorkSession();
+  const {
+    startSession,
+    userTaskTypes,
+    addTaskType,
+    todaySessions,
+    stopSession,
+  } = useWorkSession();
 
   // 상태 관리
   const [showGeneratePrompt, setShowGeneratePrompt] = useState<boolean>(false);
@@ -140,7 +145,11 @@ const Timelapse: React.FC = () => {
 
   // 캡처 중지 핸들러
   const handleStopCapture = () => {
+    // 녹화 중지
     stopCapture();
+
+    // 작업 세션도 함께 종료
+    stopSession();
   };
 
   // 캡처 취소 핸들러

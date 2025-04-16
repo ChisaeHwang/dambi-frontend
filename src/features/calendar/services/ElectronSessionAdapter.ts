@@ -59,16 +59,16 @@ export class ElectronSessionAdapter {
           this.isActive = true;
           this.captureData = status;
 
-          // 작업 세션 시작
-          const title = status.windowTitle || "녹화 세션";
-          const taskType = "녹화";
-
           // 이미 활성화된 세션이 있는지 확인
           const activeSession = timerService.getActiveSession();
-          if (!activeSession || activeSession.source !== "electron") {
-            // 새 세션 시작
+          if (!activeSession) {
+            // 활성 세션이 없는 경우 새 세션 시작
+            const title = status.windowTitle || "화면 캡처";
+            // 녹화 카테고리 대신 기본 카테고리 사용
+            const taskType = "작업";
             timerService.startSession(title, taskType, "electron");
           }
+          // 기존 세션이 있으면 해당 세션의 녹화 플래그만 업데이트
         } else if (!status.isCapturing && this.isActive) {
           // 캡처 중지됨
           this.isActive = false;
@@ -105,10 +105,10 @@ export class ElectronSessionAdapter {
 
         // 이전 세션 확인
         const activeSession = timerService.getActiveSession();
-        if (!activeSession || activeSession.source !== "electron") {
-          // 새 세션 시작
-          const title = "녹화 세션";
-          const taskType = "녹화";
+        if (!activeSession) {
+          // 새 세션 시작 - 녹화 카테고리 대신 기본 카테고리 사용
+          const title = "화면 캡처";
+          const taskType = "작업";
           timerService.startSession(title, taskType, "electron");
         }
       }

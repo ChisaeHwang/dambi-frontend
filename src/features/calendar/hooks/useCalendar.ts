@@ -24,13 +24,28 @@ export const useCalendar = () => {
   useEffect(() => {
     // 로컬 스토리지에서 세션 데이터 로드
     const loadedSessions = sessionStorageService.getSessions();
+
+    // 실제 사용자 데이터만 유지 (mock 데이터 삭제)
     if (loadedSessions.length > 0) {
-      setSessions(loadedSessions);
+      // 타이틀에 "작업"이라는 단어를 포함하고 있는 세션은 샘플 데이터로 간주하고 삭제
+      const filteredSessions = loadedSessions.filter(
+        (session) => !session.title.includes("작업")
+      );
+
+      // 필터링된 세션의 수가 원래 세션 수와 다를 경우 (샘플 데이터가 있었다는 의미)
+      if (filteredSessions.length !== loadedSessions.length) {
+        console.log(
+          "샘플 데이터 정리: ",
+          loadedSessions.length - filteredSessions.length,
+          "개 항목 제거됨"
+        );
+        sessionStorageService.saveSessions(filteredSessions);
+        setSessions(filteredSessions);
+      } else {
+        setSessions(loadedSessions);
+      }
     } else {
-      // 세션 데이터가 없으면 샘플 데이터 생성 (개발용)
-      const sampleSessions = generateSampleWorkSessions();
-      setSessions(sampleSessions);
-      sessionStorageService.saveSessions(sampleSessions);
+      setSessions([]);
     }
 
     // 오전 9시 리셋 확인
@@ -142,6 +157,11 @@ export const useCalendar = () => {
     let totalMonthTime = 0;
 
     monthSessions.forEach((session) => {
+      // "녹화" 카테고리는 건너뛰기
+      if (session.taskType && session.taskType.toLowerCase() === "녹화") {
+        return;
+      }
+
       if (!categoryStats[session.taskType]) {
         categoryStats[session.taskType] = 0;
       }
@@ -152,6 +172,11 @@ export const useCalendar = () => {
     // 요일별 작업 시간 집계
     const weekdayStats: number[] = [0, 0, 0, 0, 0, 0, 0]; // 월-일
     monthSessions.forEach((session) => {
+      // "녹화" 카테고리는 건너뛰기
+      if (session.taskType && session.taskType.toLowerCase() === "녹화") {
+        return;
+      }
+
       const dayOfWeek = session.date.getDay(); // 0=일, 1=월, ..., 6=토
       const adjustedDay = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // 0=월, ..., 6=일
       weekdayStats[adjustedDay] += session.duration;
@@ -182,59 +207,4 @@ export const useCalendar = () => {
     deleteSession,
     updateSettings,
   };
-};
-
-/**
- * 샘플 작업 세션 데이터 생성 함수
- */
-const generateSampleWorkSessions = (): WorkSession[] => {
-  const sessions: WorkSession[] = [];
-  const today = new Date();
-  const startDate = new Date(today);
-  startDate.setDate(1); // 현재 달의 1일부터
-
-  // 카테고리 목록
-  const categories = ["디자인", "개발", "미팅", "문서", "학습"];
-
-  // 최근 한 달 동안의 작업 세션 생성
-  let id = 1;
-  while (startDate <= today) {
-    // 각 날짜별로 0-3개의 세션 생성
-    const sessionsCount = Math.floor(Math.random() * 4);
-
-    for (let i = 0; i < sessionsCount; i++) {
-      const hours = 9 + Math.floor(Math.random() * 8); // 9시-17시 사이
-      const minutes = Math.floor(Math.random() * 6) * 10; // 0, 10, 20, 30, 40, 50분
-      const duration = 30 + Math.floor(Math.random() * 12) * 15; // 30분-3시간
-      const taskType =
-        categories[Math.floor(Math.random() * categories.length)];
-
-      const sessionDate = new Date(startDate);
-      sessionDate.setHours(hours, minutes);
-
-      const startTime = new Date(sessionDate);
-      const endTime = new Date(sessionDate);
-      endTime.setMinutes(endTime.getMinutes() + duration);
-
-      sessions.push({
-        id: id.toString(),
-        date: sessionDate,
-        startTime: startTime,
-        endTime: endTime,
-        duration,
-        title: `${taskType} 작업 ${i + 1}`,
-        taskType,
-        isRecording: false,
-        source: "manual",
-        isActive: false,
-      });
-
-      id++;
-    }
-
-    // 다음 날짜로 이동
-    startDate.setDate(startDate.getDate() + 1);
-  }
-
-  return sessions;
 };

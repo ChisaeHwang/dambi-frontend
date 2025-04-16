@@ -242,3 +242,6 @@ export class SessionStorageService {
 
 // 싱글톤 인스턴스 생성
 export const sessionStorageService = new SessionStorageService();
+
+// 초기화 - 기존 데이터 클리어 (개발 중에만 사용하고 나중에 제거할 것)
+// sessionStorageService.clearAllData();
