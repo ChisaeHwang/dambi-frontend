@@ -24,29 +24,7 @@ export const useCalendar = () => {
   useEffect(() => {
     // 로컬 스토리지에서 세션 데이터 로드
     const loadedSessions = sessionStorageService.getSessions();
-
-    // 실제 사용자 데이터만 유지 (mock 데이터 삭제)
-    if (loadedSessions.length > 0) {
-      // 타이틀에 "작업"이라는 단어를 포함하고 있는 세션은 샘플 데이터로 간주하고 삭제
-      const filteredSessions = loadedSessions.filter(
-        (session) => !session.title.includes("작업")
-      );
-
-      // 필터링된 세션의 수가 원래 세션 수와 다를 경우 (샘플 데이터가 있었다는 의미)
-      if (filteredSessions.length !== loadedSessions.length) {
-        console.log(
-          "샘플 데이터 정리: ",
-          loadedSessions.length - filteredSessions.length,
-          "개 항목 제거됨"
-        );
-        sessionStorageService.saveSessions(filteredSessions);
-        setSessions(filteredSessions);
-      } else {
-        setSessions(loadedSessions);
-      }
-    } else {
-      setSessions([]);
-    }
+    setSessions(loadedSessions);
 
     // 오전 9시 리셋 확인
     timerService.checkDailyReset();

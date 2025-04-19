@@ -7,37 +7,6 @@ import {
   timelapseStorageService,
 } from "../../../services";
 
-// 기본 타임랩스 옵션 정의
-const defaultOptions: TimelapseOptions = {
-  speedFactor: 10,
-  outputQuality: "medium",
-  outputFormat: "mp4",
-  preserveOriginals: false,
-  enabled: true,
-  captureDir: "",
-};
-
-// window.gtag에 대한 타입 정의 확장
-declare global {
-  interface Window {
-    gtag?: (
-      command: string,
-      action: string,
-      params: Record<string, any>
-    ) => void;
-  }
-}
-
-// TimelapseOptions 인터페이스 확장
-declare module "../../timelapse/types" {
-  interface TimelapseOptions {
-    windowId?: string;
-    windowName?: string;
-    captureDir?: string;
-    fps?: number;
-  }
-}
-
 /**
  * 타임랩스 생성 기능을 위한 훅
  */
@@ -98,7 +67,7 @@ export const useTimelapseGeneration = (
   }, [electronAvailable]);
 
   // 저장 폴더 선택 핸들러
-  const selectSaveFolder = useCallback(async () => {
+  const selectSaveFolder = useCallback( async () => {
     if (!electronAvailable) {
       console.log(
         "일렉트론 환경이 아닙니다. 폴더 선택 기능을 사용할 수 없습니다."
@@ -111,7 +80,11 @@ export const useTimelapseGeneration = (
       const result = await fileService.selectSaveFolder();
 
       if (result && result.filePaths && result.filePaths.length > 0) {
-        const selectedPath = result.filePaths[0];
+        let selectedPath = result.filePaths[0];
+
+        // 경로에 따옴표가 포함된 경우 제거
+        selectedPath = selectedPath.replace(/^["']|["']$/g, "");
+
         setSaveFolderPath(selectedPath);
 
         // 로컬 스토리지에 경로 저장
@@ -131,65 +104,98 @@ export const useTimelapseGeneration = (
   const generateTimelapse = useCallback(
     async (timelapseOptions: TimelapseOptions) => {
       try {
-        setIsGeneratingTimelapse(true);
         setError(null);
+        setIsGeneratingTimelapse(true);
 
-        if (!electronAvailable) {
-          throw new Error(
-            "Electron 환경이 아닙니다. 타임랩스 기능을 사용할 수 없습니다."
+        if (electronAvailable) {
+          // 복사본 생성하여 추가 정보 설정
+          const mergedOptions = { ...timelapseOptions };
+
+          // 저장 경로가 설정되어 있으면 추가
+          if (saveFolderPath) {
+            // 경로에 따옴표가 포함된 경우 제거
+            const cleanPath = saveFolderPath.replace(/^["']|["']$/g, "");
+            mergedOptions.outputPath = cleanPath;
+          }
+
+          // 현재 선택된 창의 썸네일 해상도 정보 추가
+          const selectedWindow = activeWindows.find(
+            (window) => window.id === selectedWindowId
           );
+
+          if (selectedWindow) {
+            // 썸네일 크기 정보 추가
+            mergedOptions.thumbnailWidth = selectedWindow.thumbnailWidth || 320;
+            mergedOptions.thumbnailHeight =
+              selectedWindow.thumbnailHeight || 240;
+
+            // 원본 비디오 해상도는 메인 프로세스에서 캡처된 실제 해상도를 사용
+            // 일반적인 화면 해상도를 기본 추정값으로 설정
+            if (selectedWindow.isScreen) {
+              // 전체 화면 캡처인 경우 (일반적인 모니터 해상도 사용)
+              mergedOptions.videoWidth = 1920;
+              mergedOptions.videoHeight = 1080;
+            } else {
+              // 창 캡처인 경우 (창 크기 비율 유지하되 적절한 해상도로 추정)
+              const aspectRatio =
+                selectedWindow.thumbnailWidth && selectedWindow.thumbnailHeight
+                  ? selectedWindow.thumbnailWidth /
+                    selectedWindow.thumbnailHeight
+                  : 16 / 9; // 기본 화면 비율
+
+              // 기본 해상도 설정 (메인 프로세스에서 실제 값으로 덮어씀)
+              mergedOptions.videoWidth = Math.round(1080 * aspectRatio);
+              mergedOptions.videoHeight = 1080;
+            }
+
+            // 품질 설정에 따른 해상도 및 비트레이트 조정
+            if (mergedOptions.outputQuality === "low") {
+              // 낮은 품질: 해상도 감소, 낮은 비트레이트
+              mergedOptions.videoWidth = Math.round(
+                mergedOptions.videoWidth * 0.6
+              );
+              mergedOptions.videoHeight = Math.round(
+                mergedOptions.videoHeight * 0.6
+              );
+              mergedOptions.videoBitrate = 1000000; // 1Mbps
+            } else if (mergedOptions.outputQuality === "medium") {
+              // 중간 품질: 기본 해상도, 중간 비트레이트
+              mergedOptions.videoBitrate = 3000000; // 3Mbps
+            } else if (mergedOptions.outputQuality === "high") {
+              // 높은 품질: 해상도 증가, 높은 비트레이트
+              mergedOptions.videoWidth = Math.round(
+                mergedOptions.videoWidth * 1.2
+              );
+              mergedOptions.videoHeight = Math.round(
+                mergedOptions.videoHeight * 1.2
+              );
+              mergedOptions.videoBitrate = 6000000; // 6Mbps
+            }
+
+            console.log("타임랩스 생성 옵션:", {
+              thumbnailSize: `${mergedOptions.thumbnailWidth}x${mergedOptions.thumbnailHeight}`,
+              videoSize: `${mergedOptions.videoWidth}x${mergedOptions.videoHeight}`,
+              isScreen: selectedWindow.isScreen || false,
+              blurRegions: mergedOptions.blurRegions?.length || 0,
+              quality: mergedOptions.outputQuality,
+              videoBitrate: mergedOptions.videoBitrate
+                ? `${mergedOptions.videoBitrate / 1000000}Mbps`
+                : "기본값",
+              speedFactor: mergedOptions.speedFactor,
+              preserveOriginals: mergedOptions.preserveOriginals,
+            });
+          }
+
+          // 서비스를 통해 타임랩스 생성
+          const path = await timelapseService.generateTimelapse(mergedOptions);
+          setOutputPath(path);
+          return path;
+        } else {
+          console.log("모의 환경: 타임랩스 생성");
+          const mockPath = "/mock/path/timelapse.mp4";
+          setOutputPath(mockPath);
+          return mockPath;
         }
-
-        const selectedWindow = activeWindows.find(
-          (window) => window.id === selectedWindowId
-        );
-
-        if (!selectedWindow) {
-          throw new Error("선택된 창을 찾을 수 없습니다.");
-        }
-
-        const mergedOptions: TimelapseOptions = {
-          ...defaultOptions,
-          ...timelapseOptions,
-          windowId: selectedWindowId,
-          windowName: selectedWindow.name || "Unknown",
-          captureDir: saveFolderPath || defaultOptions.captureDir,
-        };
-
-        console.log("타임랩스 생성 시작:", {
-          windowId: mergedOptions.windowId,
-          windowName: mergedOptions.windowName,
-          fps: mergedOptions.fps,
-          speedFactor: mergedOptions.speedFactor,
-          outputPath: mergedOptions.outputPath,
-          outputQuality: mergedOptions.outputQuality,
-        });
-
-        // 테스트를 위한 분석 이벤트 전송
-        if (window.gtag) {
-          window.gtag("event", "generate_timelapse", {
-            event_category: "timelapse",
-            event_label: "timelapse_generation",
-            value: 1,
-            non_interaction: false,
-            windowTitle: selectedWindow.name?.slice(0, 50) || "Unknown",
-            thumbnailSize: `${mergedOptions.thumbnailWidth}x${mergedOptions.thumbnailHeight}`,
-            videoSize: `${mergedOptions.videoWidth}x${mergedOptions.videoHeight}`,
-            isScreen: selectedWindow.isScreen || false,
-            blurRegions: mergedOptions.blurRegions?.length || 0,
-            quality: mergedOptions.outputQuality,
-            videoBitrate: mergedOptions.videoBitrate
-              ? `${mergedOptions.videoBitrate / 1000000}Mbps`
-              : "기본값",
-            speedFactor: mergedOptions.speedFactor,
-            preserveOriginals: mergedOptions.preserveOriginals,
-          });
-        }
-
-        // 서비스를 통해 타임랩스 생성
-        const path = await timelapseService.generateTimelapse(mergedOptions);
-        setOutputPath(path);
-        return path;
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : String(error);

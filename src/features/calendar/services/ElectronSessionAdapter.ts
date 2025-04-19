@@ -1,5 +1,4 @@
 import { WorkSession } from "../types";
-import { sessionStorageService } from "../utils";
 import { timerService } from "./TimerService";
 
 /**
@@ -61,20 +60,23 @@ export class ElectronSessionAdapter {
 
           // 이미 활성화된 세션이 있는지 확인
           const activeSession = timerService.getActiveSession();
-          if (!activeSession) {
-            // 활성 세션이 없는 경우 새 세션 시작
-            const title = status.windowTitle || "화면 캡처";
-            // 녹화 카테고리 대신 기본 카테고리 사용
-            const taskType = "작업";
+
+          // 활성 세션이 없거나, 활성 세션이 electron 소스가 아니고 녹화 옵션이 활성화되지 않은 경우에만 새 녹화 세션 생성
+          if (
+            !activeSession ||
+            (activeSession.source !== "electron" && !activeSession.isRecording)
+          ) {
+            // 새 세션 시작
+            const title = status.windowTitle || "녹화 세션";
+            const taskType = "녹화";
             timerService.startSession(title, taskType, "electron");
           }
-          // 기존 세션이 있으면 해당 세션의 녹화 플래그만 업데이트
         } else if (!status.isCapturing && this.isActive) {
           // 캡처 중지됨
           this.isActive = false;
           this.captureData = null;
 
-          // 작업 세션 종료
+          // 작업 세션 종료 - 'electron' 소스 세션만 종료 (사용자가 시작한 세션은 그대로 유지)
           const activeSession = timerService.getActiveSession();
           if (activeSession && activeSession.source === "electron") {
             timerService.stopSession();
@@ -105,10 +107,15 @@ export class ElectronSessionAdapter {
 
         // 이전 세션 확인
         const activeSession = timerService.getActiveSession();
-        if (!activeSession) {
-          // 새 세션 시작 - 녹화 카테고리 대신 기본 카테고리 사용
-          const title = "화면 캡처";
-          const taskType = "작업";
+
+        // 활성 세션이 없거나, 활성 세션이 electron 소스가 아니고 녹화 옵션이 활성화되지 않은 경우에만 새 녹화 세션 생성
+        if (
+          !activeSession ||
+          (activeSession.source !== "electron" && !activeSession.isRecording)
+        ) {
+          // 새 세션 시작
+          const title = "녹화 세션";
+          const taskType = "녹화";
           timerService.startSession(title, taskType, "electron");
         }
       }
