@@ -115,7 +115,7 @@ export class BrowserCaptureService {
 
       // 작업 세션 시작
       const sessionTitle = options.title || document.title || "화면 캡처";
-      const category = options.category || "녹화";
+      const category = options.category || "작업";
       timerService.startSession(sessionTitle, category, "browser");
 
       // 리스너 알림

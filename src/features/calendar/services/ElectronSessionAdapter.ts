@@ -1,5 +1,4 @@
 import { WorkSession } from "../types";
-import { sessionStorageService } from "../utils";
 import { timerService } from "./TimerService";
 
 /**
