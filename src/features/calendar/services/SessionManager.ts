@@ -1,4 +1,4 @@
-import { WorkSession, AppSettings } from "../types";
+import { WorkSession } from "../types";
 import { sessionStorageService } from "../utils";
 import { timerService } from "./TimerService";
 import { v4 as uuidv4 } from "uuid";
