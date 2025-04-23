@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { WorkSession } from "../../calendar/types";
 import { electronSessionAdapter } from "../../calendar/services/ElectronSessionAdapter";
-import { timerService } from "../../calendar/services/TimerService";
 import { sessionStorageService } from "../../calendar/utils";
 
 /**
@@ -64,16 +63,6 @@ export function useWorkSession() {
     setAllSessions(sessions);
   }, []);
 
-  // 초기 로드
-  useEffect(() => {
-    // 이전에 비정상적으로 종료된 세션들을 정리
-    cleanupIncompleteSessions();
-
-    // 정상적인 세션 로드
-    loadTodaySessions();
-    loadAllSessions();
-  }, [loadTodaySessions, loadAllSessions]);
-
   // 비정상적으로 종료된 세션 정리
   const cleanupIncompleteSessions = useCallback(() => {
     const sessions = sessionStorageService.getSessions();
@@ -132,6 +121,16 @@ export function useWorkSession() {
       sessionStorageService.saveSessions(updatedSessions);
     }
   }, []);
+
+  // 초기 로드
+  useEffect(() => {
+    // 이전에 비정상적으로 종료된 세션들을 정리
+    cleanupIncompleteSessions();
+
+    // 정상적인 세션 로드
+    loadTodaySessions();
+    loadAllSessions();
+  }, [loadTodaySessions, loadAllSessions, cleanupIncompleteSessions]);
 
   // 타이머 효과
   useEffect(() => {
