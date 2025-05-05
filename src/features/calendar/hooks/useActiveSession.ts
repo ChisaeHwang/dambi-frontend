@@ -54,9 +54,7 @@ export const useActiveSession = () => {
     // 정리 함수
     return () => {
       // 콜백 제거 - undefined를 전달하여 콜백 제거 (null 대신)
-      timerService.setStateChangeCallback(
-        undefined as unknown as (state: SessionState) => void
-      );
+      timerService.setStateChangeCallback(undefined);
     };
   }, []);
 
@@ -120,78 +118,59 @@ export const useActiveSession = () => {
   );
 
   /**
-   * 작업 세션 종료
+   * 작업 세션 중지
    */
-  const stopSession = useCallback(() => {
-    // 녹화 중인지 확인
-    const currentSession = activeSession;
-    const isRecording = currentSession?.isRecording || false;
+  const stopSession = useCallback((): WorkSession | null => {
+    const session = timerService.stopSession();
 
-    // 세션 종료
-    const result = timerService.stopSession();
-
-    // 녹화 중이었다면 캡처 중지
-    if (isRecording) {
+    // 녹화 중이었다면 중지
+    if (session?.isRecording) {
       const captureActions = getCaptureActions();
       captureActions.stopCapture().catch((err) => {
         console.error("캡처 중지 실패:", err);
       });
     }
 
-    return result;
-  }, [activeSession, getCaptureActions]);
+    return session;
+  }, [getCaptureActions]);
 
   /**
-   * 작업 세션 일시정지
+   * 작업 세션 일시 정지
    */
-  const pauseSession = useCallback(() => {
-    const captureActions = getCaptureActions();
-
-    // 녹화 중이면 캡처 일시정지
-    if (activeSession?.isRecording) {
-      captureActions.stopCapture().catch((err) => {
-        console.error("캡처 일시정지 실패:", err);
-      });
-    }
-
+  const pauseSession = useCallback((): void => {
     timerService.pauseSession();
-  }, [activeSession, getCaptureActions]);
+  }, []);
 
   /**
    * 작업 세션 재개
    */
-  const resumeSession = useCallback(() => {
-    const captureActions = getCaptureActions();
-
-    // 녹화 옵션이 켜져 있었다면 캡처 재개
-    if (activeSession?.isRecording) {
-      captureActions.startCapture().catch((err) => {
-        console.error("캡처 재개 실패:", err);
-      });
-    }
-
+  const resumeSession = useCallback((): void => {
     timerService.resumeSession();
-  }, [activeSession, getCaptureActions]);
+  }, []);
 
   /**
-   * 화면 캡처 상태 확인
+   * 녹화 상태 확인
    */
-  const isCapturing = useCallback(async () => {
+  const checkCaptureStatus = useCallback(async (): Promise<boolean> => {
     const captureActions = getCaptureActions();
     return captureActions.isCapturing();
   }, [getCaptureActions]);
 
   return {
+    // 상태
+    sessionState,
     activeSession,
     duration,
     formattedTime,
-    isPaused,
     isActive,
+    isPaused,
     isElectron,
-    isCapturing,
+
+    // 액션
     startSession,
     stopSession,
     pauseSession,
     resumeSession,
+    checkCaptureStatus,
   };
 };

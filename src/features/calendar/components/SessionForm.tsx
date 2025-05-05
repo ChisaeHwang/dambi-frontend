@@ -6,7 +6,8 @@ import {
   formatTimeForInput,
   formatMinutes,
 } from "../../../utils/timeUtils";
-import { sessionStorageService } from "../utils";
+import { sessionStorageService } from "../services/SessionStorageService";
+import { DateService } from "../services/DateService";
 
 interface SessionFormProps {
   session?: WorkSession;
@@ -48,9 +49,15 @@ const SessionForm: React.FC<SessionFormProps> = ({
       setIsEditing(true);
       setTitle(session.title);
       setTaskType(session.taskType);
-      setIsRecording(session.isRecording);
+      // isRecording이 undefined일 경우 기본값 false로 설정
+      setIsRecording(session.isRecording ?? false);
       setDate(formatDateForInput(session.date));
-      setStartTime(formatTimeForInput(session.startTime));
+      // startTime이 undefined일 경우 현재 시간으로 설정
+      setStartTime(
+        session.startTime
+          ? formatTimeForInput(session.startTime)
+          : formatTimeForInput(new Date())
+      );
       setEndTime(session.endTime ? formatTimeForInput(session.endTime) : "");
       setDuration(session.duration);
     } else {
@@ -108,23 +115,20 @@ const SessionForm: React.FC<SessionFormProps> = ({
       sessionManager.updateSession(updatedSession);
       onSave(updatedSession);
     } else {
-      // 새 세션 생성
-      const newSession = sessionManager.createSession(
+      // 새 세션 생성 - createSession 함수 인자 변경
+      const sessionData: Partial<WorkSession> = {
         title,
         taskType,
-        sessionDate,
+        date: sessionDate,
         duration,
-        "manual",
-        []
-      );
+        source: "manual",
+        tags: [],
+        startTime: startDateTime,
+        endTime: endDateTime,
+        isRecording,
+      };
 
-      // 시작 시간과 종료 시간 설정
-      newSession.startTime = startDateTime;
-      newSession.endTime = endDateTime;
-      newSession.isRecording = isRecording;
-
-      // 업데이트
-      sessionManager.updateSession(newSession);
+      const newSession = sessionManager.createSession(sessionData);
       onSave(newSession);
     }
   };
@@ -249,13 +253,13 @@ const SessionForm: React.FC<SessionFormProps> = ({
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 border rounded hover:bg-[var(--bg-accent)]"
+            className="px-4 py-2 border rounded"
           >
             취소
           </button>
           <button
             type="submit"
-            className="px-4 py-2 bg-[var(--primary-color)] text-white rounded hover:opacity-90"
+            className="px-4 py-2 bg-[var(--accent)] text-white rounded"
           >
             저장
           </button>

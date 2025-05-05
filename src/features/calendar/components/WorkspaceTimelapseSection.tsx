@@ -50,6 +50,17 @@ const WorkspaceTimelapseSection: React.FC = () => {
     setCurrentPage("workspace");
   };
 
+  // 시작 시간 표시 형식
+  const getStartTimeDisplay = () => {
+    if (!activeSession) return "";
+
+    if (activeSession.startTime) {
+      return new Date(activeSession.startTime).toLocaleTimeString();
+    } else {
+      return new Date().toLocaleTimeString();
+    }
+  };
+
   return (
     <div className="bg-[var(--bg-secondary)] p-4 rounded-lg shadow-md">
       <div className="flex justify-between items-center mb-4">
@@ -73,9 +84,7 @@ const WorkspaceTimelapseSection: React.FC = () => {
             </div>
             <div className="text-right">
               <div className="font-bold">{formatDuration(elapsedTime)}</div>
-              <div className="text-xs">
-                {new Date(activeSession.startTime).toLocaleTimeString()} 시작
-              </div>
+              <div className="text-xs">{getStartTimeDisplay()} 시작</div>
             </div>
           </div>
           {isRecording && (

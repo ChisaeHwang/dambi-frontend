@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { WorkSession } from "../../calendar/types";
 import { formatDuration } from "../../../utils/timeUtils";
 
@@ -35,6 +35,14 @@ const ActiveSessionPanel: React.FC<ActiveSessionPanelProps> = ({
   const isPaused =
     activeSession.isActive === false && activeSession.endTime === null;
 
+  // 시작 시간 렌더링 함수
+  const renderStartTime = () => {
+    if (activeSession.startTime) {
+      return new Date(activeSession.startTime).toLocaleTimeString();
+    }
+    return new Date().toLocaleTimeString();
+  };
+
   return (
     <div className="bg-[var(--bg-accent)] p-4 rounded-lg">
       <div className="flex justify-between items-start mb-4">
@@ -63,7 +71,7 @@ const ActiveSessionPanel: React.FC<ActiveSessionPanelProps> = ({
           {formattedElapsedTime}
         </div>
         <p className="text-sm text-[var(--text-muted)]">
-          {new Date(activeSession.startTime).toLocaleTimeString()} 시작
+          {renderStartTime()} 시작
         </p>
       </div>
 

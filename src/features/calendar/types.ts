@@ -6,14 +6,14 @@
 export interface WorkSession {
   id: string;
   date: Date;
-  startTime: Date;
-  endTime: Date | null; // 진행 중인 경우 null
+  startTime?: Date;
+  endTime?: Date | null;
   duration: number; // 분 단위
   title: string; // 세부 작업 내용
   taskType: string; // 작업 유형 (개발, 디자인, 회의 등)
-  isRecording: boolean; // 녹화 여부
-  source: "electron" | "browser" | "manual"; // 작업 소스
-  isActive: boolean; // 활성 상태 여부
+  isRecording?: boolean; // 녹화 여부
+  source?: "electron" | "browser" | "manual"; // 작업 소스
+  isActive?: boolean; // 활성 상태 여부
   tags?: string[]; // 선택적 태그 (필요시 사용)
 }
 
@@ -61,7 +61,7 @@ export interface SessionsListProps {
 
 // 앱 설정 타입
 export interface AppSettings {
-  language: "ko" | "en";
+  language: string;
   timezone: string;
   resetHour: number; // 리셋 시간 (0-23)
   categories: string[]; // 사용자 정의 카테고리

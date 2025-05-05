@@ -4,6 +4,7 @@ import { WorkSession } from "../../calendar/types";
 import { electronSessionAdapter } from "../../calendar/services/ElectronSessionAdapter";
 import { sessionManager } from "../../calendar/services/SessionManager";
 import { formatDuration } from "../../../utils/timeUtils";
+import { DateService } from "../../calendar/services/DateService";
 
 /**
  * 타임랩스 작업 세션 관리를 위한 훅
@@ -45,13 +46,21 @@ export function useWorkSession() {
       setActiveSession(activeSessionData);
 
       // 경과 시간 계산
-      const start = new Date(activeSessionData.startTime).getTime();
       const now = Date.now();
-      const elapsed = Math.floor((now - start) / 1000); // 초 단위로 변환
+      let elapsed = 0;
+
+      if (activeSessionData.startTime) {
+        const start = activeSessionData.startTime.getTime();
+        elapsed = Math.floor((now - start) / 1000); // 초 단위로 변환
+      } else {
+        // startTime이 없는 경우 duration에서 경과 시간 계산
+        elapsed = activeSessionData.duration * 60; // 분 -> 초 변환
+      }
+
       setElapsedTime(elapsed);
 
       // 녹화 상태 확인
-      setIsRecording(activeSessionData.isRecording || false);
+      setIsRecording(activeSessionData.isRecording ?? false);
     } else {
       setActiveSession(null);
       setElapsedTime(0);
@@ -139,8 +148,7 @@ export function useWorkSession() {
   const startSession = useCallback(
     (sessionData: Omit<WorkSession, "id" | "date" | "duration">) => {
       const now = new Date();
-      const today = new Date(now);
-      today.setHours(0, 0, 0, 0);
+      const today = DateService.startOfDay(now);
 
       // 새 세션 생성
       const newSession: WorkSession = {
