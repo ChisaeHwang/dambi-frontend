@@ -17,8 +17,19 @@ export type TimerEventListener = (
   duration: number
 ) => void;
 
+// 세션 상태 타입 - 상태 관리 일관성을 위해 명시적으로 정의
+export type SessionState = {
+  session: WorkSession | null;
+  duration: number; // 분 단위
+  isActive: boolean;
+  isPaused: boolean;
+};
+
 /**
  * 작업 시간 측정 및 관리를 위한 타이머 서비스
+ *
+ * 단일 책임: 시간 추적 및 타이머 관련 기능만 담당
+ * 캡처 관련 로직은 별도 어댑터에 위임
  */
 export class TimerService {
   private activeSession: WorkSession | null = null;
@@ -28,6 +39,9 @@ export class TimerService {
   private timerInterval: number | null = null;
   private listeners: TimerEventListener[] = [];
   private autoSaveInterval: number | null = null;
+
+  // 세션 상태 변경 콜백 - 외부에서 주입 가능 (의존성 역전)
+  private onSessionStateChange: ((state: SessionState) => void) | null = null;
 
   constructor() {
     // 초기화 시 이전 활성 세션 확인
@@ -39,9 +53,29 @@ export class TimerService {
     }, 60000); // 1분마다 자동 저장
 
     // 페이지 언로드 시 세션 저장
-    window.addEventListener("beforeunload", () => {
-      this.autoSaveSession();
-    });
+    window.addEventListener("beforeunload", this.handleBeforeUnload);
+  }
+
+  /**
+   * 상태 변경 콜백 설정 - 의존성 역전 원칙 적용
+   * 외부 컴포넌트가 상태 변경을 구독할 수 있음
+   */
+  setStateChangeCallback(
+    callback: ((state: SessionState) => void) | null | undefined
+  ): void {
+    this.onSessionStateChange = callback || null;
+  }
+
+  /**
+   * 현재 세션 상태 반환
+   */
+  getSessionState(): SessionState {
+    return {
+      session: this.activeSession,
+      duration: this.getCurrentDuration(),
+      isActive: this.isSessionActive(),
+      isPaused: this.isSessionPaused(),
+    };
   }
 
   /**
@@ -65,6 +99,9 @@ export class TimerService {
         // 타이머 재시작
         this.startTimer();
       }
+
+      // 상태 변경 알림
+      this.notifyStateChange();
     }
   }
 
@@ -74,7 +111,8 @@ export class TimerService {
   startSession(
     title: string,
     taskType: string,
-    source: "electron" | "browser" | "manual" = "manual"
+    source: "electron" | "browser" | "manual" = "manual",
+    isRecording: boolean = false
   ): WorkSession {
     // 기존 세션이 있으면 중지
     if (this.activeSession) {
@@ -91,7 +129,7 @@ export class TimerService {
       duration: 0,
       title,
       taskType,
-      isRecording: false, // 기본값으로 녹화하지 않음
+      isRecording,
       source,
       isActive: true,
       tags: [],
@@ -110,6 +148,7 @@ export class TimerService {
 
     // 이벤트 발생
     this.notifyListeners("start", newSession, 0);
+    this.notifyStateChange();
 
     return newSession;
   }
@@ -148,6 +187,9 @@ export class TimerService {
     this.activeSession = null;
     this.accumulatedTime = 0;
 
+    // 상태 변경 알림
+    this.notifyStateChange();
+
     return returnSession;
   }
 
@@ -166,6 +208,7 @@ export class TimerService {
     // 이벤트 발생
     const duration = Math.round(this.accumulatedTime / (60 * 1000));
     this.notifyListeners("pause", this.activeSession, duration);
+    this.notifyStateChange();
   }
 
   /**
@@ -188,6 +231,23 @@ export class TimerService {
     // 이벤트 발생
     const duration = Math.round(this.accumulatedTime / (60 * 1000));
     this.notifyListeners("resume", this.activeSession, duration);
+    this.notifyStateChange();
+  }
+
+  /**
+   * 활성 세션 업데이트 (외부에서 세션 속성 변경 시 사용)
+   * 세션 ID가 같을 때만 업데이트
+   */
+  updateActiveSession(session: WorkSession): boolean {
+    if (!this.activeSession || this.activeSession.id !== session.id) {
+      return false;
+    }
+
+    this.activeSession = { ...session, isActive: true };
+    sessionStorageService.updateSession(this.activeSession);
+    sessionStorageService.saveActiveSession(this.activeSession);
+    this.notifyStateChange();
+    return true;
   }
 
   /**
@@ -256,9 +316,23 @@ export class TimerService {
 
     this.autoSaveSession();
 
-    window.removeEventListener("beforeunload", () => {
-      this.autoSaveSession();
-    });
+    window.removeEventListener("beforeunload", this.handleBeforeUnload);
+  }
+
+  /**
+   * 언로드 이벤트 핸들러 (메모리 누수 방지를 위해 화살표 함수로 바인딩)
+   */
+  private handleBeforeUnload = () => {
+    this.autoSaveSession();
+  };
+
+  /**
+   * 상태 변경 알림 (의존성 역전 패턴)
+   */
+  private notifyStateChange(): void {
+    if (this.onSessionStateChange) {
+      this.onSessionStateChange(this.getSessionState());
+    }
   }
 
   // 내부 헬퍼 메서드
@@ -275,6 +349,7 @@ export class TimerService {
       // 1초마다 이벤트 발생
       const duration = this.getCurrentDuration();
       this.notifyListeners("tick", this.activeSession, duration);
+      this.notifyStateChange();
     }, 1000);
   }
 
@@ -387,6 +462,7 @@ export class TimerService {
 
       // 이벤트 발생
       this.notifyListeners("reset", null, 0);
+      this.notifyStateChange();
 
       return true;
     }
