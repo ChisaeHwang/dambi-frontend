@@ -1,5 +1,5 @@
 import { WorkSession } from "../types";
-import { sessionStorageService } from "../utils";
+import { sessionStorageService, filterOutRecordingSessions } from "../utils";
 import { timerService } from "./TimerService";
 import { v4 as uuidv4 } from "uuid";
 
@@ -324,7 +324,10 @@ export class SessionManager {
     const today = new Date();
     const todaySessions = this.getSessionsByDate(today);
 
-    return todaySessions.reduce(
+    // "녹화" 카테고리 제외
+    const filteredSessions = filterOutRecordingSessions(todaySessions);
+
+    return filteredSessions.reduce(
       (total, session) => total + session.duration,
       0
     );
@@ -349,7 +352,13 @@ export class SessionManager {
 
     const weekSessions = this.getSessionsByDateRange(startOfWeek, endOfWeek);
 
-    return weekSessions.reduce((total, session) => total + session.duration, 0);
+    // "녹화" 카테고리 제외
+    const filteredSessions = filterOutRecordingSessions(weekSessions);
+
+    return filteredSessions.reduce(
+      (total, session) => total + session.duration,
+      0
+    );
   }
 
   /**
@@ -365,16 +374,14 @@ export class SessionManager {
   } {
     const monthSessions = this.getSessionsByMonth(year, month);
 
+    // "녹화" 카테고리를 제외한 세션 필터링
+    const filteredSessions = filterOutRecordingSessions(monthSessions);
+
     // 카테고리별 작업 시간 집계
     const categoryStats: Record<string, number> = {};
     let totalMonthTime = 0;
 
-    monthSessions.forEach((session) => {
-      // "녹화" 카테고리는 건너뛰기
-      if (session.taskType && session.taskType.toLowerCase() === "녹화") {
-        return;
-      }
-
+    filteredSessions.forEach((session) => {
       if (!categoryStats[session.taskType]) {
         categoryStats[session.taskType] = 0;
       }
@@ -385,12 +392,7 @@ export class SessionManager {
     // 요일별 작업 시간 집계
     const weekdayStats: number[] = [0, 0, 0, 0, 0, 0, 0]; // 월-일
 
-    monthSessions.forEach((session) => {
-      // "녹화" 카테고리는 건너뛰기
-      if (session.taskType && session.taskType.toLowerCase() === "녹화") {
-        return;
-      }
-
+    filteredSessions.forEach((session) => {
       const dayOfWeek = session.date.getDay(); // 0=일, 1=월, ..., 6=토
       const adjustedDay = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // 0=월, ..., 6=일
       weekdayStats[adjustedDay] += session.duration;

@@ -4,6 +4,26 @@
 import { WorkSession, AppSettings } from "./types";
 
 /**
+ * "녹화" 카테고리인지 확인하는 함수
+ * @param session 작업 세션
+ * @returns 녹화 카테고리인 경우 true, 아니면 false
+ */
+export const isRecordingCategory = (session: WorkSession): boolean => {
+  return Boolean(session.taskType && session.taskType.toLowerCase() === "녹화");
+};
+
+/**
+ * "녹화" 카테고리를 제외한 세션 필터링
+ * @param sessions 작업 세션 배열
+ * @returns "녹화" 카테고리가 아닌 세션만 포함된 배열
+ */
+export const filterOutRecordingSessions = (
+  sessions: WorkSession[]
+): WorkSession[] => {
+  return sessions.filter((session) => !isRecordingCategory(session));
+};
+
+/**
  * 작업 시간(분)을 시간:분 형식으로 포맷팅
  * @param minutes 분 단위 시간
  * @returns 포맷팅된 시간 문자열
@@ -221,22 +241,26 @@ export class SessionStorageService {
    * 특정 날짜의 세션 가져오기
    */
   getSessionsByDate(date: Date): WorkSession[] {
-    const sessions = this.getSessions();
-    return sessions.filter(
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
+
+    return this.getSessions().filter(
       (session) =>
-        session.date.getDate() === date.getDate() &&
-        session.date.getMonth() === date.getMonth() &&
-        session.date.getFullYear() === date.getFullYear()
+        new Date(session.date).setHours(0, 0, 0, 0) === targetDate.getTime()
     );
   }
 
   /**
-   * 로컬 스토리지 초기화 (주의: 모든 데이터 삭제)
+   * 모든 데이터 삭제
    */
   clearAllData(): void {
-    localStorage.removeItem(this.SESSIONS_KEY);
-    localStorage.removeItem(this.ACTIVE_SESSION_KEY);
-    localStorage.removeItem(this.SETTINGS_KEY);
+    try {
+      localStorage.removeItem(this.SESSIONS_KEY);
+      localStorage.removeItem(this.ACTIVE_SESSION_KEY);
+      localStorage.removeItem(this.SETTINGS_KEY);
+    } catch (error) {
+      console.error("데이터 삭제 실패:", error);
+    }
   }
 }
 

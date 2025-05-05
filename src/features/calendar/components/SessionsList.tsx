@@ -1,6 +1,6 @@
 import React from "react";
 import { WorkSession } from "../types";
-import { formatWorkTime } from "../utils";
+import { formatWorkTime, filterOutRecordingSessions } from "../utils";
 
 interface SessionsListProps {
   selectedDate: Date;
@@ -27,18 +27,26 @@ const SessionsList: React.FC<SessionsListProps> = ({
     );
   }
 
+  // "녹화" 카테고리를 제외한 세션 필터링
+  const filteredSessions = filterOutRecordingSessions(sessions);
+
+  // 필터링 후 세션이 없는 경우
+  if (filteredSessions.length === 0) {
+    return (
+      <div className="p-4 bg-[var(--bg-secondary)] rounded-lg text-[var(--text-muted)] text-center">
+        {selectedDate.toLocaleDateString()} 에 기록된 작업이 없습니다. (녹화
+        세션만 존재합니다)
+      </div>
+    );
+  }
+
   // 카테고리별 작업 시간 집계
   const categoryStats: Record<string, number> = {};
   let totalTime = 0;
 
   // 세션을 돌면서 카테고리별 작업 시간 누적
-  sessions.forEach((session) => {
+  filteredSessions.forEach((session) => {
     const category = session.taskType;
-
-    // "녹화" 카테고리는 건너뛰기
-    if (category && category.toLowerCase() === "녹화") {
-      return;
-    }
 
     if (!categoryStats[category]) {
       categoryStats[category] = 0;

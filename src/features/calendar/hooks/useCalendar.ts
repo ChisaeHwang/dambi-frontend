@@ -5,7 +5,7 @@ import {
   CalendarViewType,
   AppSettings,
 } from "../types";
-import { sessionStorageService } from "../utils";
+import { sessionStorageService, filterOutRecordingSessions } from "../utils";
 import { timerService } from "../services/TimerService";
 
 /**
@@ -130,16 +130,14 @@ export const useCalendar = () => {
         session.date.getFullYear() === currentMonth.getFullYear()
     );
 
+    // "녹화" 카테고리를 제외한 세션 필터링
+    const filteredSessions = filterOutRecordingSessions(monthSessions);
+
     // 카테고리별 작업 시간 집계
     const categoryStats: Record<string, number> = {};
     let totalMonthTime = 0;
 
-    monthSessions.forEach((session) => {
-      // "녹화" 카테고리는 건너뛰기
-      if (session.taskType && session.taskType.toLowerCase() === "녹화") {
-        return;
-      }
-
+    filteredSessions.forEach((session) => {
       if (!categoryStats[session.taskType]) {
         categoryStats[session.taskType] = 0;
       }
@@ -149,12 +147,7 @@ export const useCalendar = () => {
 
     // 요일별 작업 시간 집계
     const weekdayStats: number[] = [0, 0, 0, 0, 0, 0, 0]; // 월-일
-    monthSessions.forEach((session) => {
-      // "녹화" 카테고리는 건너뛰기
-      if (session.taskType && session.taskType.toLowerCase() === "녹화") {
-        return;
-      }
-
+    filteredSessions.forEach((session) => {
       const dayOfWeek = session.date.getDay(); // 0=일, 1=월, ..., 6=토
       const adjustedDay = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // 0=월, ..., 6=일
       weekdayStats[adjustedDay] += session.duration;

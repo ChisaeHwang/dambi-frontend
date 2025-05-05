@@ -1,6 +1,7 @@
 import React, { useContext } from "react";
 import { useWorkSession } from "../../timelapse/hooks/useWorkSession";
 import { AppContext } from "../../../context/AppContext";
+import { filterOutRecordingSessions } from "../utils";
 
 /**
  * 시간을 읽기 쉬운 형식으로 변환하는 함수
@@ -38,34 +39,28 @@ const WorkspaceTimelapseSection: React.FC = () => {
   const { activeSession, elapsedTime, isRecording, todaySessions } =
     useWorkSession();
 
+  // "녹화" 카테고리를 제외한 세션만 필터링
+  const filteredSessions = filterOutRecordingSessions(todaySessions);
+
   // 오늘 총 작업 시간 계산 (분 단위) - "녹화" 카테고리 제외
-  const totalWorkTimeToday = todaySessions.reduce((total, session) => {
+  const totalWorkTimeToday = filteredSessions.reduce((total, session) => {
     // 완료된 작업(endTime이 있는 작업)만 포함
     if (session.endTime) {
-      // "녹화" 카테고리는 건너뛰기
-      if (session.taskType && session.taskType.toLowerCase() === "녹화") {
-        return total;
-      }
       return total + session.duration;
     }
     return total;
   }, 0);
 
   // 작업 종류별 시간 계산
-  const taskTypeStats = todaySessions.reduce(
+  const taskTypeStats = filteredSessions.reduce(
     (stats: { [key: string]: number }, session) => {
       // 완료된 작업(endTime이 있는 작업)만 포함
       if (!session.endTime) {
         return stats;
       }
 
-      // taskType만 사용하여 통계 집계 (녹화 여부는 별도로 집계하지 않음)
+      // taskType만 사용하여 통계 집계
       const taskType = session.taskType || "기타";
-
-      // "녹화" 카테고리는 건너뛰기 (이미 타입에서 해당 기능을 지원하므로 별도 카테고리로 표시할 필요 없음)
-      if (taskType.toLowerCase() === "녹화") {
-        return stats;
-      }
 
       if (!stats[taskType]) {
         stats[taskType] = 0;
