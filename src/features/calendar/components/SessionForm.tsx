@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { WorkSession } from "../types";
 import { sessionManager } from "../services/SessionManager";
-import { sessionStorageService } from "../utils";
+import {
+  formatDateForInput,
+  formatTimeForInput,
+  formatMinutes,
+} from "../../../utils/timeUtils";
+import { sessionStorageService } from "../services/SessionStorageService";
+import { DateService } from "../services/DateService";
 
 interface SessionFormProps {
   session?: WorkSession;
@@ -43,9 +49,15 @@ const SessionForm: React.FC<SessionFormProps> = ({
       setIsEditing(true);
       setTitle(session.title);
       setTaskType(session.taskType);
-      setIsRecording(session.isRecording);
+      // isRecording이 undefined일 경우 기본값 false로 설정
+      setIsRecording(session.isRecording ?? false);
       setDate(formatDateForInput(session.date));
-      setStartTime(formatTimeForInput(session.startTime));
+      // startTime이 undefined일 경우 현재 시간으로 설정
+      setStartTime(
+        session.startTime
+          ? formatTimeForInput(session.startTime)
+          : formatTimeForInput(new Date())
+      );
       setEndTime(session.endTime ? formatTimeForInput(session.endTime) : "");
       setDuration(session.duration);
     } else {
@@ -78,18 +90,6 @@ const SessionForm: React.FC<SessionFormProps> = ({
     }
   }, [date, startTime, endTime]);
 
-  // 날짜를 input 요소에 맞는 형식으로 변환
-  const formatDateForInput = (date: Date): string => {
-    const d = new Date(date);
-    return d.toISOString().split("T")[0];
-  };
-
-  // 시간을 input 요소에 맞는 형식으로 변환
-  const formatTimeForInput = (date: Date): string => {
-    const d = new Date(date);
-    return d.toTimeString().substring(0, 5);
-  };
-
   // 폼 제출 핸들러
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,32 +115,22 @@ const SessionForm: React.FC<SessionFormProps> = ({
       sessionManager.updateSession(updatedSession);
       onSave(updatedSession);
     } else {
-      // 새 세션 생성
-      const newSession = sessionManager.createSession(
+      // 새 세션 생성 - createSession 함수 인자 변경
+      const sessionData: Partial<WorkSession> = {
         title,
         taskType,
-        sessionDate,
+        date: sessionDate,
         duration,
-        "manual",
-        []
-      );
+        source: "manual",
+        tags: [],
+        startTime: startDateTime,
+        endTime: endDateTime,
+        isRecording,
+      };
 
-      // 시작 시간과 종료 시간 설정
-      newSession.startTime = startDateTime;
-      newSession.endTime = endDateTime;
-      newSession.isRecording = isRecording;
-
-      // 업데이트
-      sessionManager.updateSession(newSession);
+      const newSession = sessionManager.createSession(sessionData);
       onSave(newSession);
     }
-  };
-
-  // 기간 형식 변환 (분 -> 시:분)
-  const formatDuration = (minutes: number): string => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hours > 0 ? `${hours}시간 ` : ""}${mins}분`;
   };
 
   // 기간 변경 핸들러
@@ -246,7 +236,7 @@ const SessionForm: React.FC<SessionFormProps> = ({
         {/* 작업 시간 */}
         <div className="mb-6">
           <label className="block text-sm font-medium mb-1">
-            작업 시간 (분) - {formatDuration(duration)}
+            작업 시간 (분) - {formatMinutes(duration)}
           </label>
           <input
             type="number"
@@ -263,13 +253,13 @@ const SessionForm: React.FC<SessionFormProps> = ({
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 border rounded hover:bg-[var(--bg-accent)]"
+            className="px-4 py-2 border rounded"
           >
             취소
           </button>
           <button
             type="submit"
-            className="px-4 py-2 bg-[var(--primary-color)] text-white rounded hover:opacity-90"
+            className="px-4 py-2 bg-[var(--accent)] text-white rounded"
           >
             저장
           </button>

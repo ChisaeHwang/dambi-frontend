@@ -1,5 +1,6 @@
 import { WorkSession } from "../types";
-import { sessionStorageService } from "../utils";
+import { sessionStorageService } from "./SessionStorageService";
+import { DateService } from "./DateService";
 
 // 타이머 이벤트 타입
 export type TimerEventType =
@@ -17,8 +18,19 @@ export type TimerEventListener = (
   duration: number
 ) => void;
 
+// 세션 상태 타입 - 상태 관리 일관성을 위해 명시적으로 정의
+export type SessionState = {
+  session: WorkSession | null;
+  duration: number; // 분 단위
+  isActive: boolean;
+  isPaused: boolean;
+};
+
 /**
  * 작업 시간 측정 및 관리를 위한 타이머 서비스
+ *
+ * 단일 책임: 시간 추적 및 타이머 관련 기능만 담당
+ * 캡처 관련 로직은 별도 어댑터에 위임
  */
 export class TimerService {
   private activeSession: WorkSession | null = null;
@@ -28,6 +40,9 @@ export class TimerService {
   private timerInterval: number | null = null;
   private listeners: TimerEventListener[] = [];
   private autoSaveInterval: number | null = null;
+
+  // 세션 상태 변경 콜백 - 외부에서 주입 가능 (의존성 역전)
+  private onSessionStateChange: ((state: SessionState) => void) | null = null;
 
   constructor() {
     // 초기화 시 이전 활성 세션 확인
@@ -39,9 +54,29 @@ export class TimerService {
     }, 60000); // 1분마다 자동 저장
 
     // 페이지 언로드 시 세션 저장
-    window.addEventListener("beforeunload", () => {
-      this.autoSaveSession();
-    });
+    window.addEventListener("beforeunload", this.handleBeforeUnload);
+  }
+
+  /**
+   * 상태 변경 콜백 설정 - 의존성 역전 원칙 적용
+   * 외부 컴포넌트가 상태 변경을 구독할 수 있음
+   */
+  setStateChangeCallback(
+    callback: ((state: SessionState) => void) | null | undefined
+  ): void {
+    this.onSessionStateChange = callback || null;
+  }
+
+  /**
+   * 현재 세션 상태 반환
+   */
+  getSessionState(): SessionState {
+    return {
+      session: this.activeSession,
+      duration: this.getCurrentDuration(),
+      isActive: this.isSessionActive(),
+      isPaused: this.isSessionPaused(),
+    };
   }
 
   /**
@@ -54,9 +89,13 @@ export class TimerService {
       this.activeSession = savedSession;
 
       // 마지막 저장 시점부터 현재까지의 경과 시간 계산
-      if (savedSession.startTime && !savedSession.endTime) {
-        const lastSaveTime = new Date(savedSession.startTime).getTime();
-        const elapsedSinceLastSave = Date.now() - lastSaveTime;
+      if (savedSession.startTime) {
+        // DateService 사용으로 Date 타입 안전성 확보
+        const startTime = savedSession.startTime;
+        const now = new Date();
+
+        // 경과 시간 계산 시 DateService 사용으로 안전한 날짜 비교
+        const elapsedSinceLastSave = DateService.diffInMs(startTime, now);
 
         // 세션 시작 시간 설정
         this.startTime = Date.now() - elapsedSinceLastSave;
@@ -65,6 +104,9 @@ export class TimerService {
         // 타이머 재시작
         this.startTimer();
       }
+
+      // 상태 변경 알림
+      this.notifyStateChange();
     }
   }
 
@@ -74,7 +116,8 @@ export class TimerService {
   startSession(
     title: string,
     taskType: string,
-    source: "electron" | "browser" | "manual" = "manual"
+    source: "electron" | "browser" | "manual" = "manual",
+    isRecording: boolean = false
   ): WorkSession {
     // 기존 세션이 있으면 중지
     if (this.activeSession) {
@@ -85,13 +128,13 @@ export class TimerService {
     const now = new Date();
     const newSession: WorkSession = {
       id: Date.now().toString(),
-      date: now,
+      date: DateService.startOfDay(now), // 날짜 정규화 (시간 부분 제거)
       startTime: now,
       endTime: null,
       duration: 0,
       title,
       taskType,
-      isRecording: false, // 기본값으로 녹화하지 않음
+      isRecording,
       source,
       isActive: true,
       tags: [],
@@ -110,6 +153,7 @@ export class TimerService {
 
     // 이벤트 발생
     this.notifyListeners("start", newSession, 0);
+    this.notifyStateChange();
 
     return newSession;
   }
@@ -148,6 +192,9 @@ export class TimerService {
     this.activeSession = null;
     this.accumulatedTime = 0;
 
+    // 상태 변경 알림
+    this.notifyStateChange();
+
     return returnSession;
   }
 
@@ -166,6 +213,7 @@ export class TimerService {
     // 이벤트 발생
     const duration = Math.round(this.accumulatedTime / (60 * 1000));
     this.notifyListeners("pause", this.activeSession, duration);
+    this.notifyStateChange();
   }
 
   /**
@@ -188,26 +236,43 @@ export class TimerService {
     // 이벤트 발생
     const duration = Math.round(this.accumulatedTime / (60 * 1000));
     this.notifyListeners("resume", this.activeSession, duration);
+    this.notifyStateChange();
   }
 
   /**
-   * 현재 경과 시간 가져오기 (분 단위)
+   * 활성 세션 업데이트 (외부에서 세션 속성 변경 시 사용)
+   * 세션 ID가 같을 때만 업데이트
+   */
+  updateActiveSession(session: WorkSession): boolean {
+    if (!this.activeSession || this.activeSession.id !== session.id) {
+      return false;
+    }
+
+    this.activeSession = { ...session, isActive: true };
+    sessionStorageService.updateSession(this.activeSession);
+    sessionStorageService.saveActiveSession(this.activeSession);
+    this.notifyStateChange();
+    return true;
+  }
+
+  /**
+   * 현재 세션 지속 시간 계산 (분 단위)
    */
   getCurrentDuration(): number {
     if (!this.activeSession) {
       return 0;
     }
 
-    // 현재 누적 시간 복사
-    let currentAccumulated = this.accumulatedTime;
+    // 기본 누적 시간
+    let totalMs = this.accumulatedTime;
 
-    // 타이머가 실행 중이면 경과 시간 추가
-    if (this.timerInterval && !this.pausedTime) {
-      currentAccumulated += Date.now() - this.startTime;
+    // 활성 상태인 경우 현재까지의 추가 시간 계산
+    if (this.isSessionActive() && !this.isSessionPaused()) {
+      totalMs += Date.now() - this.startTime;
     }
 
-    // 밀리초 -> 분 변환 후 반올림
-    return Math.round(currentAccumulated / (60 * 1000));
+    // 분 단위로 변환 (반올림)
+    return Math.round(totalMs / (60 * 1000));
   }
 
   /**
@@ -218,7 +283,7 @@ export class TimerService {
   }
 
   /**
-   * 타이머 이벤트 리스너 등록
+   * 이벤트 리스너 등록
    */
   addEventListener(listener: TimerEventListener): () => void {
     this.listeners.push(listener);
@@ -230,52 +295,70 @@ export class TimerService {
   }
 
   /**
-   * 활성 세션 여부 확인
+   * 세션 활성 상태 확인
    */
   isSessionActive(): boolean {
-    return this.activeSession !== null && this.activeSession.isActive;
+    return Boolean(this.activeSession && this.activeSession.isActive);
   }
 
   /**
-   * 활성 세션 일시 정지 상태 확인
+   * 세션 일시 정지 상태 확인
    */
   isSessionPaused(): boolean {
-    return this.activeSession !== null && this.pausedTime > 0;
+    return this.isSessionActive() && this.pausedTime > 0;
   }
 
   /**
-   * 서비스 정리 (컴포넌트 unmount 시 호출)
+   * 서비스 정리 함수
    */
   cleanup(): void {
-    this.stopTimer();
+    // 타이머 정리
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
+    }
 
+    // 자동 저장 타이머 정리
     if (this.autoSaveInterval) {
       clearInterval(this.autoSaveInterval);
       this.autoSaveInterval = null;
     }
 
-    this.autoSaveSession();
-
-    window.removeEventListener("beforeunload", () => {
-      this.autoSaveSession();
-    });
+    // 이벤트 리스너 제거
+    window.removeEventListener("beforeunload", this.handleBeforeUnload);
   }
 
-  // 내부 헬퍼 메서드
+  /**
+   * 페이지 언로드 시 세션 저장
+   */
+  private handleBeforeUnload = () => {
+    this.autoSaveSession();
+  };
+
+  /**
+   * 상태 변경 알림
+   */
+  private notifyStateChange(): void {
+    if (this.onSessionStateChange) {
+      const state = this.getSessionState();
+      this.onSessionStateChange(state);
+    }
+  }
 
   /**
    * 타이머 시작
    */
   private startTimer(): void {
+    // 기존 타이머가 있으면 중지
     if (this.timerInterval) {
       clearInterval(this.timerInterval);
     }
 
+    // 새 타이머 시작
     this.timerInterval = window.setInterval(() => {
-      // 1초마다 이벤트 발생
       const duration = this.getCurrentDuration();
       this.notifyListeners("tick", this.activeSession, duration);
-    }, 1000);
+    }, 1000); // 1초마다 업데이트
   }
 
   /**
@@ -292,47 +375,41 @@ export class TimerService {
    * 누적 시간 업데이트
    */
   private updateAccumulatedTime(): void {
-    if (!this.activeSession) {
-      return;
+    if (this.isSessionActive() && !this.isSessionPaused()) {
+      const currentTime = Date.now();
+      const additionalTime = currentTime - this.startTime;
+      this.accumulatedTime += additionalTime;
+      this.startTime = currentTime;
     }
-
-    // 일시 정지 중이면 정지 시점까지 계산
-    if (this.pausedTime > 0) {
-      this.accumulatedTime += this.pausedTime - this.startTime;
-    } else if (this.startTime > 0) {
-      // 아니면 현재 시점까지 계산
-      this.accumulatedTime += Date.now() - this.startTime;
-    }
-
-    this.startTime = Date.now();
   }
 
   /**
    * 세션 자동 저장
    */
   private autoSaveSession(): void {
-    if (!this.activeSession) {
+    if (!this.activeSession || !this.isSessionActive()) {
       return;
     }
 
-    // 현재 경과 시간으로 세션 업데이트
-    const currentDuration = this.getCurrentDuration();
+    // 세션 활성 상태인 경우만 저장
+    if (this.isSessionActive()) {
+      // 누적 시간 업데이트
+      this.updateAccumulatedTime();
 
-    const updatedSession: WorkSession = {
-      ...this.activeSession,
-      duration: currentDuration,
-    };
+      // 세션 상태 업데이트 (일시 정지 상태 유지)
+      const updatedSession: WorkSession = {
+        ...this.activeSession,
+        duration: Math.round(this.accumulatedTime / (60 * 1000)), // 밀리초 -> 분
+      };
 
-    // 저장
-    sessionStorageService.updateSession(updatedSession);
-    sessionStorageService.saveActiveSession(updatedSession);
-
-    // 활성 세션 업데이트
-    this.activeSession = updatedSession;
+      // 저장
+      sessionStorageService.updateSession(updatedSession);
+      sessionStorageService.saveActiveSession(updatedSession);
+    }
   }
 
   /**
-   * 이벤트 리스너들에게 알림
+   * 이벤트 리스너 알림
    */
   private notifyListeners(
     event: TimerEventType,
@@ -349,45 +426,37 @@ export class TimerService {
   }
 
   /**
-   * 오전 9시 리셋 확인
-   * 오전 9시가 지났고, 마지막 리셋이 오늘 9시 이전이면 true 반환
+   * 일일 리셋 시간 확인 (오전 9시)
+   * 하루가 바뀌었는지 확인하여 활성 세션을 종료할지 결정
    */
   checkDailyReset(): boolean {
-    // 설정에서 리셋 시간 가져오기
-    const settings = sessionStorageService.getSettings();
-    const resetHour = settings.resetHour || 9;
+    if (!this.activeSession || !this.activeSession.startTime) {
+      return false;
+    }
 
     // 현재 시간
     const now = new Date();
 
-    // 오늘 리셋 시간 (오전 9시)
-    const todayReset = new Date(now);
-    todayReset.setHours(resetHour, 0, 0, 0);
+    // 시작 시간
+    const startTime = new Date(this.activeSession.startTime);
 
-    // 마지막 리셋 시간 로드
-    const lastResetStr = localStorage.getItem("last_reset_date");
-    const lastReset = lastResetStr ? new Date(lastResetStr) : new Date(0);
+    // 오늘 날짜의 오전 9시
+    const resetTime = new Date(now);
+    resetTime.setHours(9, 0, 0, 0);
 
-    // 현재 시간이 오늘 리셋 시간 이후이고, 마지막 리셋이 오늘 리셋 시간 이전이면 리셋 필요
-    if (now >= todayReset && lastReset < todayReset) {
-      // 리셋 수행 (활성 세션 종료 및 새 세션 시작)
-      if (this.activeSession) {
-        const completedSession = this.stopSession();
-        if (completedSession) {
-          // 필요시 이전 세션 태그 추가 등 처리
-          sessionStorageService.updateSession({
-            ...completedSession,
-            tags: [...(completedSession.tags || []), "자동종료"],
-          });
-        }
-      }
+    // 현재 시간이 오전 9시 이후이고, 세션이 오전 9시 이전에 시작되었는지 확인
+    const isAfterReset = now.getTime() >= resetTime.getTime();
+    const isStartedBeforeReset = DateService.isSameDay(startTime, resetTime)
+      ? startTime.getTime() < resetTime.getTime()
+      : !DateService.isSameDay(startTime, now);
 
-      // 마지막 리셋 시간 업데이트
-      localStorage.setItem("last_reset_date", now.toISOString());
+    // 리셋이 필요한 경우
+    const needsReset = isAfterReset && isStartedBeforeReset;
 
-      // 이벤트 발생
+    if (needsReset && this.isSessionActive()) {
+      // 세션 중지하고 리셋 이벤트 발생
+      this.stopSession();
       this.notifyListeners("reset", null, 0);
-
       return true;
     }
 

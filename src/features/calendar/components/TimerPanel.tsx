@@ -1,5 +1,6 @@
 import React from "react";
 import { useActiveSession } from "../hooks/useActiveSession";
+import { DateService } from "../services/DateService";
 
 /**
  * 타이머 패널 컴포넌트 (워크스페이스 페이지로 이동하도록 안내)
@@ -25,7 +26,10 @@ const TimerPanel: React.FC = () => {
 
           <div className="mt-4 text-sm text-[var(--text-muted)]">
             <div>
-              시작: {new Date(activeSession.startTime).toLocaleTimeString()}
+              시작:{" "}
+              {activeSession.startTime
+                ? new Date(activeSession.startTime).toLocaleTimeString()
+                : new Date().toLocaleTimeString()}
             </div>
             <div>상태: {isPaused ? "일시정지" : "진행 중"}</div>
             {activeSession.isRecording && (
