@@ -2,33 +2,7 @@ import React, { useContext } from "react";
 import { useWorkSession } from "../../timelapse/hooks/useWorkSession";
 import { AppContext } from "../../../context/AppContext";
 import { filterOutRecordingSessions } from "../utils";
-
-/**
- * 시간을 읽기 쉬운 형식으로 변환하는 함수
- */
-const formatDuration = (seconds: number): string => {
-  if (seconds < 0) seconds = 0;
-
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
-
-  let result = "";
-
-  if (hours > 0) {
-    result += `${hours}시간 `;
-  }
-
-  if (minutes > 0 || (hours > 0 && secs > 0)) {
-    result += `${minutes}분 `;
-  }
-
-  if (hours === 0 && (minutes === 0 || secs > 0)) {
-    result += `${secs}초`;
-  }
-
-  return result.trim();
-};
+import { formatDuration, formatMinutes } from "../../../utils/timeUtils";
 
 /**
  * 워크스페이스 타임랩스 섹션 컴포넌트
@@ -120,7 +94,7 @@ const WorkspaceTimelapseSection: React.FC = () => {
       <div className="mb-4">
         <div className="font-bold mb-2">오늘 총 작업 시간</div>
         <div className="text-xl font-bold">
-          {Math.floor(totalWorkTimeToday / 60)}시간 {totalWorkTimeToday % 60}분
+          {formatMinutes(totalWorkTimeToday)}
         </div>
       </div>
 
@@ -131,9 +105,7 @@ const WorkspaceTimelapseSection: React.FC = () => {
             {Object.entries(taskTypeStats).map(([type, minutes]) => (
               <div key={type} className="flex justify-between items-center">
                 <span>{type}</span>
-                <span className="font-medium">
-                  {Math.floor(minutes / 60)}시간 {minutes % 60}분
-                </span>
+                <span className="font-medium">{formatMinutes(minutes)}</span>
               </div>
             ))}
           </div>

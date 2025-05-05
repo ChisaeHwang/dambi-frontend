@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { WorkSession } from "../types";
 import { sessionManager } from "../services/SessionManager";
+import {
+  formatDateForInput,
+  formatTimeForInput,
+  formatMinutes,
+} from "../../../utils/timeUtils";
 import { sessionStorageService } from "../utils";
 
 interface SessionFormProps {
@@ -78,18 +83,6 @@ const SessionForm: React.FC<SessionFormProps> = ({
     }
   }, [date, startTime, endTime]);
 
-  // 날짜를 input 요소에 맞는 형식으로 변환
-  const formatDateForInput = (date: Date): string => {
-    const d = new Date(date);
-    return d.toISOString().split("T")[0];
-  };
-
-  // 시간을 input 요소에 맞는 형식으로 변환
-  const formatTimeForInput = (date: Date): string => {
-    const d = new Date(date);
-    return d.toTimeString().substring(0, 5);
-  };
-
   // 폼 제출 핸들러
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,13 +127,6 @@ const SessionForm: React.FC<SessionFormProps> = ({
       sessionManager.updateSession(newSession);
       onSave(newSession);
     }
-  };
-
-  // 기간 형식 변환 (분 -> 시:분)
-  const formatDuration = (minutes: number): string => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hours > 0 ? `${hours}시간 ` : ""}${mins}분`;
   };
 
   // 기간 변경 핸들러
@@ -246,7 +232,7 @@ const SessionForm: React.FC<SessionFormProps> = ({
         {/* 작업 시간 */}
         <div className="mb-6">
           <label className="block text-sm font-medium mb-1">
-            작업 시간 (분) - {formatDuration(duration)}
+            작업 시간 (분) - {formatMinutes(duration)}
           </label>
           <input
             type="number"
