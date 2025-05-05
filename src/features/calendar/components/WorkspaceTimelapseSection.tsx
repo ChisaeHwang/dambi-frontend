@@ -38,10 +38,14 @@ const WorkspaceTimelapseSection: React.FC = () => {
   const { activeSession, elapsedTime, isRecording, todaySessions } =
     useWorkSession();
 
-  // 오늘 총 작업 시간 계산 (분 단위)
+  // 오늘 총 작업 시간 계산 (분 단위) - "녹화" 카테고리 제외
   const totalWorkTimeToday = todaySessions.reduce((total, session) => {
     // 완료된 작업(endTime이 있는 작업)만 포함
     if (session.endTime) {
+      // "녹화" 카테고리는 건너뛰기
+      if (session.taskType && session.taskType.toLowerCase() === "녹화") {
+        return total;
+      }
       return total + session.duration;
     }
     return total;

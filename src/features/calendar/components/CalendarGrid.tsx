@@ -42,11 +42,22 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
       // 7일 루프
       for (let i = 0; i < 7; i++) {
         const cloneDate = new Date(startDate);
-        const dateSessionsCount = getSessionsForDate(cloneDate).length;
 
-        // 세션에서 총 작업 시간 계산
+        // "녹화" 카테고리를 제외한 세션 수만 계산
+        const dateSessionsCount = getSessionsForDate(cloneDate).filter(
+          (session) =>
+            !(session.taskType && session.taskType.toLowerCase() === "녹화")
+        ).length;
+
+        // 세션에서 총 작업 시간 계산 - "녹화" 카테고리 제외
         const totalWorkTime = getSessionsForDate(cloneDate).reduce(
-          (total, session) => total + session.duration,
+          (total, session) => {
+            // "녹화" 카테고리는 건너뛰기
+            if (session.taskType && session.taskType.toLowerCase() === "녹화") {
+              return total;
+            }
+            return total + session.duration;
+          },
           0
         );
 
