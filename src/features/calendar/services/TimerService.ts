@@ -426,7 +426,7 @@ export class TimerService {
   }
 
   /**
-   * 일일 리셋 시간 확인 (오전 9시)
+   * 일일 리셋 시간 확인 (사용자 설정 기반)
    * 하루가 바뀌었는지 확인하여 활성 세션을 종료할지 결정
    */
   checkDailyReset(): boolean {
@@ -440,20 +440,37 @@ export class TimerService {
     // 시작 시간
     const startTime = new Date(this.activeSession.startTime);
 
-    // 오늘 날짜의 오전 9시
-    const resetTime = new Date(now);
-    resetTime.setHours(9, 0, 0, 0);
+    // 사용자 설정에서 리셋 시간과 타임존 가져오기
+    const settings = sessionStorageService.getSettings();
+    const resetHour = settings.resetHour;
+    const timezone = settings.timezone;
 
-    // 현재 시간이 오전 9시 이후이고, 세션이 오전 9시 이전에 시작되었는지 확인
+    // 사용자 타임존 기준으로 오늘 날짜의 리셋 시간 생성
+    const resetTime = DateService.getDateWithHourInTimezone(
+      now,
+      resetHour,
+      timezone
+    );
+
+    // 현재 시간이 리셋 시간 이후이고, 세션이 리셋 시간 이전에 시작되었는지 확인
     const isAfterReset = now.getTime() >= resetTime.getTime();
-    const isStartedBeforeReset = DateService.isSameDay(startTime, resetTime)
+
+    // 세션 시작일이 현재 날짜와 다르거나, 같은 날이지만 리셋 시간 이전에 시작된 경우
+    const isStartedBeforeReset = DateService.isSameDayInTimezone(
+      startTime,
+      now,
+      timezone
+    )
       ? startTime.getTime() < resetTime.getTime()
-      : !DateService.isSameDay(startTime, now);
+      : !DateService.isSameDayInTimezone(startTime, now, timezone);
 
     // 리셋이 필요한 경우
     const needsReset = isAfterReset && isStartedBeforeReset;
 
     if (needsReset && this.isSessionActive()) {
+      console.log(
+        `[타이머 서비스] 일일 리셋 수행 (리셋 시간: ${resetHour}시, 타임존: ${timezone})`
+      );
       // 세션 중지하고 리셋 이벤트 발생
       this.stopSession();
       this.notifyListeners("reset", null, 0);

@@ -2,12 +2,15 @@ import React from "react";
 import { useSettings } from "../hooks/useSettings";
 import SettingsSection from "./SettingsSection";
 import TimelapseSettings from "./TimelapseSettings";
+import GeneralSettings from "./GeneralSettings";
 
 /**
  * 설정 메인 컴포넌트
  */
 const Settings: React.FC = () => {
   const {
+    generalSettings,
+    updateGeneralSettings,
     timelapseOptions,
     changeTimelapseOptions,
     saveFolderPath,
@@ -36,6 +39,13 @@ const Settings: React.FC = () => {
         <h2 className="text-white text-xl mb-4 text-center font-semibold">
           설정
         </h2>
+
+        <SettingsSection title="일반 설정">
+          <GeneralSettings
+            settings={generalSettings}
+            onChangeSettings={updateGeneralSettings}
+          />
+        </SettingsSection>
 
         <SettingsSection title="타임랩스 설정">
           <TimelapseSettings

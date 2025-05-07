@@ -133,4 +133,106 @@ export class DateService {
 
     return obj;
   }
+
+  /**
+   * 특정 타임존의 시간을 기준으로 날짜 객체 생성
+   * @param date 기준 날짜
+   * @param hour 시간 (0-23)
+   * @param timezone 타임존 (기본값: 로컬 타임존)
+   * @returns 지정된 시간과 타임존으로 설정된 날짜 객체
+   */
+  static getDateWithHourInTimezone(
+    date: Date,
+    hour: number,
+    timezone?: string
+  ): Date {
+    // 타임존이 지정되지 않은 경우 로컬 타임존 사용
+    const tz = timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    // 날짜 문자열 생성 (YYYY-MM-DD)
+    const dateString = `${date.getFullYear()}-${String(
+      date.getMonth() + 1
+    ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+    // 시간 문자열 생성 (HH:00:00)
+    const timeString = `${String(hour).padStart(2, "0")}:00:00`;
+
+    // 날짜와 시간을 타임존을 고려하여 Date 객체로 변환
+    return new Date(
+      `${dateString}T${timeString}${this.getTimezoneOffsetString(tz)}`
+    );
+  }
+
+  /**
+   * 타임존 문자열을 오프셋 문자열로 변환 (예: 'Asia/Seoul' -> '+09:00')
+   * @param timezone 타임존 문자열
+   * @returns 타임존 오프셋 문자열
+   */
+  static getTimezoneOffsetString(timezone: string): string {
+    try {
+      // 현재 시간을 기준으로 해당 타임존의 오프셋 계산
+      const date = new Date();
+      const options: Intl.DateTimeFormatOptions = {
+        timeZone: timezone,
+        timeZoneName: "short",
+      };
+
+      // 타임존 정보만 추출
+      const formatter = new Intl.DateTimeFormat("en-US", options);
+      const parts = formatter.formatToParts(date);
+      const timeZonePart = parts.find((part) => part.type === "timeZoneName");
+
+      if (timeZonePart && timeZonePart.value) {
+        // GMT+9와 같은 형식에서 오프셋 추출
+        const match = timeZonePart.value.match(/GMT([+-]\d+)/);
+        if (match && match[1]) {
+          const offset = parseInt(match[1]);
+          const hours = Math.abs(offset).toString().padStart(2, "0");
+          const sign = offset >= 0 ? "+" : "-";
+          return `${sign}${hours}:00`;
+        }
+      }
+
+      // 추출 실패 시 현재 시스템의 오프셋을 문자열로 반환
+      const offsetMinutes = date.getTimezoneOffset();
+      const offsetHours = Math.abs(Math.floor(offsetMinutes / 60))
+        .toString()
+        .padStart(2, "0");
+      const offsetMins = Math.abs(offsetMinutes % 60)
+        .toString()
+        .padStart(2, "0");
+      const offsetSign = offsetMinutes <= 0 ? "+" : "-";
+      return `${offsetSign}${offsetHours}:${offsetMins}`;
+    } catch (error) {
+      console.error("타임존 오프셋 변환 오류:", error);
+      return "";
+    }
+  }
+
+  /**
+   * 특정 타임존에서 두 날짜가 같은 날인지 비교
+   * @param date1 첫 번째 날짜
+   * @param date2 두 번째 날짜
+   * @param timezone 비교할 타임존 (기본값: 로컬 타임존)
+   * @returns 같은 날이면 true, 아니면 false
+   */
+  static isSameDayInTimezone(
+    date1: Date,
+    date2: Date,
+    timezone?: string
+  ): boolean {
+    // 타임존이 지정되지 않은 경우 로컬 타임존 사용
+    const tz = timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    // 해당 타임존 기준으로 날짜 형식화
+    const options: Intl.DateTimeFormatOptions = {
+      timeZone: tz,
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+    };
+
+    const formatter = new Intl.DateTimeFormat("en-US", options);
+    return formatter.format(date1) === formatter.format(date2);
+  }
 }
