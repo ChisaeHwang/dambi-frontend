@@ -1,5 +1,6 @@
 import { WorkSession } from "../types";
 import { timerService } from "./TimerService";
+import { v4 as uuidv4 } from "uuid";
 
 /**
  * 일렉트론 환경 감지 유틸리티 함수
@@ -69,7 +70,14 @@ export class ElectronSessionAdapter {
             // 새 세션 시작
             const title = status.windowTitle || "녹화 세션";
             const taskType = "녹화";
-            timerService.startSession(title, taskType, "electron");
+            const sessionId = uuidv4();
+            timerService.startSession(
+              title,
+              taskType,
+              "electron",
+              false,
+              sessionId
+            );
           }
         } else if (!status.isCapturing && this.isActive) {
           // 캡처 중지됨
@@ -116,7 +124,14 @@ export class ElectronSessionAdapter {
           // 새 세션 시작
           const title = "녹화 세션";
           const taskType = "녹화";
-          timerService.startSession(title, taskType, "electron");
+          const sessionId = uuidv4();
+          timerService.startSession(
+            title,
+            taskType,
+            "electron",
+            false,
+            sessionId
+          );
         }
       }
 

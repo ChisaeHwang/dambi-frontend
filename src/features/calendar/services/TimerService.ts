@@ -1,6 +1,7 @@
 import { WorkSession } from "../types";
 import { sessionStorageService } from "./SessionStorageService";
 import { DateService } from "./DateService";
+import { v4 as uuidv4 } from "uuid";
 
 // 타이머 이벤트 타입
 export type TimerEventType =
@@ -117,7 +118,8 @@ export class TimerService {
     title: string,
     taskType: string,
     source: "electron" | "browser" | "manual" = "manual",
-    isRecording: boolean = false
+    isRecording: boolean = false,
+    sessionId?: string
   ): WorkSession {
     // 기존 세션이 있으면 중지
     if (this.activeSession) {
@@ -127,7 +129,7 @@ export class TimerService {
     // 새 세션 생성
     const now = new Date();
     const newSession: WorkSession = {
-      id: Date.now().toString(),
+      id: sessionId || uuidv4(),
       date: DateService.startOfDay(now), // 날짜 정규화 (시간 부분 제거)
       startTime: now,
       endTime: null,

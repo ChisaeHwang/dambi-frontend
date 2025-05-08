@@ -149,10 +149,11 @@ export function useWorkSession() {
     (sessionData: Omit<WorkSession, "id" | "date" | "duration">) => {
       const now = new Date();
       const today = DateService.startOfDay(now);
+      const sessionId = uuidv4();
 
       // 새 세션 생성
       const newSession: WorkSession = {
-        id: uuidv4(),
+        id: sessionId,
         date: today,
         duration: 0,
         ...sessionData,
@@ -174,7 +175,8 @@ export function useWorkSession() {
         newSession.title,
         newSession.taskType,
         newSession.source || "manual",
-        newSession.isRecording || false
+        newSession.isRecording || false,
+        sessionId
       );
 
       // 화면 상태 업데이트
