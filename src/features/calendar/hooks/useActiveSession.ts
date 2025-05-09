@@ -5,6 +5,7 @@ import { formatMinutes } from "../../../utils/timeUtils";
 import { isElectronEnvironment } from "../services/ElectronSessionAdapter";
 import { electronSessionAdapter } from "../services/ElectronSessionAdapter";
 import { browserCaptureService } from "../services/BrowserCaptureService";
+import { v4 as uuidv4 } from "uuid";
 
 /**
  * 캡처 관련 인터페이스
@@ -97,11 +98,13 @@ export const useActiveSession = () => {
       isRecording: boolean = false
     ): WorkSession => {
       const source = isElectron ? "electron" : "browser";
+      const sessionId = uuidv4();
       const session = timerService.startSession(
         title,
         taskType,
         source,
-        isRecording
+        isRecording,
+        sessionId
       );
 
       // 녹화 옵션이 켜져 있으면 캡처 시작

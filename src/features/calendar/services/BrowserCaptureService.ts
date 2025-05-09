@@ -1,6 +1,7 @@
 import { WorkSession } from "../types";
 import { timerService } from "./TimerService";
 import { isElectronEnvironment } from "./ElectronSessionAdapter";
+import { v4 as uuidv4 } from "uuid";
 
 // 캡처 상태 타입
 export interface BrowserCaptureState {
@@ -115,8 +116,15 @@ export class BrowserCaptureService {
 
       // 작업 세션 시작
       const sessionTitle = options.title || document.title || "화면 캡처";
-      const category = options.category || "작업";
-      timerService.startSession(sessionTitle, category, "browser");
+      const category = options.category || "녹화";
+      const sessionId = uuidv4();
+      timerService.startSession(
+        sessionTitle,
+        category,
+        "browser",
+        false,
+        sessionId
+      );
 
       // 리스너 알림
       this.notifyListeners();

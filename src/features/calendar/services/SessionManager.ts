@@ -264,13 +264,15 @@ export class SessionManager {
     title: string,
     taskType: string,
     source: "electron" | "browser" | "manual" = "manual",
-    isRecording: boolean = false
+    isRecording: boolean = false,
+    sessionId?: string
   ): WorkSession {
     const session = timerService.startSession(
       title,
       taskType,
       source,
-      isRecording
+      isRecording,
+      sessionId
     );
 
     // 세션 목록 갱신
