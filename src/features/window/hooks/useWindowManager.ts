@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { WindowInfo } from "../types";
 import {
   windowService,
@@ -23,6 +23,9 @@ export const useWindowManager = () => {
   const [isLoadingWindows, setIsLoadingWindows] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // 창 새로고침 타이머 참조
+  const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   // activeWindows 상태가 변경될 때마다 localStorage에 저장
   useEffect(() => {
     windowStorageService.saveActiveWindows(activeWindows);
@@ -31,10 +34,24 @@ export const useWindowManager = () => {
   // 컴포넌트 초기화 시 Electron 환경 확인
   useEffect(() => {
     setElectronAvailable(isElectronAvailable());
+
+    // 정리 함수
+    return () => {
+      // 타이머가 있으면 정리
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
+    };
   }, []);
 
   // 활성 창 목록 가져오기
   const fetchActiveWindows = useCallback(async () => {
+    // 기존 타이머가 있으면 정리
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+    }
+
     if (!electronAvailable) {
       // Electron 환경이 아닐 때는 빈 배열 반환
       setActiveWindows([]);
@@ -129,17 +146,26 @@ export const useWindowManager = () => {
   );
 
   // 활성 창 목록 새로고침
-  const refreshActiveWindows = useCallback(() => {
-    fetchActiveWindows();
+  const refreshWindows = useCallback(() => {
+    // 디바운스 적용: 짧은 시간 내에 여러 번 호출되면 마지막 호출만 실행
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+    }
+
+    refreshTimerRef.current = setTimeout(() => {
+      fetchActiveWindows();
+      refreshTimerRef.current = null;
+    }, 100);
   }, [fetchActiveWindows]);
 
   return {
     selectedWindowId,
+    setSelectedWindowId,
     activeWindows,
     isLoadingWindows,
     error,
     electronAvailable,
     changeSelectedWindow,
-    refreshActiveWindows,
+    refreshWindows,
   };
 };

@@ -2,7 +2,7 @@ import { useTimelapseOptions } from "./useTimelapseOptions";
 import { useWindowManager } from "../../../features/window";
 import { useCaptureState } from "./useCaptureState";
 import { useTimelapseGeneration } from "./useTimelapseGeneration";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 
 /**
  * 타임랩스 생성 및 캡처 통합 훅
@@ -29,6 +29,16 @@ export const useTimelapseGenerationCapture = () => {
     windowManager.selectedWindowId
   );
 
+  // 리소스 정리를 위한 효과
+  useEffect(() => {
+    // 컴포넌트가 언마운트될 때 실행됨
+    return () => {
+      // 여기서 필요한 정리 작업 수행
+      // 개별 훅에서 이미 정리를 수행하므로 추가 작업은 필요 없음
+      console.log("[useTimelapseGenerationCapture] 리소스 정리 완료");
+    };
+  }, []);
+
   // 분리된 오류 처리 통합
   const combinedError = useCallback(() => {
     // 가장 우선순위가 높은 오류 반환
@@ -41,15 +51,16 @@ export const useTimelapseGenerationCapture = () => {
   return {
     // 창 관련
     selectedWindowId: windowManager.selectedWindowId,
+    setSelectedWindowId: windowManager.setSelectedWindowId,
     activeWindows: windowManager.activeWindows,
-    isLoadingWindows: windowManager.isLoadingWindows,
-    changeSelectedWindow: windowManager.changeSelectedWindow,
-    refreshActiveWindows: windowManager.refreshActiveWindows,
+    refreshWindows: windowManager.refreshWindows,
     electronAvailable: windowManager.electronAvailable,
 
     // 옵션 관련
-    timelapseOptions: timelapseOptionsManager.timelapseOptions,
-    changeTimelapseOptions: timelapseOptionsManager.changeTimelapseOptions,
+    timelapseOptions: timelapseOptionsManager.options,
+    setTimelapseOptions: timelapseOptionsManager.setOptions,
+    updateTimelapseOption: timelapseOptionsManager.updateOption,
+    resetTimelapseOptions: timelapseOptionsManager.resetOptions,
 
     // 캡처 관련
     isCapturing: captureState.isCapturing,
@@ -59,13 +70,12 @@ export const useTimelapseGenerationCapture = () => {
     isStatusInitialized: captureState.isStatusInitialized,
 
     // 타임랩스 생성 관련
-    isGeneratingTimelapse: timelapseGeneration.isGeneratingTimelapse,
-    timelapseProgress: timelapseGeneration.timelapseProgress,
-    outputPath: timelapseGeneration.outputPath,
-    saveFolderPath: timelapseGeneration.saveFolderPath,
     generateTimelapse: timelapseGeneration.generateTimelapse,
-    selectSaveFolder: timelapseGeneration.selectSaveFolder,
-    setSaveFolderPath: timelapseGeneration.setSaveFolderPath,
+    isGenerating: timelapseGeneration.isGenerating,
+    progress: timelapseGeneration.progress,
+    outputFilePath: timelapseGeneration.outputFilePath,
+    openOutputFile: timelapseGeneration.openOutputFile,
+    showOutputInFolder: timelapseGeneration.showOutputInFolder,
 
     // 오류 처리 통합
     error: combinedError(),

@@ -47,6 +47,8 @@ export const useCaptureState = (
 
   // lastKnownState를 ref로 관리
   const lastKnownStateRef = useRef({ isCapturing, duration });
+  // 이벤트 리스너 정리 함수를 ref로 관리
+  const cleanupFnRef = useRef<(() => void) | null>(null);
 
   // 상태가 변경될 때마다 localStorage에 캐시
   useEffect(() => {
@@ -64,7 +66,11 @@ export const useCaptureState = (
 
   // 컴포넌트 초기화 시 이벤트 리스너 등록
   useEffect(() => {
-    let cleanup: (() => void) | null = null;
+    // 이전 리스너가 있으면 정리
+    if (cleanupFnRef.current) {
+      cleanupFnRef.current();
+      cleanupFnRef.current = null;
+    }
 
     if (electronAvailable) {
       // 마운트 시 즉시 현재 녹화 상태 요청
@@ -86,15 +92,20 @@ export const useCaptureState = (
       initializeStatus();
 
       // 캡처 상태 이벤트 리스너 등록
-      cleanup = captureService.onCaptureStatus((status: CaptureStatus) => {
-        setIsCapturing(status.isCapturing);
-        setDuration(status.duration);
-        setIsStatusInitialized(true);
+      const cleanup = captureService.onCaptureStatus(
+        (status: CaptureStatus) => {
+          setIsCapturing(status.isCapturing);
+          setDuration(status.duration);
+          setIsStatusInitialized(true);
 
-        if (status.error) {
-          setError(status.error);
+          if (status.error) {
+            setError(status.error);
+          }
         }
-      });
+      );
+
+      // 정리 함수 저장
+      cleanupFnRef.current = cleanup;
     } else {
       // Electron 없는 환경에서도 초기화 완료로 표시
       setIsStatusInitialized(true);
@@ -102,8 +113,9 @@ export const useCaptureState = (
 
     // 컴포넌트 언마운트 시 이벤트 리스너 정리
     return () => {
-      if (cleanup) {
-        cleanup();
+      if (cleanupFnRef.current) {
+        cleanupFnRef.current();
+        cleanupFnRef.current = null;
       }
     };
   }, [electronAvailable]);
