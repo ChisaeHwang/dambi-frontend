@@ -67,12 +67,39 @@ export const useCalendar = () => {
   // 날짜에 해당하는 세션 찾기
   const getSessionsForDate = useCallback(
     (date: Date): WorkSession[] => {
-      return sessions.filter(
-        (session) =>
-          session.date.getDate() === date.getDate() &&
-          session.date.getMonth() === date.getMonth() &&
-          session.date.getFullYear() === date.getFullYear()
-      );
+      // sessions이 배열이 아닌 경우 빈 배열 반환
+      if (!Array.isArray(sessions)) {
+        console.error("sessions is not an array:", sessions);
+        return [];
+      }
+
+      return sessions.filter((session) => {
+        // session이 유효한지 확인
+        if (!session || typeof session !== "object") {
+          return false;
+        }
+
+        // session.date가 유효한지 확인하고 Date 객체로 변환
+        let sessionDate: Date;
+        try {
+          sessionDate = new Date(session.date);
+
+          // 유효한 날짜인지 확인
+          if (isNaN(sessionDate.getTime())) {
+            console.warn("Invalid session date:", session.date);
+            return false;
+          }
+
+          return (
+            sessionDate.getDate() === date.getDate() &&
+            sessionDate.getMonth() === date.getMonth() &&
+            sessionDate.getFullYear() === date.getFullYear()
+          );
+        } catch (error) {
+          console.error("Error comparing dates:", error, session);
+          return false;
+        }
+      });
     },
     [sessions]
   );
@@ -123,12 +150,36 @@ export const useCalendar = () => {
 
   // 월 통계 계산
   const calculateMonthStats = useCallback((): MonthStats => {
+    // sessions이 배열이 아닌 경우 기본 통계 반환
+    if (!Array.isArray(sessions)) {
+      console.error(
+        "sessions is not an array in calculateMonthStats:",
+        sessions
+      );
+      return {
+        categoryStats: {},
+        weekdayStats: [0, 0, 0, 0, 0, 0, 0],
+        totalMonthTime: 0,
+      };
+    }
+
     // 현재 월에 해당하는 세션만 필터링
-    const monthSessions = sessions.filter(
-      (session) =>
-        session.date.getMonth() === currentMonth.getMonth() &&
-        session.date.getFullYear() === currentMonth.getFullYear()
-    );
+    const monthSessions = sessions.filter((session) => {
+      if (!session || typeof session !== "object" || !session.date) {
+        return false;
+      }
+
+      try {
+        const sessionDate = new Date(session.date);
+        return (
+          sessionDate.getMonth() === currentMonth.getMonth() &&
+          sessionDate.getFullYear() === currentMonth.getFullYear()
+        );
+      } catch (error) {
+        console.error("Error filtering month sessions:", error);
+        return false;
+      }
+    });
 
     // "녹화" 카테고리를 제외한 세션 필터링
     const filteredSessions = filterOutRecordingSessions(monthSessions);
@@ -148,9 +199,14 @@ export const useCalendar = () => {
     // 요일별 작업 시간 집계
     const weekdayStats: number[] = [0, 0, 0, 0, 0, 0, 0]; // 월-일
     filteredSessions.forEach((session) => {
-      const dayOfWeek = session.date.getDay(); // 0=일, 1=월, ..., 6=토
-      const adjustedDay = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // 0=월, ..., 6=일
-      weekdayStats[adjustedDay] += session.duration;
+      try {
+        const sessionDate = new Date(session.date);
+        const dayOfWeek = sessionDate.getDay(); // 0=일, 1=월, ..., 6=토
+        const adjustedDay = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // 0=월, ..., 6=일
+        weekdayStats[adjustedDay] += session.duration;
+      } catch (error) {
+        console.error("Error calculating weekday stats:", error);
+      }
     });
 
     return {
