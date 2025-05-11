@@ -61,6 +61,15 @@ export class BrowserCaptureAdapter implements ICaptureService {
   getSession(): WorkSession | null {
     return browserCaptureService.getBrowserSession();
   }
+
+  /**
+   * 리소스 정리
+   */
+  dispose(): void {
+    // BrowserCaptureService에는 dispose 메서드가 없으므로
+    // 필요한 정리 작업이 있다면 여기에 구현
+    // 현재는 별도 정리 작업이 필요 없음
+  }
 }
 
 // 싱글톤 인스턴스 생성

@@ -113,9 +113,25 @@ export const useCaptureState = (
 
     // 컴포넌트 언마운트 시 이벤트 리스너 정리
     return () => {
+      // 명시적으로 리스너 제거 함수 호출
       if (cleanupFnRef.current) {
-        cleanupFnRef.current();
-        cleanupFnRef.current = null;
+        try {
+          cleanupFnRef.current();
+        } catch (e) {
+          console.error("[useCaptureState] 리스너 정리 중 오류:", e);
+        } finally {
+          cleanupFnRef.current = null;
+        }
+      }
+
+      // 로컬 스토리지에 마지막 상태 저장
+      try {
+        localStorage.setItem(
+          "capture_state",
+          JSON.stringify(lastKnownStateRef.current)
+        );
+      } catch (e) {
+        console.error("[useCaptureState] 상태 저장 중 오류:", e);
       }
     };
   }, [electronAvailable]);

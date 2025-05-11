@@ -20,4 +20,7 @@ export interface ICaptureService {
 
   // 세션 조회
   getSession(): WorkSession | null;
+
+  // 리소스 정리
+  dispose(): void;
 }

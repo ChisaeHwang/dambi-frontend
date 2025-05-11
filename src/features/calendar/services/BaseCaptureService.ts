@@ -42,4 +42,13 @@ export abstract class BaseCaptureService implements ICaptureService {
       }
     });
   }
+
+  /**
+   * 리소스 정리
+   * 기본 구현은 모든 리스너 제거
+   */
+  dispose(): void {
+    // 모든 리스너 제거
+    this.listeners = [];
+  }
 }

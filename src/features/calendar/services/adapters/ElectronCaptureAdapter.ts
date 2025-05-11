@@ -75,6 +75,13 @@ export class ElectronCaptureAdapter implements ICaptureService {
   getSession(): WorkSession | null {
     return electronSessionAdapter.getElectronSession();
   }
+
+  /**
+   * 리소스 정리
+   */
+  dispose(): void {
+    electronSessionAdapter.dispose();
+  }
 }
 
 // 싱글톤 인스턴스 생성

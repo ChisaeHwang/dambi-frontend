@@ -53,18 +53,35 @@ export const useActiveSession = () => {
     };
   }, []);
 
+  // 캡처 서비스 인스턴스 가져오기
+  const getCaptureService = useCallback(() => {
+    return CaptureServiceFactory.getCaptureService();
+  }, []);
+
+  // 캡처 서비스 정리 (언마운트 시)
+  useEffect(() => {
+    // 컴포넌트 언마운트시 정리
+    return () => {
+      // ElectronSessionAdapter의 dispose 메서드 호출 (가능한 경우)
+      const captureService = getCaptureService();
+      if (captureService && "dispose" in captureService) {
+        (captureService as any).dispose();
+      }
+    };
+  }, [getCaptureService]);
+
   /**
    * 캡처 동작 객체 생성 - 팩토리에서 적절한 서비스 가져오기
    */
   const getCaptureActions = useCallback((): CaptureActions => {
-    const captureService = CaptureServiceFactory.getCaptureService();
+    const captureService = getCaptureService();
 
     return {
       startCapture: captureService.startCapture.bind(captureService),
       stopCapture: captureService.stopCapture.bind(captureService),
       isCapturing: async () => Promise.resolve(captureService.isCapturing()),
     };
-  }, []);
+  }, [getCaptureService]);
 
   /**
    * 작업 세션 시작

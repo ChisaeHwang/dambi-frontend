@@ -265,6 +265,7 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
     const handleResize = () => {
       if (resizeTimeout) {
         clearTimeout(resizeTimeout);
+        resizeTimeout = null;
       }
       resizeTimeout = setTimeout(() => {
         updateScale();
@@ -282,6 +283,7 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
       // 대기 중인 타이머 정리
       if (resizeTimeout) {
         clearTimeout(resizeTimeout);
+        resizeTimeout = null;
       }
     };
   }, [imageSize]);
