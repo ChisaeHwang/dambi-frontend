@@ -436,26 +436,54 @@ export class SessionManager {
    */
   importSessions(jsonData: string, replaceExisting: boolean = false): boolean {
     try {
-      const importedSessions = JSON.parse(jsonData);
+      const importedData = JSON.parse(jsonData);
+      let importedSessions: WorkSession[];
 
-      if (!Array.isArray(importedSessions)) {
+      // 버전 정보를 포함한 새 형식인지 확인
+      if (
+        importedData &&
+        typeof importedData === "object" &&
+        "version" in importedData &&
+        "data" in importedData
+      ) {
+        // 버전 정보가 있는 새 형식
+        const { version, data } = importedData;
+
+        if (!Array.isArray(data)) {
+          console.error("가져온 데이터가 세션 배열이 아닙니다.");
+          return false;
+        }
+
+        // Date 객체 복원
+        const parsedSessions = DateService.reviveDates<WorkSession[]>(data);
+
+        // 필요시 세션 마이그레이션 수행
+        importedSessions = this.migrateImportedSessions(
+          parsedSessions,
+          version
+        );
+      } else if (Array.isArray(importedData)) {
+        // 이전 형식 (배열만 있음)
+        // Date 객체 복원
+        importedSessions = DateService.reviveDates<WorkSession[]>(importedData);
+
+        // 버전 1 형식으로 마이그레이션 (필요한 필드 추가)
+        importedSessions = this.migrateImportedSessions(importedSessions, 0);
+      } else {
+        console.error("세션 데이터 형식이 올바르지 않습니다.");
         return false;
       }
-
-      // Date 객체 복원
-      const parsedSessions =
-        DateService.reviveDates<WorkSession[]>(importedSessions);
 
       // 기존 데이터 유지하거나 대체
       if (replaceExisting) {
         // 기존 데이터 대체
-        sessionStorageService.saveSessions(parsedSessions);
+        sessionStorageService.saveSessions(importedSessions);
       } else {
         // 기존 데이터와 병합
         const existingSessions = sessionStorageService.getSessions();
         const allSessions = [...existingSessions];
 
-        parsedSessions.forEach((importedSession) => {
+        importedSessions.forEach((importedSession) => {
           // 중복 세션 확인
           const existingIndex = allSessions.findIndex(
             (s) => s.id === importedSession.id
@@ -481,10 +509,80 @@ export class SessionManager {
   }
 
   /**
+   * 가져온 세션 데이터 마이그레이션
+   * 가져온 데이터의 버전에 따라 현재 버전에 맞게 데이터 구조를 업데이트합니다.
+   */
+  private migrateImportedSessions(
+    sessions: WorkSession[],
+    fromVersion: number
+  ): WorkSession[] {
+    // 현재 스키마 버전 가져오기
+    const currentVersion = sessionStorageService.getCurrentSchemaVersion();
+
+    // 버전이 같거나 더 높으면 마이그레이션 불필요
+    if (fromVersion >= currentVersion) {
+      return sessions;
+    }
+
+    // 버전별 마이그레이션 수행
+    let migratedSessions = [...sessions];
+
+    // 버전 0에서 버전 1로 마이그레이션 (필요한 필드 추가)
+    if (fromVersion < 1) {
+      migratedSessions = migratedSessions.map((session) => {
+        const updated = { ...session };
+
+        // 작업 유형이 없으면 기본값 설정
+        if (!updated.taskType && updated.title) {
+          updated.taskType = "기타";
+        }
+
+        // 소스가 없으면 기본값 설정
+        if (!updated.source) {
+          updated.source = "manual";
+        }
+
+        // 활성 상태가 정의되지 않았으면 기본값 설정
+        if (updated.isActive === undefined) {
+          updated.isActive = false;
+        }
+
+        // 태그가 없으면 빈 배열로 초기화
+        if (!updated.tags) {
+          updated.tags = [];
+        }
+
+        return updated;
+      });
+    }
+
+    // 필요시 버전 2로의 마이그레이션 로직 추가
+    // if (fromVersion < 2) {
+    //   migratedSessions = migratedSessions.map(session => {
+    //     // 버전 2에 필요한 마이그레이션 로직
+    //     return { ...session, newField: defaultValue };
+    //   });
+    // }
+
+    return migratedSessions;
+  }
+
+  /**
    * 세션 데이터 내보내기
    */
   exportSessions(): string {
-    return JSON.stringify(this.sessions);
+    // 버전 정보를 포함한 데이터 구조로 내보내기
+    const exportData = {
+      version: sessionStorageService.getCurrentSchemaVersion(),
+      data: this.sessions,
+      exportDate: new Date().toISOString(),
+      appInfo: {
+        name: "담비",
+        dataFormat: "WorkSession",
+      },
+    };
+
+    return JSON.stringify(exportData);
   }
 }
 
