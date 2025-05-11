@@ -27,6 +27,7 @@ export class ElectronSessionAdapter {
   private isActive: boolean = false;
   private captureData: any = null;
   private listeners: Array<() => void> = [];
+  private captureStatusListener: (() => void) | null = null;
 
   constructor() {
     // 일렉트론 환경에서만 초기화
@@ -52,52 +53,77 @@ export class ElectronSessionAdapter {
 
     // 이벤트 리스너 직접 연결 대신 onCaptureStatus 사용
     if (window.electron.onCaptureStatus) {
-      window.electron.onCaptureStatus((status: any) => {
-        // 캡처 상태에 따라 처리
-        if (status.isCapturing && !this.isActive) {
-          // 캡처 시작됨
-          this.isActive = true;
-          this.captureData = status;
+      // 기존 리스너가 있다면 제거하여 중복을 방지
+      if (this.captureStatusListener) {
+        this.captureStatusListener();
+        this.captureStatusListener = null;
+      }
 
-          // 이미 활성화된 세션이 있는지 확인
-          const activeSession = timerService.getActiveSession();
+      // 새 리스너 등록 및 정리 함수 저장
+      this.captureStatusListener = window.electron.onCaptureStatus(
+        (status: any) => {
+          // 캡처 상태에 따라 처리
+          if (status.isCapturing && !this.isActive) {
+            // 캡처 시작됨
+            this.isActive = true;
+            this.captureData = status;
 
-          // 활성 세션이 없거나, 활성 세션이 electron 소스가 아니고 녹화 옵션이 활성화되지 않은 경우에만 새 녹화 세션 생성
-          if (
-            !activeSession ||
-            (activeSession.source !== "electron" && !activeSession.isRecording)
-          ) {
-            // 새 세션 시작
-            const title = status.windowTitle || "녹화 세션";
-            const taskType = "녹화";
-            const sessionId = uuidv4();
-            timerService.startSession(
-              title,
-              taskType,
-              "electron",
-              false,
-              sessionId
-            );
+            // 이미 활성화된 세션이 있는지 확인
+            const activeSession = timerService.getActiveSession();
+
+            // 활성 세션이 없거나, 활성 세션이 electron 소스가 아니고 녹화 옵션이 활성화되지 않은 경우에만 새 녹화 세션 생성
+            if (
+              !activeSession ||
+              (activeSession.source !== "electron" &&
+                !activeSession.isRecording)
+            ) {
+              // 새 세션 시작
+              const title = status.windowTitle || "녹화 세션";
+              const taskType = "녹화";
+              const sessionId = uuidv4();
+              timerService.startSession(
+                title,
+                taskType,
+                "electron",
+                false,
+                sessionId
+              );
+            }
+          } else if (!status.isCapturing && this.isActive) {
+            // 캡처 중지됨
+            this.isActive = false;
+            this.captureData = null;
+
+            // 작업 세션 종료 - 'electron' 소스 세션만 종료 (사용자가 시작한 세션은 그대로 유지)
+            const activeSession = timerService.getActiveSession();
+            if (activeSession && activeSession.source === "electron") {
+              timerService.stopSession();
+            }
+          } else {
+            // 상태 업데이트
+            this.captureData = status;
           }
-        } else if (!status.isCapturing && this.isActive) {
-          // 캡처 중지됨
-          this.isActive = false;
-          this.captureData = null;
 
-          // 작업 세션 종료 - 'electron' 소스 세션만 종료 (사용자가 시작한 세션은 그대로 유지)
-          const activeSession = timerService.getActiveSession();
-          if (activeSession && activeSession.source === "electron") {
-            timerService.stopSession();
-          }
-        } else {
-          // 상태 업데이트
-          this.captureData = status;
+          // 리스너 알림
+          this.notifyListeners();
         }
-
-        // 리스너 알림
-        this.notifyListeners();
-      });
+      );
     }
+  }
+
+  /**
+   * 모든 리스너 및 이벤트 정리
+   * 클래스가 파괴될 때 호출해야 함
+   */
+  public dispose(): void {
+    // 등록된 이벤트 리스너 정리
+    if (this.captureStatusListener) {
+      this.captureStatusListener();
+      this.captureStatusListener = null;
+    }
+
+    // 등록된 모든 리스너 제거
+    this.listeners = [];
   }
 
   /**

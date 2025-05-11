@@ -5,6 +5,12 @@ import AppTitleBar from "./components/layout/AppTitleBar";
 import PageLoader from "./components/Loaders/PageLoader";
 import Calendar from "./features/calendar/components/Calendar";
 import { AppContextProvider, AppContext } from "./context/AppContext";
+import {
+  ErrorContextProvider,
+  useGlobalErrorHandler,
+} from "./context/ErrorContext";
+import ErrorBoundary from "./components/ErrorBoundary";
+import ErrorToast from "./components/ErrorToast";
 import { Page } from "./types/navigation";
 
 // 지연 로딩으로 각 페이지 컴포넌트 불러오기
@@ -13,13 +19,25 @@ const TimelapseWorkspacePage = React.lazy(
 );
 const SettingsPage = React.lazy(() => import("./pages/SettingsPage"));
 
+// 전역 에러 핸들러 컴포넌트
+const GlobalErrorHandler: React.FC = () => {
+  useGlobalErrorHandler();
+  return null;
+};
+
 function App() {
   const isElectron = isElectronEnv();
 
   return (
-    <AppContextProvider>
-      <AppContent isElectron={isElectron} />
-    </AppContextProvider>
+    <ErrorContextProvider>
+      <ErrorBoundary name="App">
+        <AppContextProvider>
+          <GlobalErrorHandler />
+          <AppContent isElectron={isElectron} />
+          <ErrorToast />
+        </AppContextProvider>
+      </ErrorBoundary>
+    </ErrorContextProvider>
   );
 }
 
@@ -42,9 +60,11 @@ const AppContent: React.FC<{ isElectron: boolean }> = ({ isElectron }) => {
         {/* 메인 컨텐츠 영역 - 조건부 렌더링 개선 */}
         <main className="flex-1 overflow-hidden bg-[var(--bg-primary)]">
           <Suspense fallback={<PageLoader />}>
-            {currentPage === "workspace" && <TimelapseWorkspacePage />}
-            {currentPage === "calendar" && <Calendar />}
-            {currentPage === "settings" && <SettingsPage />}
+            <ErrorBoundary name={`Page-${currentPage}`}>
+              {currentPage === "workspace" && <TimelapseWorkspacePage />}
+              {currentPage === "calendar" && <Calendar />}
+              {currentPage === "settings" && <SettingsPage />}
+            </ErrorBoundary>
           </Suspense>
         </main>
       </div>

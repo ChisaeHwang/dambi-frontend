@@ -257,11 +257,34 @@ const BlurRegionSelector: React.FC<BlurRegionSelectorProps> = ({
       setScale(Math.min(widthScale, heightScale));
     };
 
+    // 초기 스케일 계산
     updateScale();
-    window.addEventListener("resize", updateScale);
 
+    // 이벤트 핸들러 등록 - 스로틀링 적용
+    let resizeTimeout: NodeJS.Timeout | null = null;
+    const handleResize = () => {
+      if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = null;
+      }
+      resizeTimeout = setTimeout(() => {
+        updateScale();
+        resizeTimeout = null;
+      }, 200); // 200ms 지연
+    };
+
+    // 이벤트 리스너 등록
+    window.addEventListener("resize", handleResize);
+
+    // 정리 함수
     return () => {
-      window.removeEventListener("resize", updateScale);
+      // 이벤트 리스너 제거
+      window.removeEventListener("resize", handleResize);
+      // 대기 중인 타이머 정리
+      if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = null;
+      }
     };
   }, [imageSize]);
 

@@ -3,9 +3,8 @@ import { WorkSession } from "../types";
 import { timerService, SessionState } from "../services/TimerService";
 import { formatMinutes } from "../../../utils/timeUtils";
 import { isElectronEnvironment } from "../services/ElectronSessionAdapter";
-import { electronSessionAdapter } from "../services/ElectronSessionAdapter";
-import { browserCaptureService } from "../services/BrowserCaptureService";
 import { v4 as uuidv4 } from "uuid";
+import { CaptureServiceFactory } from "../services/CaptureServiceFactory";
 
 /**
  * 캡처 관련 인터페이스
@@ -17,76 +16,72 @@ interface CaptureActions {
 }
 
 /**
- * 활성 작업 세션 관리 훅
- *
- * 단일 책임: 활성 세션의 UI 상태 관리 및 기본 작업 제공
- * TimerService와의 상호작용을 단순화
+ * 활성 세션 관리 훅
+ * 작업 세션 시작/중지 및 캡처 기능을 함께 처리
  */
 export const useActiveSession = () => {
+  // 상태 관리
   const [sessionState, setSessionState] = useState<SessionState>({
     session: null,
     duration: 0,
     isActive: false,
     isPaused: false,
   });
-  const [formattedTime, setFormattedTime] = useState<string>("0분");
-  const [isElectron, setIsElectron] = useState<boolean>(
-    isElectronEnvironment()
-  );
+  const [activeSession, setActiveSession] = useState<WorkSession | null>(null);
+  const [duration, setDuration] = useState<number>(0);
+  const [isElectron] = useState<boolean>(isElectronEnvironment());
 
-  // 활성 세션 상태 가져오기 (구조 분해 할당으로 더 직관적인 코드)
-  const { session: activeSession, duration, isPaused, isActive } = sessionState;
+  // 포맷팅된 시간 계산
+  const formattedTime = formatMinutes(duration);
 
-  // 타이머 이벤트 리스너 등록
+  // 상태 변수 추출
+  const isActive = sessionState.isActive;
+  const isPaused = sessionState.isPaused;
+
+  // 세션 상태 변경 감지
   useEffect(() => {
-    // 초기 세션 상태 로드
-    const initialState = timerService.getSessionState();
-    setSessionState(initialState);
-    setFormattedTime(formatMinutes(initialState.duration));
-
-    // 상태 변경 콜백 등록
-    const handleStateChange = (state: SessionState) => {
+    // 타이머 서비스에 콜백 등록
+    timerService.setStateChangeCallback((state: SessionState) => {
       setSessionState(state);
-      setFormattedTime(formatMinutes(state.duration));
-    };
+      setActiveSession(state.session);
+      setDuration(state.duration);
+    });
 
-    timerService.setStateChangeCallback(handleStateChange);
-
-    // 정리 함수
+    // 컴포넌트 언마운트시 콜백 제거
     return () => {
-      // 콜백 제거 - undefined를 전달하여 콜백 제거 (null 대신)
-      timerService.setStateChangeCallback(undefined);
+      timerService.setStateChangeCallback(null);
     };
   }, []);
 
+  // 캡처 서비스 인스턴스 가져오기
+  const getCaptureService = useCallback(() => {
+    return CaptureServiceFactory.getCaptureService();
+  }, []);
+
+  // 캡처 서비스 정리 (언마운트 시)
+  useEffect(() => {
+    // 컴포넌트 언마운트시 정리
+    return () => {
+      // ElectronSessionAdapter의 dispose 메서드 호출 (가능한 경우)
+      const captureService = getCaptureService();
+      if (captureService && "dispose" in captureService) {
+        (captureService as any).dispose();
+      }
+    };
+  }, [getCaptureService]);
+
   /**
-   * 캡처 동작 객체 생성 - 환경에 따라 적절한 서비스 사용 (팩토리 패턴)
+   * 캡처 동작 객체 생성 - 팩토리에서 적절한 서비스 가져오기
    */
   const getCaptureActions = useCallback((): CaptureActions => {
-    if (isElectron) {
-      return {
-        startCapture: async (options: any = {}) => {
-          const windows = await electronSessionAdapter.getAvailableWindows();
-          if (windows && windows.length > 0) {
-            const windowId = windows[0].id;
-            return electronSessionAdapter.startCapture(windowId, options);
-          }
-          return false;
-        },
-        stopCapture: () => electronSessionAdapter.stopCapture(),
-        isCapturing: () =>
-          Promise.resolve(electronSessionAdapter.isCapturing()),
-      };
-    } else {
-      return {
-        startCapture: (options: any = {}) =>
-          browserCaptureService.startCapture(options),
-        // Promise로 래핑하여 반환 타입 일치시키기
-        stopCapture: () => Promise.resolve(browserCaptureService.stopCapture()),
-        isCapturing: () => Promise.resolve(browserCaptureService.isCapturing()),
-      };
-    }
-  }, [isElectron]);
+    const captureService = getCaptureService();
+
+    return {
+      startCapture: captureService.startCapture.bind(captureService),
+      stopCapture: captureService.stopCapture.bind(captureService),
+      isCapturing: async () => Promise.resolve(captureService.isCapturing()),
+    };
+  }, [getCaptureService]);
 
   /**
    * 작업 세션 시작

@@ -355,6 +355,36 @@ export class BrowserCaptureService {
     }
     return null;
   }
+
+  /**
+   * 모든 리소스 정리
+   */
+  dispose(): void {
+    // 캡처 중이라면 중지
+    if (this.state.isCapturing) {
+      this.stopCapture();
+    }
+
+    // 미디어 스트림 정리 (중복 체크)
+    if (this.state.mediaStream) {
+      this.state.mediaStream.getTracks().forEach((track) => track.stop());
+    }
+
+    // 메모리 누수 방지를 위해 모든 참조 초기화
+    this.state = {
+      isCapturing: false,
+      isPaused: false,
+      startTime: null,
+      pauseTime: null,
+      mediaStream: null,
+      mediaRecorder: null,
+      chunks: [],
+      windowTitle: "",
+    };
+
+    // 모든 리스너 제거
+    this.listeners = [];
+  }
 }
 
 // 싱글톤 인스턴스 생성

@@ -3,6 +3,7 @@ import { WorkSession } from "../types";
 import { sessionManager, SessionQueryResult } from "../services/SessionManager";
 import { SessionState } from "../services/TimerService";
 import { DateService } from "../services/DateService";
+import { useErrorContext } from "../../../context/ErrorContext";
 
 /**
  * 세션 관리 훅
@@ -15,19 +16,39 @@ export function useSessionManager() {
   const [sessionState, setSessionState] = useState<SessionState | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  // ErrorContext 사용
+  const { addError } = useErrorContext();
+
   // 세션 목록 로드
   const loadSessions = useCallback(() => {
-    setIsLoading(true);
-    const allSessions = sessionManager.getAllSessions();
-    setSessions(allSessions);
-    setIsLoading(false);
-  }, []);
+    try {
+      setIsLoading(true);
+      const allSessions = sessionManager.getAllSessions();
+      setSessions(allSessions);
+    } catch (err) {
+      console.error("세션 로드 오류:", err);
+      addError(err instanceof Error ? err : String(err), {
+        source: "세션 관리",
+        code: "SESSION_LOAD_ERROR",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [addError]);
 
   // 세션 상태 업데이트
   const updateSessionState = useCallback(() => {
-    const state = sessionManager.getSessionState();
-    setSessionState(state);
-  }, []);
+    try {
+      const state = sessionManager.getSessionState();
+      setSessionState(state);
+    } catch (err) {
+      console.error("세션 상태 업데이트 오류:", err);
+      addError(err instanceof Error ? err : String(err), {
+        source: "세션 관리",
+        code: "SESSION_STATE_UPDATE_ERROR",
+      });
+    }
+  }, [addError]);
 
   // 초기화 및 변경 구독
   useEffect(() => {
@@ -50,18 +71,37 @@ export function useSessionManager() {
   // 오늘 세션 가져오기
   const getTodaySessions = useCallback(
     (excludeRecordings: boolean = false): SessionQueryResult => {
-      const today = DateService.today();
-      return sessionManager.getSessionsByDate(today, excludeRecordings);
+      try {
+        const today = DateService.today();
+        return sessionManager.getSessionsByDate(today, excludeRecordings);
+      } catch (err) {
+        console.error("오늘의 세션 로드 오류:", err);
+        addError(err instanceof Error ? err : String(err), {
+          source: "세션 관리",
+          code: "TODAY_SESSIONS_ERROR",
+        });
+        return { sessions: [], totalDuration: 0, count: 0 };
+      }
     },
-    []
+    [addError]
   );
 
   // 날짜별 세션 가져오기
   const getSessionsByDate = useCallback(
     (date: Date, excludeRecordings: boolean = false): SessionQueryResult => {
-      return sessionManager.getSessionsByDate(date, excludeRecordings);
+      try {
+        return sessionManager.getSessionsByDate(date, excludeRecordings);
+      } catch (err) {
+        console.error("날짜별 세션 로드 오류:", err);
+        addError(err instanceof Error ? err : String(err), {
+          source: "세션 관리",
+          code: "DATE_SESSIONS_ERROR",
+          context: { date: date.toISOString() },
+        });
+        return { sessions: [], totalDuration: 0, count: 0 };
+      }
     },
-    []
+    [addError]
   );
 
   // 세션 시작
@@ -70,72 +110,176 @@ export function useSessionManager() {
       title: string,
       taskType: string,
       isRecording: boolean = false
-    ): WorkSession => {
-      return sessionManager.startSession(
-        title,
-        taskType,
-        "manual",
-        isRecording
-      );
+    ): WorkSession | null => {
+      try {
+        return sessionManager.startSession(
+          title,
+          taskType,
+          "manual",
+          isRecording
+        );
+      } catch (err) {
+        console.error("세션 시작 오류:", err);
+        addError(err instanceof Error ? err : String(err), {
+          source: "세션 관리",
+          code: "SESSION_START_ERROR",
+          context: { title, taskType, isRecording },
+        });
+        return null;
+      }
     },
-    []
+    [addError]
   );
 
   // 세션 중지
   const stopSession = useCallback((): WorkSession | null => {
-    return sessionManager.stopSession();
-  }, []);
+    try {
+      return sessionManager.stopSession();
+    } catch (err) {
+      console.error("세션 종료 오류:", err);
+      addError(err instanceof Error ? err : String(err), {
+        source: "세션 관리",
+        code: "SESSION_STOP_ERROR",
+      });
+      return null;
+    }
+  }, [addError]);
 
   // 세션 일시 정지
   const pauseSession = useCallback((): void => {
-    sessionManager.pauseSession();
-  }, []);
+    try {
+      sessionManager.pauseSession();
+    } catch (err) {
+      console.error("세션 일시 정지 오류:", err);
+      addError(err instanceof Error ? err : String(err), {
+        source: "세션 관리",
+        code: "SESSION_PAUSE_ERROR",
+      });
+    }
+  }, [addError]);
 
   // 세션 재개
   const resumeSession = useCallback((): void => {
-    sessionManager.resumeSession();
-  }, []);
+    try {
+      sessionManager.resumeSession();
+    } catch (err) {
+      console.error("세션 재개 오류:", err);
+      addError(err instanceof Error ? err : String(err), {
+        source: "세션 관리",
+        code: "SESSION_RESUME_ERROR",
+      });
+    }
+  }, [addError]);
 
   // 세션 업데이트
-  const updateSession = useCallback((session: WorkSession): boolean => {
-    return sessionManager.updateSession(session);
-  }, []);
+  const updateSession = useCallback(
+    (session: WorkSession): boolean => {
+      try {
+        return sessionManager.updateSession(session);
+      } catch (err) {
+        console.error("세션 업데이트 오류:", err);
+        addError(err instanceof Error ? err : String(err), {
+          source: "세션 관리",
+          code: "SESSION_UPDATE_ERROR",
+          context: { sessionId: session.id },
+        });
+        return false;
+      }
+    },
+    [addError]
+  );
 
   // 세션 삭제
-  const deleteSession = useCallback((sessionId: string): void => {
-    sessionManager.deleteSession(sessionId);
-  }, []);
+  const deleteSession = useCallback(
+    (sessionId: string): void => {
+      try {
+        sessionManager.deleteSession(sessionId);
+      } catch (err) {
+        console.error("세션 삭제 오류:", err);
+        addError(err instanceof Error ? err : String(err), {
+          source: "세션 관리",
+          code: "SESSION_DELETE_ERROR",
+          context: { sessionId },
+        });
+      }
+    },
+    [addError]
+  );
 
   // 새 세션 생성
   const createSession = useCallback(
-    (sessionData: Partial<WorkSession>): WorkSession => {
-      return sessionManager.createSession(sessionData);
+    (sessionData: Partial<WorkSession>): WorkSession | null => {
+      try {
+        return sessionManager.createSession(sessionData);
+      } catch (err) {
+        console.error("세션 생성 오류:", err);
+        addError(err instanceof Error ? err : String(err), {
+          source: "세션 관리",
+          code: "SESSION_CREATE_ERROR",
+        });
+        return null;
+      }
     },
-    []
+    [addError]
   );
 
   // 활성 세션 가져오기
   const getActiveSession = useCallback((): WorkSession | null => {
-    return sessionManager.getActiveSession();
-  }, []);
+    try {
+      return sessionManager.getActiveSession();
+    } catch (err) {
+      console.error("활성 세션 조회 오류:", err);
+      addError(err instanceof Error ? err : String(err), {
+        source: "세션 관리",
+        code: "ACTIVE_SESSION_ERROR",
+      });
+      return null;
+    }
+  }, [addError]);
 
   // 세션 데이터 내보내기
   const exportSessions = useCallback((): string => {
-    return sessionManager.exportSessions();
-  }, []);
+    try {
+      return sessionManager.exportSessions();
+    } catch (err) {
+      console.error("세션 내보내기 오류:", err);
+      addError(err instanceof Error ? err : String(err), {
+        source: "세션 관리",
+        code: "SESSION_EXPORT_ERROR",
+      });
+      return "";
+    }
+  }, [addError]);
 
   // 세션 데이터 가져오기
   const importSessions = useCallback(
     (jsonData: string, replaceExisting: boolean = false): boolean => {
-      return sessionManager.importSessions(jsonData, replaceExisting);
+      try {
+        return sessionManager.importSessions(jsonData, replaceExisting);
+      } catch (err) {
+        console.error("세션 가져오기 오류:", err);
+        addError(err instanceof Error ? err : String(err), {
+          source: "세션 관리",
+          code: "SESSION_IMPORT_ERROR",
+        });
+        return false;
+      }
     },
-    []
+    [addError]
   );
 
   // 미완료 세션 정리
   const cleanupIncompleteSessions = useCallback((): void => {
-    sessionManager.cleanupIncompleteSessions();
-  }, []);
+    try {
+      sessionManager.cleanupIncompleteSessions();
+    } catch (err) {
+      console.error("미완료 세션 정리 오류:", err);
+      addError(err instanceof Error ? err : String(err), {
+        source: "세션 관리",
+        code: "SESSION_CLEANUP_ERROR",
+      });
+    }
+  }, [addError]);
 
   return {
     // 상태
