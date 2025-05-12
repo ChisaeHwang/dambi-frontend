@@ -1,6 +1,6 @@
-import { WorkSession } from "../types";
-import { timerService } from "./TimerService";
-import { isElectronEnvironment } from "./ElectronSessionAdapter";
+import { WorkSession } from "../../types";
+import { timerService } from "../timer/TimerService";
+import { isElectronEnvironment } from "../adapters/ElectronSessionAdapter";
 import { v4 as uuidv4 } from "uuid";
 
 // 캡처 상태 타입

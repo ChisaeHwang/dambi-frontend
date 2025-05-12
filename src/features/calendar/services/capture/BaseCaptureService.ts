@@ -1,5 +1,5 @@
 import { ICaptureService } from "./ICaptureService";
-import { WorkSession } from "../types";
+import { WorkSession } from "../../types";
 
 /**
  * 캡처 서비스 기본 추상 클래스

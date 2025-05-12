@@ -3,12 +3,12 @@
  */
 
 // 컴포넌트
-export { default as Calendar } from "./components/Calendar";
-export { default as CalendarGrid } from "./components/CalendarGrid";
-export { default as CalendarHeader } from "./components/CalendarHeader";
-export { default as CalendarDayCard } from "./components/CalendarDayCard";
-export { default as SessionsList } from "./components/SessionsList";
-export { default as StatsView } from "./components/StatsView";
+export { default as Calendar } from "./components/calendar/Calendar";
+export { default as CalendarGrid } from "./components/calendar/CalendarGrid";
+export { default as CalendarHeader } from "./components/calendar/CalendarHeader";
+export { default as CalendarDayCard } from "./components/calendar/CalendarDayCard";
+export { default as SessionsList } from "./components/sessions/SessionsList";
+export { default as StatsView } from "./components/stats/StatsView";
 
 // 훅
 export { useCalendar } from "./hooks/useCalendar";

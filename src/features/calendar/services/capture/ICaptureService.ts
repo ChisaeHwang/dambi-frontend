@@ -1,4 +1,4 @@
-import { WorkSession } from "../types";
+import { WorkSession } from "../../types";
 
 /**
  * 캡처 서비스 공통 인터페이스

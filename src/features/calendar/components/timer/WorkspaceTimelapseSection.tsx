@@ -1,8 +1,8 @@
 import React, { useContext } from "react";
-import { useWorkSession } from "../../timelapse/hooks/useWorkSession";
-import { AppContext } from "../../../context/AppContext";
-import { filterOutRecordingSessions } from "../utils";
-import { formatDuration, formatMinutes } from "../../../utils/timeUtils";
+import { useWorkSession } from "../../../timelapse/hooks/useWorkSession";
+import { AppContext } from "../../../../context/AppContext";
+import { filterOutRecordingSessions } from "../../utils";
+import { formatDuration, formatMinutes } from "../../../../utils/timeUtils";
 
 /**
  * 워크스페이스 타임랩스 섹션 컴포넌트

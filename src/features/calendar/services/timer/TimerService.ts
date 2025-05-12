@@ -1,5 +1,5 @@
-import { WorkSession } from "../types";
-import { sessionStorageService } from "./SessionStorageService";
+import { WorkSession } from "../../types";
+import { sessionStorageService } from "../storage/SessionStorageService";
 import { DateService } from "./DateService";
 import { v4 as uuidv4 } from "uuid";
 

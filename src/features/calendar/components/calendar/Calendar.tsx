@@ -1,10 +1,10 @@
 import React from "react";
-import { useCalendar } from "../hooks/useCalendar";
+import { useCalendar } from "../../hooks/useCalendar";
 import CalendarHeader from "./CalendarHeader";
 import CalendarGrid from "./CalendarGrid";
-import SessionsList from "./SessionsList";
-import StatsView from "./StatsView";
-import WorkspaceTimelapseSection from "./WorkspaceTimelapseSection";
+import SessionsList from "../sessions/SessionsList";
+import StatsView from "../stats/StatsView";
+import WorkspaceTimelapseSection from "../timer/WorkspaceTimelapseSection";
 
 /**
  * 메인 캘린더 컴포넌트

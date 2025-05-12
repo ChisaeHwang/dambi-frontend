@@ -1,5 +1,5 @@
 import React from "react";
-import { CalendarHeaderProps } from "../types";
+import { CalendarHeaderProps } from "../../types";
 
 /**
  * 캘린더 헤더 컴포넌트

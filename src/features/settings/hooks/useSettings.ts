@@ -1,7 +1,7 @@
 import { useCallback, useState, useEffect } from "react";
 import { useTimelapseGenerationCapture } from "../../timelapse";
 import { AppSettings } from "../../calendar/types";
-import { sessionStorageService } from "../../calendar/services/SessionStorageService";
+import { sessionStorageService } from "../../calendar/services/storage/SessionStorageService";
 
 /**
  * 설정 관리 훅

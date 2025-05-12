@@ -1,7 +1,7 @@
 import React from "react";
-import { CalendarGridProps } from "../types";
+import { CalendarGridProps } from "../../types";
 import CalendarDayCard from "./CalendarDayCard";
-import { filterOutRecordingSessions } from "../utils";
+import { filterOutRecordingSessions } from "../../utils";
 
 /**
  * 캘린더 그리드 컴포넌트

@@ -1,5 +1,5 @@
-import { ICaptureService } from "../ICaptureService";
-import { electronSessionAdapter } from "../ElectronSessionAdapter";
+import { ICaptureService } from "../capture/ICaptureService";
+import { electronSessionAdapter } from "./ElectronSessionAdapter";
 import { WorkSession } from "../../types";
 
 /**

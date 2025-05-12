@@ -1,6 +1,9 @@
-import { WorkSession } from "../types";
-import { SessionState, TimerEventListener } from "./TimerService";
-import { SessionChangeListener, SessionQueryResult } from "./SessionManager";
+import { WorkSession } from "../../types";
+import { SessionState, TimerEventListener } from "../timer/TimerService";
+import {
+  SessionChangeListener,
+  SessionQueryResult,
+} from "../session/SessionManager";
 
 /**
  * 타이머 서비스 인터페이스

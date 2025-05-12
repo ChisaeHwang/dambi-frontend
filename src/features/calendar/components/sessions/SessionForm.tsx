@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { WorkSession } from "../types";
-import { sessionManager } from "../services/SessionManager";
+import { WorkSession } from "../../types";
+import { sessionManager } from "../../services/session/SessionManager";
 import {
   formatDateForInput,
   formatTimeForInput,
   formatMinutes,
-} from "../../../utils/timeUtils";
-import { sessionStorageService } from "../services/SessionStorageService";
-import { DateService } from "../services/DateService";
+} from "../../../../utils/timeUtils";
+import { sessionStorageService } from "../../services/storage/SessionStorageService";
+import { DateService } from "../../services/timer/DateService";
 
 interface SessionFormProps {
   session?: WorkSession;

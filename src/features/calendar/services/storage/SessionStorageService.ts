@@ -1,5 +1,5 @@
-import { WorkSession, AppSettings } from "../types";
-import { DateService } from "./DateService";
+import { WorkSession, AppSettings } from "../../types";
+import { DateService } from "../timer/DateService";
 
 /**
  * 현재 데이터 스키마 버전

@@ -1,4 +1,4 @@
-import { WorkSession, AppSettings } from "../types";
+import { WorkSession, AppSettings } from "../../types";
 
 /**
  * 스토리지 서비스 인터페이스

@@ -6,7 +6,7 @@ import {
   AppSettings,
 } from "../types";
 import { sessionStorageService, filterOutRecordingSessions } from "../utils";
-import { timerService } from "../services/TimerService";
+import { timerService } from "../services/timer/TimerService";
 
 /**
  * 캘린더 기능을 관리하는 훅
