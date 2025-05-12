@@ -1,6 +1,6 @@
 import React from "react";
+import { formatWorkTime } from "../../utils/formatUtils";
 import { CalendarDayCardProps } from "../../types";
-import { formatWorkTime } from "../../utils";
 
 /**
  * 캘린더 일자 카드 컴포넌트

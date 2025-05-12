@@ -1,6 +1,6 @@
 import React from "react";
+import { formatTotalTime } from "../../utils/formatUtils";
 import { MonthStats } from "../../types";
-import { formatTotalTime } from "../../utils";
 
 interface StatsViewProps {
   currentMonth: Date;

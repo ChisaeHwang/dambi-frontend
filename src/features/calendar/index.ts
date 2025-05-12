@@ -17,4 +17,7 @@ export { useCalendar } from "./hooks/useCalendar";
 export * from "./types";
 
 // 유틸리티
-export * from "./utils";
+export * from "./utils/index";
+
+// 서비스
+export { sessionStorageService } from "./services/storage/SessionStorageService";

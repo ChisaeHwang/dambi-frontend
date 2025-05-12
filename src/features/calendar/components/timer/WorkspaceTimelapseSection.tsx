@@ -1,7 +1,7 @@
 import React, { useContext } from "react";
 import { useWorkSession } from "../../../timelapse/hooks/useWorkSession";
 import { AppContext } from "../../../../context/AppContext";
-import { filterOutRecordingSessions } from "../../utils";
+import { filterOutRecordingSessions } from "../../utils/sessionUtils";
 import { formatDuration, formatMinutes } from "../../../../utils/timeUtils";
 
 /**

@@ -5,7 +5,8 @@ import {
   CalendarViewType,
   AppSettings,
 } from "../types";
-import { sessionStorageService, filterOutRecordingSessions } from "../utils";
+import { sessionStorageService } from "../services/storage/SessionStorageService";
+import { filterOutRecordingSessions } from "../utils/sessionUtils";
 import { timerService } from "../services/timer/TimerService";
 
 /**
