@@ -1,6 +1,7 @@
 import React from "react";
-import { WorkSession } from "../types";
-import { formatWorkTime, filterOutRecordingSessions } from "../utils";
+import { formatWorkTime } from "../../utils/formatUtils";
+import { filterOutRecordingSessions } from "../../utils/sessionUtils";
+import { WorkSession } from "../../types";
 
 interface SessionsListProps {
   selectedDate: Date;

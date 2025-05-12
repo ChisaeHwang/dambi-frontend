@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { WorkSession } from "../../calendar/types";
-import { electronSessionAdapter } from "../../calendar/services/ElectronSessionAdapter";
-import { sessionManager } from "../../calendar/services/SessionManager";
+import { electronSessionAdapter } from "../../calendar/services/adapters/ElectronSessionAdapter";
+import { sessionManager } from "../../calendar/services/session/SessionManager";
 import { formatDuration } from "../../../utils/timeUtils";
-import { DateService } from "../../calendar/services/DateService";
+import { DateService } from "../../calendar/services/timer/DateService";
 
 /**
  * 타임랩스 작업 세션 관리를 위한 훅

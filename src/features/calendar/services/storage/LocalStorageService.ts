@@ -1,5 +1,5 @@
-import { WorkSession, AppSettings } from "../types";
-import { DateService } from "./DateService";
+import { WorkSession, AppSettings } from "../../types";
+import { DateService } from "../timer/DateService";
 import { IStorageService } from "./IStorageService";
 
 /**

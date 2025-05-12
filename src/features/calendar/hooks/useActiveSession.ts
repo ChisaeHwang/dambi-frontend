@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { WorkSession } from "../types";
-import { timerService, SessionState } from "../services/TimerService";
+import { timerService, SessionState } from "../services/timer/TimerService";
 import { formatMinutes } from "../../../utils/timeUtils";
-import { isElectronEnvironment } from "../services/ElectronSessionAdapter";
+import { isElectronEnvironment } from "../services/adapters/ElectronSessionAdapter";
 import { v4 as uuidv4 } from "uuid";
-import { CaptureServiceFactory } from "../services/CaptureServiceFactory";
+import { CaptureServiceFactory } from "../services/capture/CaptureServiceFactory";
 
 /**
  * 캡처 관련 인터페이스

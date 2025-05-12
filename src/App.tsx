@@ -3,7 +3,7 @@ import { isElectronEnv } from "./types/common";
 import Navigation from "./components/layout/Navigation";
 import AppTitleBar from "./components/layout/AppTitleBar";
 import PageLoader from "./components/Loaders/PageLoader";
-import Calendar from "./features/calendar/components/Calendar";
+import Calendar from "./features/calendar/components/calendar/Calendar";
 import { AppContextProvider, AppContext } from "./context/AppContext";
 import {
   ErrorContextProvider,

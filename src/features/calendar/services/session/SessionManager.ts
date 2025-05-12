@@ -1,7 +1,7 @@
-import { WorkSession } from "../types";
-import { sessionStorageService } from "./SessionStorageService";
-import { timerService, SessionState } from "./TimerService";
-import { DateService } from "./DateService";
+import { WorkSession } from "../../types";
+import { sessionStorageService } from "../storage/SessionStorageService";
+import { timerService, SessionState } from "../timer/TimerService";
+import { DateService } from "../timer/DateService";
 import { v4 as uuidv4 } from "uuid";
 
 /**

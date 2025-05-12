@@ -1,5 +1,5 @@
-import { ICaptureService } from "../ICaptureService";
-import { browserCaptureService } from "../BrowserCaptureService";
+import { ICaptureService } from "../capture/ICaptureService";
+import { browserCaptureService } from "../capture/BrowserCaptureService";
 import { WorkSession } from "../../types";
 
 /**

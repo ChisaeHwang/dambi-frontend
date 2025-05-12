@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { WorkSession } from "../types";
-import { sessionManager, SessionQueryResult } from "../services/SessionManager";
-import { SessionState } from "../services/TimerService";
-import { DateService } from "../services/DateService";
+import {
+  sessionManager,
+  SessionQueryResult,
+} from "../services/session/SessionManager";
+import { SessionState } from "../services/timer/TimerService";
+import { DateService } from "../services/timer/DateService";
 import { useErrorContext } from "../../../context/ErrorContext";
 
 /**

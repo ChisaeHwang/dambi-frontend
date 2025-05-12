@@ -1,5 +1,5 @@
-import { WorkSession } from "../types";
-import { timerService } from "./TimerService";
+import { WorkSession } from "../../types";
+import { timerService } from "../timer/TimerService";
 import { v4 as uuidv4 } from "uuid";
 
 /**

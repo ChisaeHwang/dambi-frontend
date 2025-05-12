@@ -1,6 +1,6 @@
 import React from "react";
-import { CalendarDayCardProps } from "../types";
-import { formatWorkTime } from "../utils";
+import { formatWorkTime } from "../../utils/formatUtils";
+import { CalendarDayCardProps } from "../../types";
 
 /**
  * 캘린더 일자 카드 컴포넌트
@@ -32,8 +32,8 @@ const CalendarDayCard: React.FC<CalendarDayCardProps> = ({
         isSelected
           ? "bg-[var(--bg-modifier-selected)]"
           : isToday
-            ? "bg-[var(--bg-modifier-active)]"
-            : "bg-[var(--bg-primary)]"
+          ? "bg-[var(--bg-modifier-active)]"
+          : "bg-[var(--bg-primary)]"
       } ${getWorkTimeIntensityClass()} ${
         isCurrentMonth
           ? "text-[var(--text-normal)]"

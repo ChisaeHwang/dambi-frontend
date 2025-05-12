@@ -1,6 +1,6 @@
 import React from "react";
-import { useActiveSession } from "../hooks/useActiveSession";
-import { DateService } from "../services/DateService";
+import { useActiveSession } from "../../hooks/useActiveSession";
+import { DateService } from "../../services/timer/DateService";
 
 /**
  * 타이머 패널 컴포넌트 (워크스페이스 페이지로 이동하도록 안내)

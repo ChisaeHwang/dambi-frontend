@@ -1,7 +1,7 @@
 import { ICaptureService } from "./ICaptureService";
-import { browserCaptureAdapter } from "./adapters/BrowserCaptureAdapter";
-import { electronCaptureAdapter } from "./adapters/ElectronCaptureAdapter";
-import { isElectronEnvironment } from "./ElectronSessionAdapter";
+import { browserCaptureAdapter } from "../adapters/BrowserCaptureAdapter";
+import { electronCaptureAdapter } from "../adapters/ElectronCaptureAdapter";
+import { isElectronEnvironment } from "../adapters/ElectronSessionAdapter";
 
 /**
  * 캡처 서비스 팩토리 클래스

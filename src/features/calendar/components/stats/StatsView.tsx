@@ -1,6 +1,6 @@
 import React from "react";
-import { MonthStats } from "../types";
-import { formatTotalTime } from "../utils";
+import { formatTotalTime } from "../../utils/formatUtils";
+import { MonthStats } from "../../types";
 
 interface StatsViewProps {
   currentMonth: Date;
@@ -46,12 +46,12 @@ const StatsView: React.FC<StatsViewProps> = ({ currentMonth, monthStats }) => {
                     category === "개발"
                       ? "bg-[var(--primary-color)]"
                       : category === "디자인"
-                        ? "bg-[var(--status-green)]"
-                        : category === "미팅"
-                          ? "bg-[var(--status-yellow)]"
-                          : category === "문서"
-                            ? "bg-[var(--text-link)]"
-                            : "bg-[var(--bg-accent)]";
+                      ? "bg-[var(--status-green)]"
+                      : category === "미팅"
+                      ? "bg-[var(--status-yellow)]"
+                      : category === "문서"
+                      ? "bg-[var(--text-link)]"
+                      : "bg-[var(--bg-accent)]";
 
                   return (
                     <div key={category} className="w-full">
